@@ -127,10 +127,6 @@ VITE_SUPABASE_ANON_KEY=eyJxxx...
 MISTRAL_API_KEY=votre_cle_api
 MISTRAL_AGENT_ID=ag_xxxxx
 
-# PostHog (optionnel)
-VITE_POSTHOG_KEY=phc_xxx
-VITE_POSTHOG_HOST=https://eu.i.posthog.com
-
 # Serveur
 PORT=3000
 ```
