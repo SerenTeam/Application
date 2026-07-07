@@ -10,7 +10,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "start": "NODE_ENV=production node server/server.js",
-    "launch": "npm install && npm run build && npm start"
+    "launch": "npm install && npm run build && npm start",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@hookform/resolvers": "3.9.1",
@@ -41,6 +43,7 @@
     "concurrently": "9.1.2",
     "tailwindcss": "4.2.2",
     "typescript": "~5.6.3",
-    "vite": "6.0.7"
+    "vite": "6.0.7",
+    "vitest": "^4.1.10"
   }
 }
