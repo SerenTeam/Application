@@ -1,0 +1,136 @@
+import { useState } from 'react'
+import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { AuthLayout } from '@/components/auth/AuthLayout'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { PasswordInput } from '@/components/auth/PasswordInput'
+import { signIn } from '@/lib/auth'
+import { ArrowRight } from 'lucide-react'
+import { loginSchema, type LoginFormValues } from '@/utils/validation'
+
+export function LoginPage() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+  const [serverError, setServerError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const successMessage = (location.state as { message?: string })?.message
+  const returnUrl = searchParams.get('returnUrl')
+  const from = returnUrl || (location.state as { from?: { pathname: string } })?.from?.pathname || '/'
+
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+    mode: 'onBlur',
+    reValidateMode: 'onChange',
+  })
+
+  const onSubmit = async (values: LoginFormValues) => {
+    setServerError(null)
+    setIsSubmitting(true)
+
+    try {
+      const { error: authError } = await signIn(values.email, values.password)
+
+      if (authError) {
+        setServerError('Email ou mot de passe incorrect')
+        return
+      }
+
+      navigate(from, { replace: true })
+    } catch {
+      setServerError('Erreur de connexion au serveur. Veuillez réessayer.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <AuthLayout>
+      <div className="rounded-[20px] bg-bg-card p-8 shadow-md">
+        <h1 className="mb-2 text-center font-display text-[2rem] font-medium text-accent">
+          Bienvenue
+        </h1>
+        <p className="mb-8 text-center text-[1.05rem] text-text-soft">
+          Connectez-vous pour accéder à votre espace.
+        </p>
+
+        {successMessage && (
+          <div className="mb-6 rounded-[12px] border-2 border-accent/30 bg-accent-soft p-4 text-center">
+            <p className="text-accent text-[0.95rem]">{successMessage}</p>
+          </div>
+        )}
+
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="votre@email.com"
+              autoComplete="email"
+              aria-invalid={!!form.formState.errors.email}
+              aria-describedby={form.formState.errors.email ? 'login-email-error' : undefined}
+              {...form.register('email')}
+            />
+            {form.formState.errors.email && (
+              <p id="login-email-error" className="text-sm text-error" role="alert">
+                {form.formState.errors.email.message}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password">Mot de passe</Label>
+            <PasswordInput
+              id="password"
+              placeholder="........"
+              autoComplete="current-password"
+              aria-invalid={!!form.formState.errors.password}
+              aria-describedby={form.formState.errors.password ? 'login-password-error' : undefined}
+              {...form.register('password')}
+            />
+            {form.formState.errors.password && (
+              <p id="login-password-error" className="text-sm text-error" role="alert">
+                {form.formState.errors.password.message}
+              </p>
+            )}
+          </div>
+
+          {serverError && (
+            <div className="rounded-[12px] border-2 border-error/30 bg-error/5 p-4 text-center" role="alert">
+              <p className="text-error text-[0.95rem]">{serverError}</p>
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full gap-2"
+          >
+            {isSubmitting ? 'Connexion...' : 'Se connecter'}
+            {!isSubmitting && <ArrowRight className="h-5 w-5" />}
+          </Button>
+        </form>
+
+        <div className="mt-6 space-y-2 text-center text-sm text-text-soft">
+          <p>
+            <Link to="/reset-password" className="text-accent font-medium underline hover:text-accent-hover">
+              Mot de passe oublié ?
+            </Link>
+          </p>
+          <p>
+            Pas encore de compte ?{' '}
+            <Link to="/signup" className="text-accent font-medium underline hover:text-accent-hover">
+              Créer un compte
+            </Link>
+          </p>
+        </div>
+      </div>
+    </AuthLayout>
+  )
+}
