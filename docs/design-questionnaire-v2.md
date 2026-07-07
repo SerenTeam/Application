@@ -35,7 +35,7 @@ Corollaire : si une condition peut être expliquée dans le texte de l'étape (e
 
 ## Section 1 — Modèle d'information v2
 
-### Contrat `QuestionnaireAnswersV2` (`src/types/auth.ts`)
+### Contrat `QuestionnaireAnswersV2` (`src/types/questionnaire.ts`)
 
 ```typescript
 type TriState = 'oui' | 'non' | 'ne_sait_pas'
