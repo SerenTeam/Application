@@ -16,7 +16,22 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
+// CORS : restreint aux origines autorisées. En production, définir CORS_ORIGIN
+// (liste séparée par des virgules, ex. "https://app.seren.fr"). Défaut : origines de dev.
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:3000')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin(origin, callback) {
+    // Autorise les requêtes sans header Origin (same-origin, curl, health checks)
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`Origine non autorisée par CORS : ${origin}`));
+  },
+}));
 app.use(express.json());
 
 // Serve static files: prefer dist/ (built), fallback to public/
@@ -903,178 +918,6 @@ app.post('/api/demo/save', requireAuth, async (req, res) => {
   }
 });
 
-// ==================== ROUTES SAUVEGARDE PARTIELLE ====================
-
-// Route pour sauvegarder une progression partielle
-app.post('/api/questionnaire/save-partial', requireAuth, async (req, res) => {
-  try {
-    const { session_id } = req.body;
-    const user_id = req.user.id; // Récupérer user_id depuis middleware
-
-    console.log('💾 Sauvegarde partielle pour session:', session_id);
-
-    const session = sessions.get(session_id);
-
-    if (!session) {
-      return res.status(404).json({
-        success: false,
-        error: 'Session non trouvée'
-      });
-    }
-
-    // Generate access code
-    const access_code = generateAccessCode();
-
-    console.log('📊 Sauvegarde de', session.historique.length, 'réponses');
-    console.log('🔑 Code généré:', access_code);
-
-    // Save to Supabase with is_complete: false
-    const { data, error } = await req.supabaseClient
-      .from('transmissions')
-      .insert({
-        access_code: access_code,
-        data: JSON.stringify(session.historique),
-        is_complete: false,
-        user_id: user_id, // AJOUTER user_id
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('❌ Erreur Supabase:', error);
-      throw error;
-    }
-    
-    console.log('✅ Progression partielle sauvegardée');
-    
-    // Store draft_code in session for potential update later
-    session.draft_code = access_code;
-    sessions.set(session_id, session);
-    
-    res.json({
-      success: true,
-      access_code: access_code,
-      question_count: session.historique.length
-    });
-    
-  } catch (error) {
-    console.error('❌ Erreur sauvegarde partielle:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Route pour charger un brouillon et reprendre
-app.post('/api/questionnaire/load-draft', requireAuth, async (req, res) => {
-  try {
-    const { access_code } = req.body;
-
-    console.log('🔄 Chargement du brouillon:', access_code);
-
-    // Load from Supabase (RLS vérifiera automatiquement que c'est bien le user owner)
-    const { data, error } = await req.supabaseClient
-      .from('transmissions')
-      .select('*')
-      .eq('access_code', access_code.toUpperCase())
-      .single();
-    
-    if (error || !data) {
-      console.error('❌ Brouillon non trouvé');
-      return res.status(404).json({
-        success: false,
-        error: 'Code invalide ou brouillon non trouvé'
-      });
-    }
-    
-    // Parse existing answers
-    const historique = JSON.parse(data.data);
-    
-    console.log('📊 Chargé:', historique.length, 'réponses existantes');
-    
-    // Create new session with existing data
-    const session_id = crypto.randomUUID();
-    sessions.set(session_id, {
-      is_demo: false,
-      historique: historique,
-      draft_code: access_code, // Store for later update
-      created_at: data.created_at
-    });
-    
-    console.log('✅ Session créée:', session_id);
-    
-    // Get next question based on history
-    const nextQuestion = await getNextQuestionAfterHistory(historique);
-    
-    if (!nextQuestion) {
-      return res.status(200).json({
-        success: true,
-        session_id: session_id,
-        question_count: historique.length,
-        action: 'fin_questionnaire',
-        message: 'Questionnaire déjà complet'
-      });
-    }
-    
-    res.json({
-      success: true,
-      session_id: session_id,
-      question_count: historique.length,
-      data: nextQuestion
-    });
-    
-  } catch (error) {
-    console.error('❌ Erreur chargement brouillon:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Helper function to get next question after loading history
-async function getNextQuestionAfterHistory(historique) {
-  // Start with initial question
-  let currentQuestion = await getQuestion('q_start');
-  
-  // Replay history to find next question
-  for (const answer of historique) {
-    if (!currentQuestion) break;
-    
-    const response = answer.reponse;
-    
-    // Find next question based on rules
-    if (currentQuestion.suivant) {
-      if (typeof currentQuestion.suivant === 'string') {
-        currentQuestion = await getQuestion(currentQuestion.suivant);
-      } else if (Array.isArray(currentQuestion.suivant)) {
-        const rule = currentQuestion.suivant.find(r => {
-          if (r.condition === 'oui') return response === true;
-          if (r.condition === 'non') return response === false;
-          if (r.condition) return response === r.condition;
-          return r.defaut === true;
-        });
-        
-        if (rule) {
-          if (rule.action === 'fin_questionnaire') {
-            return null;
-          }
-          currentQuestion = await getQuestion(rule.question);
-        }
-      }
-    } else {
-      return null; // No more questions
-    }
-  }
-  
-  return currentQuestion;
-}
-
-// ==================== END ROUTES SAUVEGARDE PARTIELLE ====================
-
 // ==================== ROUTE GÉNÉRATION ROADMAP PERSONNALISÉE ====================
 
 // Route pour générer une roadmap (DÉSACTIVÉ - Utilise toujours la roadmap par défaut)
@@ -1127,23 +970,6 @@ app.get('/api/roadmap/:code', requireAuth, async (req, res) => {
 });
 
 // ==================== ROUTES UTILITAIRES ====================
-
-// Route de debug pour voir l'historique d'une session
-app.get('/api/debug/session/:session_id', (req, res) => {
-  const { session_id } = req.params;
-  const session = sessions.get(session_id);
-  
-  if (!session) {
-    return res.status(404).json({ error: 'Session non trouvée' });
-  }
-  
-  res.json({
-    session_id,
-    is_demo: session.is_demo,
-    questions_count: session.historique.length,
-    historique: session.historique
-  });
-});
 
 // Route de santé
 app.get('/api/health', (req, res) => {
