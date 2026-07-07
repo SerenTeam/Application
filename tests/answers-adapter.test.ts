@@ -46,4 +46,9 @@ describe('adaptAnswersV1toV2', () => {
     expect(v2.deceased_firstname).toBe('Pierre')
     expect(v2.organismes_contactes).toEqual(['banque', 'caf'])
   })
+  it('filtre logement des organismes (géré par le champ logement en v2)', () => {
+    expect(
+      adaptAnswersV1toV2({ ...baseV1, organismes: ['banque', 'logement'] }).organismes_contactes
+    ).toEqual(['banque'])
+  })
 })
