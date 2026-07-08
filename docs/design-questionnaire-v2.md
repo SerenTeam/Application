@@ -19,7 +19,7 @@ Le rendu conversationnel (ton empathique, personnalisation au prénom, transitio
 - **Inversion de contrôle** : le serveur possède le flux (machine à états) et les données ; le LLM ne fait que *rédiger* les textes affichés. Il ne produit jamais de données ni d'options.
 - **Réponses typées uniquement** : l'utilisateur répond via boutons/sélecteurs/champs (comme aujourd'hui). Pas de saisie libre vers l'agent.
 - **Enrichissement dans la même refonte** : contrat v2 + catalogue enrichi livrés ensemble (pas de v1 iso-fonctionnelle).
-- **Mode démo rebasculé sur le moteur** (flag `is_demo`), l'ancien agent générique disparaît.
+- ~~Mode démo rebasculé sur le moteur~~ **CORRIGÉ (2026-07-08, exploration du code)** : `DemoPage`/`AccessPage` ne sont PAS une démo du questionnaire post-décès mais le produit distinct « transmission de son vivant » (questionnaire préparatoire + Stripe + code d'accès proches, table `transmissions`). Décision : **ne pas y toucher** — il conserve l'ancien agent générique (`MISTRAL_AGENT_ID`), ses routes `/api/demo/*` et `/api/transmission/*`, et la `Map()` de sessions en mémoire. Sa refonte éventuelle est un chantier séparé.
 - **Périmètre exclu** : décès à l'étranger (branche rare et complexe — refonte ultérieure).
 - **Plafond UX** : ≤ 15 questions vues par utilisateur, quel que soit le profil.
 
@@ -157,7 +157,8 @@ Seul point de contact LLM. À chaque question :
 |---|---|---|
 | `POST /api/questionnaire/start` | — | `{ session_id, data: RenderedQuestion }` |
 | `POST /api/questionnaire/answer` | `{ session_id, question_id, value }` | `{ data: RenderedQuestion }` ou `{ data: { action: 'recap', answers, labels } }` |
-| `POST /api/questionnaire/complete` | `{ session_id }` | `{ answers: QuestionnaireAnswersV2 }` — **aucune extraction, aucun LLM** ; supprime la session |
+| `POST /api/questionnaire/reask` | `{ session_id, question_id }` | `{ data: RenderedQuestion }` pour une question déjà répondue et applicable (bouton « Modifier » du récap) ; `400` sinon |
+| `POST /api/questionnaire/complete` | `{ session_id }` | `{ answers: QuestionnaireAnswersV2 }` — **aucune extraction, aucun LLM** ; `409` si le questionnaire n'est pas fini ; supprime la session |
 
 ```typescript
 interface RenderedQuestion {
