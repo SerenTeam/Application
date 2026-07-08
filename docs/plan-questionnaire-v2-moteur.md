@@ -1297,6 +1297,15 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 ---
 
+> **Note post-revue Task 5 (exécution)** : trois corrections de contenu appliquées après revue
+> (commit dédié) — `banque-autres-banques` n'a PAS d'`organisme_key` (cocher « la banque » ≠ toutes
+> les banques, un faux « done » ferait rater des comptes dormants) ; `administratif-prevenir-employeur`
+> couvre `['salarie', 'fonctionnaire']` ; formulation `famille-juge-tutelles` corrigée (juge aux
+> affaires familiales / tutelles des mineurs, réforme 2019) ; garde de compilation
+> `APPLICABLE_WHEN_KEYS_VALID` ajoutée au contrat. La catégorie d'`employait_aide_domicile` est
+> « Emploi à domicile » (revue Task 3). Les tableaux ci-dessus reflètent l'état pré-revue ;
+> les fichiers livrés font foi.
+
 ### Task 6 : Invariant croisé questions ↔ étapes
 
 **Files:**

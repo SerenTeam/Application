@@ -273,6 +273,15 @@ MISTRAL_MODEL=mistral-small-latest   # modèle du rédacteur
 6. **`statut_professionnel: 'fonctionnaire'`** : couvert partiellement en exécution (notification employeur) ; le capital décès fonction publique reste à ajouter au catalogue (Plan 2 éditorial).
 7. **Frontend Plan 2 (cosmétique)** : `CompletionScreen` — afficher « X démarches, dont N déjà faites » quand des étapes sont pré-cochées.
 
+### Premières actions techniques du Plan 2 (issues de la revue finale de branche, 2026-07-08)
+
+- **Invariant de parité des valeurs inter-catalogues** : la dernière couture non gardée — vérifier que chaque valeur d'une condition en tableau (dans les deux catalogues) correspond à une option de la question du même champ. Un typo dans une `value` d'option du catalogue JS passerait aujourd'hui silencieusement.
+- **`validateAnswer` : valider la longueur du texte trimé** (aligné sur le trim de `setAnswer`).
+- **Routes** : utiliser `matchesWhen` exporté pour le 400-sur-question-inapplicable ; ne PAS exposer `writer_hints`/`fallback_text` dans `RenderedQuestion` (champs serveur).
+- **Sémantique du skip** : à définir avant toute question `obligatoire: false` (le flag est inerte tant que les 15 questions sont obligatoires).
+- **Suppression de l'adaptateur** : `src/lib/answers-adapter.ts` + son test, interface v1 dans `roadmap-generator.ts`, `normalizeAnswers`/`normalizeRelation`/`normalizeOrganismes` dans `QuestionnairePage.tsx` (~lignes 261-290).
+- **Après le lot éditorial** : passer le test d'atteignabilité au niveau *option* (chaque valeur d'enum influence ≥ 1 étape).
+
 ## Décision tranchée
 
 - **Barre de progression** : pourcentage approximatif, pas de compte exact « X sur Y » (le total varie à l'ouverture d'une branche — on assume le flou)
