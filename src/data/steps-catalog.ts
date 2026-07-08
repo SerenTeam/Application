@@ -142,7 +142,6 @@ export const STEPS_CATALOG: StepTemplate[] = [
     responsable: 'vous',
     requires_notary: false,
     applicable_when: {},
-    organisme_key: 'banque',
     letter_template_id: 'banque-declaration-deces',
     display_order: 6,
   },
@@ -255,7 +254,7 @@ export const STEPS_CATALOG: StepTemplate[] = [
     responsable: 'vous',
     requires_notary: false,
     applicable_when: {
-      statut_professionnel: ['salarie'],
+      statut_professionnel: ['salarie', 'fonctionnaire'],
     },
     organisme_key: 'employeur',
     letter_template_id: 'employeur-notification',
@@ -695,7 +694,7 @@ export const STEPS_CATALOG: StepTemplate[] = [
     why_to_do: 'Une succession ne peut être acceptée purement et simplement au nom d\'un mineur : le juge protège ses intérêts. Le notaire vous accompagne dans cette saisine.',
     what_you_do: [
       'En parler au notaire en charge de la succession : il précise si l\'autorisation est requise',
-      'Le cas échéant, adresser une requête au juge des contentieux de la protection (tribunal du domicile de l\'enfant)',
+      'Le cas échéant, adresser une requête au juge aux affaires familiales, qui exerce les fonctions de juge des tutelles des mineurs (tribunal du domicile de l\'enfant)',
       'Ne signer aucun acte au nom de l\'enfant avant l\'autorisation',
     ],
     what_notary_does: 'Identifie les actes nécessitant l\'autorisation du juge et prépare la requête.',

@@ -54,3 +54,9 @@ export interface ApplicableWhenV2 {
   has_credits?: boolean
   employait_aide_domicile?: boolean
 }
+
+// Garde de compilation : toute clé d'ApplicableWhenV2 doit exister dans le contrat.
+// Si un champ du contrat est renommé sans mettre à jour les conditions, l'assignation
+// ci-dessous devient never et la compilation échoue.
+type ApplicableWhenKeyCheck = keyof ApplicableWhenV2 extends keyof QuestionnaireAnswersV2 ? true : never
+export const APPLICABLE_WHEN_KEYS_VALID: ApplicableWhenKeyCheck = true

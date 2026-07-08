@@ -24,6 +24,8 @@ describe('isApplicable v2', () => {
     expect(ids({ ...base, statut_professionnel: 'salarie' }))
       .toEqual(expect.arrayContaining(['administratif-prevenir-employeur', 'assurance-prevoyance-employeur']))
     expect(ids({ ...base, statut_professionnel: 'retraite' })).not.toContain('administratif-prevenir-employeur')
+    expect(ids({ ...base, statut_professionnel: 'fonctionnaire' })).toContain('administratif-prevenir-employeur')
+    expect(ids({ ...base, statut_professionnel: 'fonctionnaire' })).not.toContain('assurance-prevoyance-employeur')
   })
   it('tristate : oui → contact assurance vie ; ne_sait_pas → recherche AGIRA', () => {
     expect(ids({ ...base, has_life_insurance: 'oui' })).toContain('assurance-vie-contact')
@@ -59,7 +61,7 @@ describe('organismes_contactes → initial_status done', () => {
     const r = generateRoadmap({ ...base, organismes_contactes: ['banque'] })
     const byId = Object.fromEntries(r.map((s) => [s.id, s.initial_status]))
     expect(byId['banque-declaration-principale']).toBe('done')
-    expect(byId['banque-autres-banques']).toBe('done')
+    expect(byId['banque-autres-banques']).toBe('todo') // volontaire : « la banque » ≠ toutes les banques
     expect(byId['administratif-caf']).toBe('todo')
   })
   it('chaque organisme du contrat a ≥ 1 étape porteuse de son organisme_key', () => {
