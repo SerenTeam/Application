@@ -263,6 +263,16 @@ MISTRAL_MODEL=mistral-small-latest   # modèle du rédacteur
 - **Relecture juridique** : la validation du contenu des ~20 nouvelles étapes se fera après implémentation, avant mise en ligne
 - **Choix du modèle rédacteur** : `mistral-small-latest` par défaut, ajustable après essais de ton en conditions réelles
 
+### Points obligatoires pour la relecture juridique/éditoriale (issus des revues de code, 2026-07-08)
+
+1. **`famille-juge-tutelles`** : formulation corrigée en exécution (juge aux affaires familiales / juge des tutelles des mineurs, réforme 2019) — faire valider par un juriste.
+2. **Sourcing par étape** : 6 des 7 nouvelles étapes citent la fiche générique F16507 ; remplacer par les fiches spécifiques et vérifier les faits : délais AGIRA (15 j de traitement, 1 mois de réponse assureur), 30 jours aide à domicile, ~18 € FCDDV, URLs `formulaireagira.fr` et `adsn.notaires.fr`.
+3. **`patrimoine-assurance-emprunteur`** : « obligatoire pour l'immobilier » → juridiquement inexact, écrire « quasi systématiquement exigée par les banques ».
+4. **Décision produit à confirmer** : `has_joint_account` limité aux couples — les comptes joints parent/enfant sont fréquents dans cette démographie ; élargir la question à tous les profils ?
+5. **Limite du modèle (à documenter)** : le questionnaire est centré sur le répondant — un enfant répondant pour un parent veuf ne verra pas la pension de réversion ; l'ex-conjoint divorcé (éligible à réversion) est inexprimable.
+6. **`statut_professionnel: 'fonctionnaire'`** : couvert partiellement en exécution (notification employeur) ; le capital décès fonction publique reste à ajouter au catalogue (Plan 2 éditorial).
+7. **Frontend Plan 2 (cosmétique)** : `CompletionScreen` — afficher « X démarches, dont N déjà faites » quand des étapes sont pré-cochées.
+
 ## Décision tranchée
 
 - **Barre de progression** : pourcentage approximatif, pas de compte exact « X sur Y » (le total varie à l'ouverture d'une branche — on assume le flou)
