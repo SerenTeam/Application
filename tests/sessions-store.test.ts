@@ -50,4 +50,12 @@ describe('sessions-store', () => {
     await expect(saveAnswers(client, 'abc', {})).rejects.toThrow(/boom/)
     await expect(createSession(client, 'u1')).rejects.toThrow()
   })
+  it('deleteSession supprime par id et propage les erreurs', async () => {
+    const { client, calls } = fakeClient({ data: null, error: null })
+    await deleteSession(client, 'abc')
+    expect(calls.find(([m]) => m === 'delete')).toBeDefined()
+    expect(calls).toContainEqual(['eq', ['id', 'abc']])
+    const { client: failing } = fakeClient({ data: null, error: { message: 'boom' } })
+    await expect(deleteSession(failing, 'abc')).rejects.toThrow(/boom/)
+  })
 })

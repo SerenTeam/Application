@@ -18,3 +18,8 @@ create policy "own sessions" on questionnaire_sessions
 
 create index if not exists questionnaire_sessions_user_idx
   on questionnaire_sessions (user_id);
+
+-- Un futur job de purge (pg_cron : delete where expires_at < now()) évitera la croissance
+-- illimitée de la table ; cet index le rendra efficace.
+create index if not exists questionnaire_sessions_expires_idx
+  on questionnaire_sessions (expires_at);

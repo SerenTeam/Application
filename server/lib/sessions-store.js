@@ -22,6 +22,8 @@ export async function loadSession(client, sessionId) {
   return data // null si absente, expirée, ou pas à cet utilisateur (RLS)
 }
 
+// Contrat : les appelants vérifient l'existence via loadSession d'abord — un id
+// inexistant/étranger est un no-op silencieux (pas d'erreur "0 ligne affectée").
 export async function saveAnswers(client, sessionId, answers) {
   const { error } = await client
     .from(TABLE)
@@ -30,6 +32,8 @@ export async function saveAnswers(client, sessionId, answers) {
   if (error) throw new Error(`Sauvegarde de session impossible : ${error.message}`)
 }
 
+// Contrat : les appelants vérifient l'existence via loadSession d'abord — un id
+// inexistant/étranger est un no-op silencieux (pas d'erreur "0 ligne affectée").
 export async function deleteSession(client, sessionId) {
   const { error } = await client.from(TABLE).delete().eq('id', sessionId)
   if (error) throw new Error(`Suppression de session impossible : ${error.message}`)
