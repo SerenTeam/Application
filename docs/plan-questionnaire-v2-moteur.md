@@ -845,6 +845,13 @@ git commit -m "feat(questionnaire-v2): moteur pur (nextQuestion, validateAnswer,
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
 
+> **Note post-revue (exécution)** : la revue qualité a fait amender le code ci-dessus dans un commit
+> de durcissement séparé — validation date par round-trip (rejet des dates impossibles type 2026-02-30,
+> que `Date.parse` normalise silencieusement) + tolérance fuseaux +14 h sur le refus du futur ;
+> rejet des doublons multiselect ; trim des valeurs texte dans `setAnswer` ; JSDoc précisant que
+> l'écriture sur une question inapplicable est neutralisée par la purge (les routes du Plan 2 doivent
+> vérifier l'applicabilité en amont et renvoyer 400). Le fichier livré fait foi.
+
 ---
 
 ### Task 5 : Catalogue d'étapes v2 + isApplicable v2 + organismes branché
