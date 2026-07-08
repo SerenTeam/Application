@@ -1,3 +1,5 @@
+import type { ApplicableWhenV2, OrganismeContacte } from '@/types/questionnaire'
+
 export interface StepTemplate {
   id: string
   title: string
@@ -12,15 +14,9 @@ export interface StepTemplate {
   responsable: 'vous' | 'notaire' | 'partage'
   warning_badge?: string
   requires_notary: boolean
-  applicable_when: {
-    has_notary?: boolean
-    organismes?: string[]
-    relations?: string[]
-    deceased_was_employed?: boolean
-    deceased_was_tenant?: boolean
-    has_life_insurance?: boolean
-    has_joint_account?: boolean
-  }
+  applicable_when: ApplicableWhenV2
+  organisme_key?: OrganismeContacte   // si présent : étape pré-cochée quand l'organisme a déjà été contacté
+  source_url?: string                  // source officielle (service-public.fr, CNIL…)
   letter_template_id?: string
   display_order: number
 }
@@ -125,6 +121,7 @@ export const STEPS_CATALOG: StepTemplate[] = [
     responsable: 'vous',
     requires_notary: false,
     applicable_when: {},
+    organisme_key: 'banque',
     letter_template_id: 'banque-declaration-deces',
     display_order: 5,
   },
@@ -145,6 +142,7 @@ export const STEPS_CATALOG: StepTemplate[] = [
     responsable: 'vous',
     requires_notary: false,
     applicable_when: {},
+    organisme_key: 'banque',
     letter_template_id: 'banque-declaration-deces',
     display_order: 6,
   },
@@ -189,6 +187,7 @@ export const STEPS_CATALOG: StepTemplate[] = [
     responsable: 'vous',
     requires_notary: false,
     applicable_when: {},
+    organisme_key: 'assurance',
     letter_template_id: 'assurance-declaration-deces',
     display_order: 8,
   },
@@ -209,7 +208,7 @@ export const STEPS_CATALOG: StepTemplate[] = [
     responsable: 'vous',
     requires_notary: false,
     applicable_when: {
-      has_life_insurance: true,
+      has_life_insurance: ['oui'],
     },
     letter_template_id: 'assurance-vie-demande',
     display_order: 9,
@@ -231,7 +230,7 @@ export const STEPS_CATALOG: StepTemplate[] = [
     responsable: 'vous',
     requires_notary: false,
     applicable_when: {
-      deceased_was_employed: true,
+      statut_professionnel: ['salarie'],
     },
     letter_template_id: 'assurance-declaration-deces',
     display_order: 10,
@@ -256,8 +255,9 @@ export const STEPS_CATALOG: StepTemplate[] = [
     responsable: 'vous',
     requires_notary: false,
     applicable_when: {
-      deceased_was_employed: true,
+      statut_professionnel: ['salarie'],
     },
+    organisme_key: 'employeur',
     letter_template_id: 'employeur-notification',
     display_order: 11,
   },
@@ -278,6 +278,7 @@ export const STEPS_CATALOG: StepTemplate[] = [
     responsable: 'vous',
     requires_notary: false,
     applicable_when: {},
+    organisme_key: 'caf',
     letter_template_id: 'caf-notification',
     display_order: 12,
   },
@@ -298,6 +299,7 @@ export const STEPS_CATALOG: StepTemplate[] = [
     responsable: 'vous',
     requires_notary: false,
     applicable_when: {},
+    organisme_key: 'retraite',
     letter_template_id: 'carsat-notification',
     display_order: 13,
   },
@@ -319,6 +321,7 @@ export const STEPS_CATALOG: StepTemplate[] = [
     responsable: 'vous',
     requires_notary: false,
     applicable_when: {},
+    organisme_key: 'mutuelle',
     letter_template_id: 'mutuelle-resiliation',
     display_order: 14,
   },
@@ -339,6 +342,7 @@ export const STEPS_CATALOG: StepTemplate[] = [
     responsable: 'vous',
     requires_notary: false,
     applicable_when: {},
+    organisme_key: 'impots',
     letter_template_id: 'impots-notification',
     display_order: 15,
   },
@@ -360,6 +364,7 @@ export const STEPS_CATALOG: StepTemplate[] = [
     responsable: 'vous',
     requires_notary: false,
     applicable_when: {},
+    organisme_key: 'cpam',
     letter_template_id: 'cpam-notification',
     display_order: 16,
   },
@@ -380,7 +385,7 @@ export const STEPS_CATALOG: StepTemplate[] = [
     responsable: 'vous',
     requires_notary: false,
     applicable_when: {
-      relations: ['conjoint'],
+      relation: ['conjoint_marie'],
     },
     display_order: 17,
   },
@@ -423,7 +428,7 @@ export const STEPS_CATALOG: StepTemplate[] = [
     responsable: 'vous',
     requires_notary: false,
     applicable_when: {
-      deceased_was_tenant: true,
+      logement: ['locataire'],
     },
     letter_template_id: 'bailleur-notification',
     display_order: 19,
@@ -484,7 +489,7 @@ export const STEPS_CATALOG: StepTemplate[] = [
     responsable: 'vous',
     requires_notary: false,
     applicable_when: {
-      relations: ['conjoint'],
+      relation: ['conjoint_marie', 'pacse', 'concubin'],
     },
     display_order: 22,
   },
@@ -656,5 +661,149 @@ export const STEPS_CATALOG: StepTemplate[] = [
     requires_notary: false,
     applicable_when: {},
     display_order: 30,
+  },
+
+  // ── NOUVELLES ÉTAPES v2 (sourcées — voir docs/design-questionnaire-v2.md) ──
+  {
+    id: 'assurance-vie-recherche-agira',
+    title: 'Rechercher une éventuelle assurance vie (AGIRA)',
+    description: 'Vous ne savez pas si une assurance vie existe ? L\'AGIRA effectue une recherche gratuite auprès de tous les assureurs : si un contrat vous désigne bénéficiaire, l\'assureur vous contactera.',
+    theme: 'assurance',
+    urgency: 'week',
+    urgency_label: 'Dans la semaine',
+    when_to_do: 'Dès que possible, la recherche prend jusqu\'à 15 jours de traitement.',
+    why_to_do: 'Un capital d\'assurance vie non réclamé est perdu pour les bénéficiaires. La démarche est gratuite et sans engagement.',
+    what_you_do: [
+      'Remplir le formulaire de recherche sur formulaireagira.fr (ou par courrier à l\'AGIRA)',
+      'Joindre une copie de l\'acte de décès',
+      'Attendre la réponse : les assureurs ont 1 mois pour vous contacter si un contrat existe',
+    ],
+    responsable: 'vous',
+    requires_notary: false,
+    applicable_when: { has_life_insurance: ['ne_sait_pas'] },
+    source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F16507',
+    display_order: 31,
+  },
+  {
+    id: 'famille-juge-tutelles',
+    title: 'Saisir le juge des tutelles pour l\'enfant mineur héritier',
+    description: 'Un enfant mineur héritier bénéficie d\'une protection légale : certaines décisions de succession (acceptation, renonciation, vente de biens) nécessitent l\'autorisation du juge.',
+    theme: 'succession',
+    urgency: 'month',
+    urgency_label: 'Dans le mois',
+    when_to_do: 'Avant toute décision engageant le patrimoine de l\'enfant.',
+    why_to_do: 'Une succession ne peut être acceptée purement et simplement au nom d\'un mineur : le juge protège ses intérêts. Le notaire vous accompagne dans cette saisine.',
+    what_you_do: [
+      'En parler au notaire en charge de la succession : il précise si l\'autorisation est requise',
+      'Le cas échéant, adresser une requête au juge des contentieux de la protection (tribunal du domicile de l\'enfant)',
+      'Ne signer aucun acte au nom de l\'enfant avant l\'autorisation',
+    ],
+    what_notary_does: 'Identifie les actes nécessitant l\'autorisation du juge et prépare la requête.',
+    responsable: 'partage',
+    requires_notary: true,
+    applicable_when: { enfants: ['mineurs'] },
+    source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F16507',
+    display_order: 32,
+  },
+  {
+    id: 'patrimoine-carte-grise',
+    title: 'Mettre à jour la carte grise du véhicule',
+    description: 'Le véhicule fait partie de la succession. Avant de le vendre, le donner ou continuer à l\'utiliser, le certificat d\'immatriculation doit être mis au nom du ou des héritiers.',
+    theme: 'administratif',
+    urgency: 'month',
+    urgency_label: 'Dans le mois',
+    when_to_do: 'Dans les 3 mois suivant le décès si le véhicule reste dans la famille, avant toute vente sinon.',
+    why_to_do: 'Circuler avec une carte grise au nom du défunt expose à une amende, et la vente est impossible sans mise à jour.',
+    what_you_do: [
+      'Faire la démarche en ligne sur ants.gouv.fr (rubrique immatriculation)',
+      'Fournir : acte de décès, attestation notariée ou attestation des héritiers, carte grise actuelle',
+      'Penser aussi à prévenir l\'assurance auto (le contrat continue par défaut au profit des héritiers)',
+    ],
+    responsable: 'vous',
+    requires_notary: false,
+    applicable_when: { has_vehicle: true },
+    source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F16507',
+    display_order: 33,
+  },
+  {
+    id: 'patrimoine-assurance-emprunteur',
+    title: 'Activer l\'assurance emprunteur des crédits en cours',
+    description: 'Bonne nouvelle possible : si les crédits du défunt étaient couverts par une assurance emprunteur (obligatoire pour l\'immobilier), elle peut rembourser tout ou partie du capital restant dû.',
+    theme: 'banque',
+    urgency: 'week',
+    urgency_label: 'Dans la semaine',
+    when_to_do: 'Dès que possible : tant que le dossier n\'est pas traité, les mensualités peuvent continuer d\'être prélevées.',
+    why_to_do: 'L\'assurance emprunteur peut solder le crédit immobilier — un enjeu financier majeur souvent méconnu des familles.',
+    what_you_do: [
+      'Retrouver les contrats de prêt et l\'assurance associée (banque ou assureur externe)',
+      'Déclarer le décès à l\'assureur emprunteur avec l\'acte de décès',
+      'Demander la prise en charge du capital restant dû selon la quotité assurée',
+    ],
+    responsable: 'vous',
+    requires_notary: false,
+    applicable_when: { has_credits: true },
+    source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F16507',
+    display_order: 34,
+  },
+  {
+    id: 'administratif-aide-domicile',
+    title: 'Gérer le contrat de l\'aide à domicile',
+    description: 'Le décès de l\'employeur met fin automatiquement au contrat de travail du salarié à domicile. Des documents et indemnités doivent lui être remis dans les 30 jours.',
+    theme: 'administratif',
+    urgency: 'week',
+    urgency_label: 'Dans la semaine',
+    when_to_do: 'Le contrat prend fin à la date du décès ; les documents doivent être remis sous 30 jours.',
+    why_to_do: 'C\'est une obligation légale de la succession : dernier salaire, indemnités de préavis, de licenciement et de congés payés sont dus au salarié.',
+    what_you_do: [
+      'Prévenir le salarié et calculer les sommes dues (dernier salaire, indemnités)',
+      'Établir sous 30 jours : certificat de travail, attestation France Travail, reçu pour solde de tout compte',
+      'Déclarer la fin de contrat au Cesu (cesu.urssaf.fr) le cas échéant',
+    ],
+    responsable: 'vous',
+    requires_notary: false,
+    applicable_when: { employait_aide_domicile: true },
+    source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F16507',
+    display_order: 35,
+  },
+  {
+    id: 'obseques-recherche-contrat-agira',
+    title: 'Vérifier l\'existence d\'un contrat obsèques (AGIRA)',
+    description: 'Un contrat obsèques peut financer tout ou partie des funérailles et préciser les volontés du défunt. Une recherche gratuite permet de le retrouver avant d\'engager les frais.',
+    theme: 'obseques',
+    urgency: 'urgent',
+    urgency_label: 'Dans les 48h',
+    when_to_do: 'Avant de finaliser l\'organisation des obsèques si possible.',
+    why_to_do: 'Si un contrat existe, les frais peuvent être pris en charge et les volontés du défunt (inhumation, crémation) doivent être respectées.',
+    what_you_do: [
+      'Interroger les proches et vérifier les papiers du défunt (relevés bancaires : cotisations à un assureur)',
+      'Faire une demande de recherche de contrat obsèques via le téléservice AGIRA dédié',
+      'Transmettre le contrat retrouvé à l\'entreprise de pompes funèbres',
+    ],
+    responsable: 'vous',
+    requires_notary: false,
+    applicable_when: { contrat_obseques: ['ne_sait_pas'] },
+    source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/R63577',
+    display_order: 36,
+  },
+  {
+    id: 'succession-recherche-testament-fcddv',
+    title: 'Vérifier l\'existence d\'un testament (FCDDV)',
+    description: 'Le Fichier Central des Dispositions de Dernières Volontés recense les testaments déposés chez les notaires. Sans notaire déjà en charge, cette vérification évite de découvrir un testament trop tard.',
+    theme: 'succession',
+    urgency: 'week',
+    urgency_label: 'Dans la semaine',
+    when_to_do: 'Avant d\'engager le règlement de la succession.',
+    why_to_do: 'Un testament ignoré peut remettre en cause tout le règlement de la succession. La consultation du FCDDV est simple et peu coûteuse.',
+    what_you_do: [
+      'Interroger le FCDDV en ligne (adsn.notaires.fr) avec l\'acte de décès — environ 18 €',
+      'Si un testament existe : contacter le notaire dépositaire indiqué',
+      'Le notaire que vous choisirez pour la succession peut faire cette vérification pour vous',
+    ],
+    what_notary_does: 'Consulte systématiquement le FCDDV à l\'ouverture de la succession.',
+    responsable: 'partage',
+    requires_notary: false,
+    applicable_when: { has_notary: false },
+    source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F16507',
+    display_order: 37,
   },
 ]

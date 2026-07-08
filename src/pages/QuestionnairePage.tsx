@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/api'
 import { generateRoadmap, saveRoadmapToDb } from '@/lib/roadmap-generator'
 import { supabase } from '@/lib/supabase'
 import type { QuestionnaireAnswers } from '@/lib/roadmap-generator'
+import { adaptAnswersV1toV2 } from '@/lib/answers-adapter'
 import { WelcomeScreen } from '@/components/questionnaire/WelcomeScreen'
 import { QuestionCard, type QuestionData } from '@/components/questionnaire/QuestionCard'
 import { CompletionScreen } from '@/components/questionnaire/CompletionScreen'
@@ -143,7 +144,7 @@ export function QuestionnairePage() {
         }
 
         // Generate roadmap
-        const steps = generateRoadmap(answers)
+        const steps = generateRoadmap(adaptAnswersV1toV2(answers))
         setStepsCount(steps.length)
 
         await saveRoadmapToDb(user.id, questionnaire.id, steps)

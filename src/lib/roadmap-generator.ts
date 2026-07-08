@@ -1,6 +1,8 @@
 import { STEPS_CATALOG, type StepTemplate } from '@/data/steps-catalog'
+import type { QuestionnaireAnswersV2 } from '@/types/questionnaire'
 import { supabase } from '@/lib/supabase'
 
+// Ré-export transitoire du contrat v1 (utilisé par l'ancien flux jusqu'au Plan 2)
 export interface QuestionnaireAnswers {
   relation: 'conjoint' | 'parent' | 'enfant' | 'frere_soeur' | 'autre'
   has_notary: boolean
@@ -21,32 +23,43 @@ const URGENCY_ORDER: Record<StepTemplate['urgency'], number> = {
   later: 3,
 }
 
-function isApplicable(step: StepTemplate, answers: QuestionnaireAnswers): boolean {
-  const w = step.applicable_when
+export type RoadmapStep = StepTemplate & { initial_status: 'todo' | 'done' }
 
-  if (w.relations?.length && !w.relations.includes(answers.relation)) return false
-  if (w.has_notary !== undefined && w.has_notary !== answers.has_notary) return false
-  if (w.deceased_was_employed !== undefined && w.deceased_was_employed !== answers.deceased_was_employed) return false
-  if (w.deceased_was_tenant !== undefined && w.deceased_was_tenant !== answers.deceased_was_tenant) return false
-  if (w.has_life_insurance !== undefined && w.has_life_insurance !== answers.has_life_insurance) return false
-  if (w.has_joint_account !== undefined && w.has_joint_account !== answers.has_joint_account) return false
-
+// Matcher générique : tableau = appartenance, booléen = égalité stricte.
+// Même sémantique que matchesWhen() dans server/lib/questionnaire-engine.js (dupliqué :
+// le serveur JS ne peut pas importer ce module TS — garder les deux alignés).
+function isApplicable(step: StepTemplate, answers: QuestionnaireAnswersV2): boolean {
+  for (const [key, cond] of Object.entries(step.applicable_when)) {
+    const val = (answers as unknown as Record<string, unknown>)[key]
+    if (Array.isArray(cond)) {
+      if (!cond.includes(val as never)) return false
+    } else if (val !== cond) {
+      return false
+    }
+  }
   return true
 }
 
-export function generateRoadmap(answers: QuestionnaireAnswers): StepTemplate[] {
+export function generateRoadmap(answers: QuestionnaireAnswersV2): RoadmapStep[] {
   return STEPS_CATALOG
     .filter((step) => isApplicable(step, answers))
     .sort(
       (a, b) =>
         URGENCY_ORDER[a.urgency] - URGENCY_ORDER[b.urgency] || a.display_order - b.display_order
     )
+    .map((step) => ({
+      ...step,
+      initial_status:
+        step.organisme_key && answers.organismes_contactes.includes(step.organisme_key)
+          ? 'done'
+          : 'todo',
+    }))
 }
 
 export async function saveRoadmapToDb(
   userId: string,
   questionnaireId: string,
-  steps: StepTemplate[]
+  steps: RoadmapStep[]
 ) {
   const { data: roadmap, error: roadmapError } = await supabase
     .from('roadmaps')
@@ -71,7 +84,7 @@ export async function saveRoadmapToDb(
       theme: step.theme,
       urgency: step.urgency,
       urgency_label: step.urgency_label,
-      status: 'todo',
+      status: step.initial_status,
       display_order: i,
       letter_template_id: step.letter_template_id ?? null,
       warning_badge: step.warning_badge ?? null,
