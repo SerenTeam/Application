@@ -6,7 +6,11 @@ const SORTED = [...QUESTIONS_CATALOG].sort((a, b) => a.order - b.order)
 const TRISTATE = ['oui', 'non', 'ne_sait_pas']
 const TEXT_MAX = 200
 
-/** Une condition matche si chaque clé correspond : tableau = appartenance, scalaire = égalité stricte. */
+/**
+ * Une condition matche si chaque clé correspond : tableau = appartenance, scalaire = égalité stricte.
+ * ⚠ Dupliqué avec isApplicable() dans src/lib/roadmap-generator.ts (le serveur JS ne peut pas
+ * importer de TS) — toute évolution ici doit y être répercutée. Parité testée par tests/invariants.test.ts.
+ */
 export function matchesWhen(when, answers) {
   for (const [key, cond] of Object.entries(when ?? {})) {
     const val = answers[key]
