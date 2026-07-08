@@ -1357,6 +1357,13 @@ git commit -m "test(questionnaire-v2): invariant croisé questions↔étapes (an
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
 
+> **Note post-revue (exécution)** : la Task 6 a été élargie sur demande de la revue qualité de la Task 5 —
+> ajout d'un test de **parité des matchers** `isApplicable` (TS) ↔ `matchesWhen` (JS) sur table de cas
+> (les deux copies dupliquées ne peuvent plus diverger silencieusement ; `isApplicable` est exporté à
+> cette fin), commentaires croisés de duplication dans les deux fichiers, puis d'un invariant
+> **anti-tableau-vide** (une condition `[]` rendrait une étape inatteignable sans erreur) et de lignes
+> de parité `null`/tableau vide. Le fichier livré fait foi.
+
 ---
 
 ### Task 7 : Vérification finale du plan
