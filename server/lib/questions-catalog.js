@@ -205,7 +205,7 @@ export const QUESTIONS_CATALOG = [
       question: '{prenom} employait-il/elle une aide à domicile (ménage, garde, assistance) ?',
       aide: 'Si oui, des documents de fin de contrat doivent être remis au salarié dans les 30 jours.',
     },
-    categorie: 'Sa situation',
+    categorie: 'Emploi à domicile',
     order: 13,
   },
   {

@@ -17,7 +17,7 @@ describe('questions-catalog', () => {
     expect(new Set(ids).size).toBe(15)
     for (const id of ids) expect(CONTRACT_KEYS).toContain(id)
   })
-  it('orders uniques et croissants', () => {
+  it('orders uniques', () => {
     const orders = QUESTIONS_CATALOG.map((q: { order: number }) => q.order)
     expect(new Set(orders).size).toBe(orders.length)
   })
