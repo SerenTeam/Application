@@ -41,6 +41,7 @@ export function validateAnswer(spec, value) {
       return spec.options.some((o) => o.value === value) ? { ok: true } : fail('Option inconnue')
     case 'multiselect':
       if (!Array.isArray(value)) return fail('Tableau attendu')
+      if (new Set(value).size !== value.length) return fail('Doublons dans la sélection')
       return value.every((v) => spec.options.some((o) => o.value === v))
         ? { ok: true }
         : fail('Option inconnue dans la sélection')
@@ -51,8 +52,10 @@ export function validateAnswer(spec, value) {
     case 'date': {
       if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return fail('Format AAAA-MM-JJ attendu')
       const t = Date.parse(value)
-      if (Number.isNaN(t)) return fail('Date invalide')
-      return t <= Date.now() ? { ok: true } : fail('La date ne peut pas être dans le futur')
+      // Round-trip : rejette les dates impossibles (ex. 2026-02-30) que Date.parse normalise silencieusement
+      if (Number.isNaN(t) || new Date(t).toISOString().slice(0, 10) !== value) return fail('Date invalide')
+      // Date-only = minuit UTC ; +14 h de tolérance couvre tous les fuseaux réels (ex. Nouvelle-Calédonie)
+      return t <= Date.now() + 14 * 3600 * 1000 ? { ok: true } : fail('La date ne peut pas être dans le futur')
     }
     default:
       return fail(`Type de question inconnu : ${spec.type}`)
@@ -63,9 +66,12 @@ export function validateAnswer(spec, value) {
  * Enregistre une réponse (nouvelle ou correction) et purge les réponses des branches
  * devenues inapplicables. Une passe ordonnée suffit : les conditions ne référencent
  * que des questions antérieures (invariant testé dans questions-catalog.test.ts).
+ * Écrire sur une question actuellement inapplicable est neutralisé par la purge (retour
+ * sans la réponse) — les routes doivent vérifier l'applicabilité et renvoyer 400 en amont.
  */
 export function setAnswer(answers, spec, value) {
-  const next = { ...answers, [spec.id]: value }
+  const clean = spec.type === 'text' && typeof value === 'string' ? value.trim() : value
+  const next = { ...answers, [spec.id]: clean }
   for (const s of SORTED) {
     if (next[s.id] !== undefined && !matchesWhen(s.applicable_when, next)) {
       delete next[s.id]

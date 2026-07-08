@@ -66,6 +66,9 @@ describe('validateAnswer', () => {
     expect(validateAnswer(spec('organismes_contactes'), ['pole_emploi']).ok).toBe(false)
     expect(validateAnswer(spec('organismes_contactes'), 'banque').ok).toBe(false)
   })
+  it('multiselect : rejette les doublons', () => {
+    expect(validateAnswer(spec('organismes_contactes'), ['banque', 'banque']).ok).toBe(false)
+  })
   it('text : non vide, ≤ 200 caractères', () => {
     expect(validateAnswer(spec('deceased_firstname'), 'Pierre').ok).toBe(true)
     expect(validateAnswer(spec('deceased_firstname'), '   ').ok).toBe(false)
@@ -75,6 +78,13 @@ describe('validateAnswer', () => {
     expect(validateAnswer(spec('deceased_dod'), '2026-04-10').ok).toBe(true)
     expect(validateAnswer(spec('deceased_dod'), '10/04/2026').ok).toBe(false)
     expect(validateAnswer(spec('deceased_dod'), '2999-01-01').ok).toBe(false)
+  })
+  it('date : rejette les dates calendaires impossibles', () => {
+    expect(validateAnswer(spec('deceased_dod'), '2026-02-30').ok).toBe(false)
+    expect(validateAnswer(spec('deceased_dod'), '2026-04-31').ok).toBe(false)
+  })
+  it('date : la date du jour passe, quel que soit le fuseau', () => {
+    expect(validateAnswer(spec('deceased_dod'), new Date().toISOString().slice(0, 10)).ok).toBe(true)
   })
 })
 
@@ -92,6 +102,9 @@ describe('setAnswer — purge des branches invalidées (correction au récap)', 
     answers = setAnswer(answers, spec('relation'), 'parent')
     expect(answers.has_joint_account).toBeUndefined()
     expect(nextQuestion(answers)?.id).toBe('has_vehicle')
+  })
+  it('trim les valeurs texte', () => {
+    expect(setAnswer({}, spec('deceased_firstname'), '  Pierre  ').deceased_firstname).toBe('Pierre')
   })
 })
 
