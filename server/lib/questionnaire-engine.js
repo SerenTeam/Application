@@ -50,8 +50,10 @@ export function validateAnswer(spec, value) {
         ? { ok: true }
         : fail('Option inconnue dans la sélection')
     case 'text': {
-      if (typeof value !== 'string' || value.trim().length === 0) return fail('Texte requis')
-      return value.length <= TEXT_MAX ? { ok: true } : fail(`Maximum ${TEXT_MAX} caractères`)
+      if (typeof value !== 'string') return fail('Texte requis')
+      const trimmed = value.trim()
+      if (trimmed.length === 0) return fail('Texte requis')
+      return trimmed.length <= TEXT_MAX ? { ok: true } : fail(`Maximum ${TEXT_MAX} caractères`)
     }
     case 'date': {
       if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return fail('Format AAAA-MM-JJ attendu')

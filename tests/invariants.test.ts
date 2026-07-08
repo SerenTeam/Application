@@ -53,6 +53,32 @@ describe('invariant : pas de question morte, pas d’étape orpheline', () => {
       }
     }
   })
+  it('chaque valeur de condition en tableau est une option valide de la question du même champ', () => {
+    const TRISTATE_VALUES = ['oui', 'non', 'ne_sait_pas']
+    const byId = Object.fromEntries(
+      QUESTIONS_CATALOG.map((q: { id: string }) => [q.id, q])
+    ) as Record<string, { type: string; options?: { value: string }[] }>
+    const allSpecs = [
+      ...STEPS_CATALOG.map((s) => ({ kind: 'étape', id: s.id, when: s.applicable_when as Record<string, unknown> })),
+      ...QUESTIONS_CATALOG.map((q: { id: string; applicable_when: Record<string, unknown> }) => ({ kind: 'question', id: q.id, when: q.applicable_when })),
+    ]
+    for (const { kind, id, when } of allSpecs) {
+      for (const [key, cond] of Object.entries(when ?? {})) {
+        if (!Array.isArray(cond)) continue
+        const question = byId[key]
+        const validValues = question?.options
+          ? question.options.map((o) => o.value)
+          : question?.type === 'tristate'
+            ? TRISTATE_VALUES
+            : null
+        expect(validValues, `${kind} ${id} : champ "${key}" sans options ni tristate`).not.toBeNull()
+        for (const v of cond) {
+          expect(validValues, `${kind} ${id} : valeur "${v}" inconnue pour "${key}"`).toContain(v)
+        }
+      }
+    }
+  })
+
 })
 
 describe('parité des matchers isApplicable (TS) ↔ matchesWhen (JS)', () => {

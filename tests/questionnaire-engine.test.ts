@@ -74,6 +74,9 @@ describe('validateAnswer', () => {
     expect(validateAnswer(spec('deceased_firstname'), '   ').ok).toBe(false)
     expect(validateAnswer(spec('deceased_firstname'), 'x'.repeat(201)).ok).toBe(false)
   })
+  it('text : la longueur est vérifiée sur la valeur trimée', () => {
+    expect(validateAnswer(spec('deceased_firstname'), 'x'.repeat(195) + '          ').ok).toBe(true)
+  })
   it('date : format ISO, pas dans le futur', () => {
     expect(validateAnswer(spec('deceased_dod'), '2026-04-10').ok).toBe(true)
     expect(validateAnswer(spec('deceased_dod'), '10/04/2026').ok).toBe(false)
