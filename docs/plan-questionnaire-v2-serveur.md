@@ -1671,6 +1671,16 @@ git commit -m "feat(questionnaire-v2): frontend v2 (options canoniques, tristate
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
 
+> **Note post-revue Task 6 (exécution)** : la revue qualité UX a fait amender le contrat et la page —
+> **`/reask` renvoie `current_value`** et `QuestionCard` pré-remplit à l'édition (sans quoi re-soumettre
+> un multiselect vide effaçait silencieusement les organismes « déjà faits ») + bouton « Retour au
+> récapitulatif » pendant une édition ; **garde anti-duplication** au retry de `confirmAndGenerate`
+> (l'insert `questionnaires` est mémorisé comme `finalAnswers`) ; **sortie propre de session expirée**
+> (404 → écran dédié avec « Recommencer », fini l'impasse). +2 tests supertest (current_value,
+> réouverture de branche au récap). Reporté au Plan 3 : reprise de session via sessionStorage,
+> accessibilité clavier des options (dette pré-existante), accents de CompletionScreen (passe
+> éditoriale). Le fichier livré fait foi.
+
 ---
 
 ### Task 7 : Documentation et environnement

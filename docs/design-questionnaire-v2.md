@@ -157,7 +157,7 @@ Seul point de contact LLM. À chaque question :
 |---|---|---|
 | `POST /api/questionnaire/start` | — | `{ session_id, data: RenderedQuestion }` |
 | `POST /api/questionnaire/answer` | `{ session_id, question_id, value }` | `{ data: RenderedQuestion }` ou `{ data: { action: 'recap', answers, labels } }` |
-| `POST /api/questionnaire/reask` | `{ session_id, question_id }` | `{ data: RenderedQuestion }` pour une question déjà répondue et applicable (bouton « Modifier » du récap) ; `400` sinon |
+| `POST /api/questionnaire/reask` | `{ session_id, question_id }` | `{ data: RenderedQuestion & { current_value } }` pour une question déjà répondue et applicable (bouton « Modifier » du récap — `current_value` pré-remplit le formulaire) ; `400` sinon |
 | `POST /api/questionnaire/complete` | `{ session_id }` | `{ answers: QuestionnaireAnswersV2 }` — **aucune extraction, aucun LLM** ; `409` si le questionnaire n'est pas fini ; supprime la session |
 
 ```typescript
