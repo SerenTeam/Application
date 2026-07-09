@@ -30,7 +30,7 @@ export function WelcomeScreen({ onStart }: WelcomeScreenProps) {
 
       {/* Description */}
       <p className="text-lg text-text-soft max-w-[480px] mx-auto mb-10">
-        Ce questionnaire rapide (environs 25 questions) nous permet de comprendre votre
+        Ce questionnaire rapide (une quinzaine de questions) nous permet de comprendre votre
         situation et de generer un parcours personnalise avec les demarches
         administratives a effectuer.
       </p>
