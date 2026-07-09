@@ -67,8 +67,8 @@ Questionnaire v2 (moteur serveur + rédacteur Mistral, ≤15 questions, récap c
 ## Variables d'environnement
 
 Fichier `.env` à la racine (gitignored). Variables requises :
-- `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` — client Supabase frontend
-- `SUPABASE_URL`, `SUPABASE_ANON_KEY` — client Supabase backend
+- `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` — client Supabase frontend (clé nouvelle génération `sb_publishable_…`)
+- `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` — client Supabase backend (jamais la clé secrète `sb_secret_…` : la RLS doit s'appliquer via le token utilisateur)
 - `MISTRAL_API_KEY` — clé API Mistral
 - `MISTRAL_MODEL` — modèle du rédacteur questionnaire v2 (défaut : `mistral-small-latest`)
 - `MISTRAL_AGENT_ID` — agent du produit transmission uniquement (`/api/demo/*`)

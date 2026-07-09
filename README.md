@@ -119,9 +119,11 @@ npm start               # Express sert dist/ en production
 ## Variables d'environnement
 
 ```env
-# Supabase (requis)
+# Supabase (requis — clés nouvelle génération : Dashboard → Project Settings → API Keys)
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
 VITE_SUPABASE_URL=https://xxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJxxx...
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
 
 # Mistral (requis pour le questionnaire)
 MISTRAL_API_KEY=votre_cle_api

@@ -91,17 +91,17 @@ const MISTRAL_MODEL = process.env.MISTRAL_MODEL || 'mistral-small-latest'; // r�
 // Questionnaire v2 : flux piloté par le moteur (server/lib), IA limitée à la rédaction des textes.
 app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, mistral: client, model: MISTRAL_MODEL }));
 
-// Client Supabase (ANON - pour opérations non authentifiées)
+// Client Supabase (clé publishable — opérations non authentifiées ; la RLS s'applique)
 const supabase = createClient(
   process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_ANON_KEY || ''
+  process.env.SUPABASE_PUBLISHABLE_KEY || ''
 );
 
 // Helper pour créer un client Supabase avec contexte utilisateur authentifié
 function getSupabaseClient(accessToken) {
   return createClient(
     process.env.SUPABASE_URL || '',
-    process.env.SUPABASE_ANON_KEY || '',
+    process.env.SUPABASE_PUBLISHABLE_KEY || '',
     {
       global: {
         headers: {
