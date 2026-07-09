@@ -3,7 +3,7 @@
 > Document de conception destiné à un agent d'implémentation.
 > Rédigé le 2026-07-08. Contexte projet : voir `CLAUDE.md`.
 > Prérequis : `docs/plan-points-attention.md` §1 (migrations Supabase CLI) et §2 (table `questionnaire_sessions`).
-> Remplace l'architecture décrite dans `docs/questionnaire-agent-prompt.md` (à archiver en phase 5).
+> Remplace l'architecture décrite dans `docs/legacy/questionnaire-agent-prompt.md` (archivé le 2026-07-08).
 
 ## Objectif
 
@@ -128,7 +128,7 @@ interface QuestionSpec {
 }
 ```
 
-Le contenu empathique de `docs/questionnaire-agent-prompt.md` (séquence idéale Q1-Q10, « conseils à glisser ») est **recyclé** dans les `fallback_text` et `writer_hints`.
+Le contenu empathique de `docs/legacy/questionnaire-agent-prompt.md` (séquence idéale Q1-Q10, « conseils à glisser ») est **recyclé** dans les `fallback_text` et `writer_hints`.
 
 ### Composant 2 : moteur — `server/lib/questionnaire-engine.js`
 
@@ -156,9 +156,9 @@ Seul point de contact LLM. À chaque question :
 | Route | Entrée | Sortie |
 |---|---|---|
 | `POST /api/questionnaire/start` | — | `{ session_id, data: RenderedQuestion }` |
-| `POST /api/questionnaire/answer` | `{ session_id, question_id, value }` | `{ data: RenderedQuestion }` ou `{ data: { action: 'recap', answers, labels } }` |
+| `POST /api/questionnaire/answer` | `{ session_id, question_id, value }` | `{ data: RenderedQuestion }` ou `{ data: { action: 'recap', recap: [{ question_id, question, display }] } }` |
 | `POST /api/questionnaire/reask` | `{ session_id, question_id }` | `{ data: RenderedQuestion & { current_value } }` pour une question déjà répondue et applicable (bouton « Modifier » du récap — `current_value` pré-remplit le formulaire) ; `400` sinon |
-| `POST /api/questionnaire/complete` | `{ session_id }` | `{ answers: QuestionnaireAnswersV2 }` — **aucune extraction, aucun LLM** ; `409` si le questionnaire n'est pas fini ; supprime la session |
+| `POST /api/questionnaire/complete` | `{ session_id }` | `{ answers: QuestionnaireAnswersV2 }` — **aucune extraction, aucun LLM** ; `409` si le questionnaire n'est pas fini ; **idempotent** (pas de suppression : une réponse HTTP perdue n'est pas fatale, la session expire par TTL 24 h) |
 
 ```typescript
 interface RenderedQuestion {
