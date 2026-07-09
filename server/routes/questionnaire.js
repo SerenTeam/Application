@@ -134,7 +134,12 @@ export function createQuestionnaireRouter({
         return res.status(400).json({ success: false, error: 'Question non modifiable' })
       }
       const text = await writeText({ spec, context: writerContext(session.answers), mistral, model })
-      res.json({ success: true, data: toRendered(spec, session.answers, text) })
+      // current_value : permet au client de pré-remplir le formulaire lors d'une
+      // modification depuis le récap (sinon un multiselect vide re-soumis effacerait tout).
+      res.json({
+        success: true,
+        data: { ...toRendered(spec, session.answers, text), current_value: session.answers[spec.id] },
+      })
     } catch (error) {
       console.error('❌ questionnaire/reask :', error)
       res.status(500).json({ success: false, error: 'Erreur lors de la reprise de la question' })

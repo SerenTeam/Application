@@ -168,6 +168,25 @@ describe('parcours complet → récap → complete', () => {
     const ko = await request(app).post('/api/questionnaire/reask').send({ session_id: start2.body.session_id, question_id: 'has_notary' })
     expect(ko.status).toBe(400)
   })
+  it('reask renvoie la valeur courante pour pré-remplir', async () => {
+    const { app } = makeApp()
+    const { sessionId } = await runToRecap(app)
+    const res = await request(app).post('/api/questionnaire/reask').send({ session_id: sessionId, question_id: 'organismes_contactes' })
+    expect(res.status).toBe(200)
+    expect(res.body.data.current_value).toEqual(['banque'])
+  })
+  it('correction parent→conjoint depuis le récap : la branche compte joint est posée avant de revenir au récap', async () => {
+    const { app } = makeApp()
+    const { sessionId } = await runToRecap(app) // profil conjoint_marie complet
+    // bascule vers parent (purge has_joint_account) puis retour vers conjoint
+    await request(app).post('/api/questionnaire/answer').send({ session_id: sessionId, question_id: 'relation', value: 'parent' })
+    const back = await request(app).post('/api/questionnaire/answer').send({ session_id: sessionId, question_id: 'relation', value: 'conjoint_marie' })
+    expect(back.status).toBe(200)
+    expect(back.body.data.action).toBe('question') // la branche rouverte est posée…
+    expect(back.body.data.question_id).toBe('has_joint_account')
+    const done = await request(app).post('/api/questionnaire/answer').send({ session_id: sessionId, question_id: 'has_joint_account', value: false })
+    expect(done.body.data.action).toBe('recap') // …puis retour au récap
+  })
   it('correction au récap : relation conjoint→parent purge le compte joint et repose la branche', async () => {
     const { app } = makeApp()
     const { sessionId } = await runToRecap(app)

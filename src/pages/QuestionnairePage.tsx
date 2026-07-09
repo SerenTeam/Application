@@ -22,6 +22,9 @@ export function QuestionnairePage() {
   const [currentQuestion, setCurrentQuestion] = useState<QuestionData | null>(null)
   const [recap, setRecap] = useState<RecapEntry[]>([])
   const [finalAnswers, setFinalAnswers] = useState<QuestionnaireAnswersV2 | null>(null)
+  const [questionnaireId, setQuestionnaireId] = useState<string | null>(null)
+  const [sessionExpired, setSessionExpired] = useState(false)
+  const [editingFromRecap, setEditingFromRecap] = useState(false)
   const [stepsCount, setStepsCount] = useState(0)
   const [doneCount, setDoneCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -33,6 +36,7 @@ export function QuestionnairePage() {
     if (data.action === 'recap') {
       setRecap(data.recap)
       setPhase('recap')
+      setEditingFromRecap(false)
     } else {
       setCurrentQuestion(data)
       setPhase('question')
@@ -72,8 +76,16 @@ export function QuestionnairePage() {
           method: 'POST',
           body: JSON.stringify({ session_id: sessionId, question_id: questionId, value }),
         })
+        if (response.status === 404) {
+          // Session expirée côté serveur : écran dédié, pas d'erreur générique
+          setSessionExpired(true)
+          return
+        }
         const result = await response.json()
         if (result.success) {
+          // Seul l'écran directement issu de /reask a le bouton retour : une branche
+          // rouverte après correction est une vraie nouvelle question sans réponse.
+          setEditingFromRecap(false)
           showServerData(result.data)
         } else {
           setError(result.error || 'Réponse invalide')
@@ -99,8 +111,14 @@ export function QuestionnairePage() {
           method: 'POST',
           body: JSON.stringify({ session_id: sessionId, question_id: questionId }),
         })
+        if (response.status === 404) {
+          // Session expirée côté serveur : écran dédié, pas d'erreur générique
+          setSessionExpired(true)
+          return
+        }
         const result = await response.json()
         if (result.success) {
+          setEditingFromRecap(true)
           showServerData(result.data)
         } else {
           setError(result.error || 'Modification impossible')
@@ -129,30 +147,42 @@ export function QuestionnairePage() {
           method: 'POST',
           body: JSON.stringify({ session_id: sessionId }),
         })
+        if (response.status === 404) {
+          // Session expirée côté serveur : écran dédié, pas d'erreur générique
+          setSessionExpired(true)
+          return
+        }
         const result = await response.json()
         if (!result.success) throw new Error(result.error || 'Finalisation impossible')
         answers = result.answers as QuestionnaireAnswersV2
         setFinalAnswers(answers)
       }
 
-      const { data: questionnaire, error: qError } = await supabase
-        .from('questionnaires')
-        .insert({ user_id: user.id, answers, status: 'completed' })
-        .select()
-        .single()
-      if (qError || !questionnaire) throw new Error('Impossible de sauvegarder vos réponses.')
+      // Idempotent aussi côté insert : un retry après échec de saveRoadmapToDb
+      // réutilise le questionnaire déjà créé au lieu d'en dupliquer un.
+      let qId = questionnaireId
+      if (!qId) {
+        const { data: questionnaire, error: qError } = await supabase
+          .from('questionnaires')
+          .insert({ user_id: user.id, answers, status: 'completed' })
+          .select()
+          .single()
+        if (qError || !questionnaire) throw new Error('Impossible de sauvegarder vos réponses.')
+        qId = questionnaire.id as string
+        setQuestionnaireId(qId)
+      }
 
       const steps = generateRoadmap(answers)
       setStepsCount(steps.length)
       setDoneCount(steps.filter((s) => s.initial_status === 'done').length)
-      await saveRoadmapToDb(user.id, questionnaire.id, steps)
+      await saveRoadmapToDb(user.id, qId, steps)
 
       setPhase('done')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erreur inattendue')
       setPhase('completing') // reste sur l'écran pour afficher le bouton Réessayer
     }
-  }, [user, sessionId, finalAnswers])
+  }, [user, sessionId, finalAnswers, questionnaireId])
 
   // ─── Render ───────────────────────────────────────────────────
 
@@ -180,7 +210,25 @@ export function QuestionnairePage() {
       </header>
 
       <main className="max-w-[720px] mx-auto py-12 px-6 pb-24 max-sm:py-8 max-sm:px-4 max-sm:pb-16">
-        {phase === 'welcome' && (
+        {sessionExpired && (
+          <div className="text-center py-16 px-8">
+            <div className="bg-[#FEF2F0] border border-[#F5D5D0] text-error py-4 px-5 rounded-radius-sm mb-6 text-[0.95rem] max-w-md mx-auto">
+              Votre session a expiré (24 h). Vos réponses n'ont pas été perdues côté serveur si vous aviez terminé — sinon, il faudra recommencer. Nous sommes désolés.
+            </div>
+            <button
+              onClick={() => {
+                setSessionExpired(false); setSessionId(null); setCurrentQuestion(null)
+                setRecap([]); setFinalAnswers(null); setQuestionnaireId(null)
+                setError(null); setEditingFromRecap(false); setPhase('welcome')
+              }}
+              className="bg-accent text-white border-none py-3 px-6 rounded-radius-md cursor-pointer font-medium transition-all duration-200 hover:bg-accent-hover"
+            >
+              Recommencer le questionnaire
+            </button>
+          </div>
+        )}
+
+        {!sessionExpired && phase === 'welcome' && (
           <>
             {error && (
               <div className="bg-[#FEF2F0] border border-[#F5D5D0] text-error py-4 px-5 rounded-radius-sm mb-6 text-[0.95rem] text-center">
@@ -191,24 +239,25 @@ export function QuestionnairePage() {
           </>
         )}
 
-        {phase === 'loading' && (
+        {!sessionExpired && phase === 'loading' && (
           <div className="text-center py-16 px-8">
             <div className="w-12 h-12 border-[3px] border-border border-t-accent rounded-full mx-auto mb-6 animate-spin" />
             <p className="text-text-soft text-base">Préparation de votre questionnaire...</p>
           </div>
         )}
 
-        {phase === 'question' && currentQuestion && (
+        {!sessionExpired && phase === 'question' && currentQuestion && (
           <QuestionCard
             key={currentQuestion.question_id}
             question={currentQuestion}
             onAnswer={handleAnswer}
+            onCancel={editingFromRecap ? () => setPhase('recap') : undefined}
             isSubmitting={isSubmitting}
             error={error}
           />
         )}
 
-        {phase === 'recap' && (
+        {!sessionExpired && phase === 'recap' && (
           <RecapScreen
             entries={recap}
             onEdit={handleEdit}
@@ -218,14 +267,14 @@ export function QuestionnairePage() {
           />
         )}
 
-        {phase === 'completing' && !error && (
+        {!sessionExpired && phase === 'completing' && !error && (
           <div className="text-center py-16 px-8">
             <div className="w-12 h-12 border-[3px] border-border border-t-accent rounded-full mx-auto mb-6 animate-spin" />
             <p className="text-text-soft text-base">Génération de votre parcours personnalisé...</p>
           </div>
         )}
 
-        {phase === 'completing' && error && (
+        {!sessionExpired && phase === 'completing' && error && (
           <div className="text-center py-16 px-8">
             <div className="bg-[#FEF2F0] border border-[#F5D5D0] text-error py-4 px-5 rounded-radius-sm mb-6 text-[0.95rem] max-w-md mx-auto">
               {error}
@@ -242,7 +291,7 @@ export function QuestionnairePage() {
           </div>
         )}
 
-        {phase === 'done' && <CompletionScreen stepsCount={stepsCount} doneCount={doneCount} />}
+        {!sessionExpired && phase === 'done' && <CompletionScreen stepsCount={stepsCount} doneCount={doneCount} />}
       </main>
     </div>
   )

@@ -20,26 +20,34 @@ export interface QuestionData {
   categorie?: string
   obligatoire: boolean
   progress: { current: number; total: number }
+  current_value?: unknown // renvoyé par /reask : pré-remplissage à l'édition
 }
 
 interface QuestionCardProps {
   question: QuestionData
   onAnswer: (questionId: string, value: unknown) => void
   onSkip?: (questionId: string) => void
+  onCancel?: () => void
   isSubmitting: boolean
   error: string | null
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function QuestionCard({ question, onAnswer, onSkip, isSubmitting, error }: QuestionCardProps) {
+export function QuestionCard({ question, onAnswer, onSkip, onCancel, isSubmitting, error }: QuestionCardProps) {
   const [selectedValue, setSelectedValue] = useState<unknown>(null)
   const [selectedValues, setSelectedValues] = useState<string[]>([])
 
   useEffect(() => {
-    setSelectedValue(null)
-    setSelectedValues([])
-  }, [question.question_id])
+    const cv = question.current_value
+    if (question.type === 'multiselect') {
+      setSelectedValues(Array.isArray(cv) ? (cv as string[]) : [])
+      setSelectedValue(null)
+    } else {
+      setSelectedValue(cv ?? null)
+      setSelectedValues([])
+    }
+  }, [question.question_id, question.type, question.current_value])
 
   const isMulti = question.type === 'multiselect'
   const hasValue = selectedValue !== null && selectedValue !== ''
@@ -87,7 +95,15 @@ export function QuestionCard({ question, onAnswer, onSkip, isSubmitting, error }
         </div>
 
         <div className="flex justify-between items-center mt-8 pt-6 border-t border-border-soft">
-          {!question.obligatoire && onSkip ? (
+          {onCancel ? (
+            <button
+              onClick={onCancel}
+              disabled={isSubmitting}
+              className="bg-transparent border-none text-text-muted text-[0.95rem] font-body cursor-pointer py-2 px-4 transition-colors duration-200 hover:text-text-soft disabled:opacity-50"
+            >
+              ← Retour au récapitulatif
+            </button>
+          ) : !question.obligatoire && onSkip ? (
             <button
               onClick={() => onSkip(question.question_id)}
               disabled={isSubmitting}
