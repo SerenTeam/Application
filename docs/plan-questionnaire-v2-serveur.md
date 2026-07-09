@@ -465,6 +465,13 @@ git commit -m "feat(questionnaire-v2): rédacteur LLM à fallback garanti + prom
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
 
+> **Note post-revue Task 3 (exécution)** : la revue qualité a fait amender le code ci-dessus dans un
+> commit séparé — le timeout passe par l'option **native du SDK Mistral** (`{ timeoutMs }` → AbortSignal,
+> annulation réelle de la requête HTTP) au lieu de la Promise.race du plan (qui laissait timer et appel
+> en vol) ; **plafonds de sortie** ajoutés (question ≤ 300 chars, aide ≤ 200, sinon fallback — borne
+> le risque d'injection via un prénom malicieux) ; tests directs de `buildWriterMessages`. Le fichier
+> livré fait foi.
+
 ---
 
 ### Task 4 : Routes questionnaire (factory injectable + supertest)
