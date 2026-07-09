@@ -1,13 +1,13 @@
 # Seren
 
-Plateforme d'accompagnement post-décès : questionnaire conversationnel IA, roadmap personnalisée de démarches administratives, courriers pré-remplis et suivi.
+Plateforme d'accompagnement post-décès : questionnaire guidé (rédaction IA), roadmap personnalisée de démarches administratives, courriers pré-remplis et suivi.
 
 ## Stack
 
 - **Frontend** : React 18, TypeScript, Vite, Tailwind CSS v4 (CSS-first `@theme`), Shadcn/ui, Radix UI, Lucide icons
-- **Backend** : Express.js (`server/server.js`) — API questionnaire IA, auth proxy, static serving
+- **Backend** : Express.js (`server/server.js` + `server/routes/`) — questionnaire v2 (moteur + rédacteur), produit transmission, auth proxy, static serving
 - **BDD** : Supabase (PostgreSQL + Auth + RLS)
-- **IA** : Mistral AI (agents dédiés pour questionnaire conversationnel avec mémoire)
+- **IA** : Mistral AI — rédacteur stateless du questionnaire v2 (textes uniquement, jamais de données) ; agent conversationnel conservé pour le produit transmission
 - **PDF** : jsPDF (export courriers)
 - **Analytics** : PostHog
 
@@ -29,14 +29,14 @@ src/
 ├── components/       # Composants React organisés par domaine
 │   ├── ui/           # Shadcn/ui primitives
 │   ├── auth/         # ProtectedRoute, formulaires auth
-│   ├── questionnaire/# WelcomeScreen, QuestionCard, CompletionScreen
+│   ├── questionnaire/# WelcomeScreen, QuestionCard, RecapScreen, CompletionScreen, QuestionnaireProgress
 │   ├── dashboard/    # Sidebar, ProgressHero, RoadmapView
 │   ├── letter/       # LetterPreview, LetterVariablesForm, LetterActions
 │   ├── documents/    # DocumentCard
 │   ├── layout/       # ErrorBoundary, OfflineBanner, CookieBanner
 │   └── profile/
 ├── pages/            # Pages routées (React Router v7)
-├── hooks/            # useAuth, useQuestionnaire, useLetterGenerator...
+├── hooks/            # useAuth, useLetterGenerator...
 ├── lib/              # Clients et utilitaires (supabase, api, roadmap-generator)
 ├── data/             # Catalogues statiques (steps-catalog, letter-templates)
 └── types/            # Types TypeScript partagés
@@ -79,5 +79,5 @@ Fichier `.env` à la racine (gitignored). Variables requises :
 - **Tests** : Vitest (`npm test`) — moteur, catalogues, invariants croisés, routes (supertest). Les invariants interdisent toute question sans étape et tout drift entre catalogues
 - **Sessions** : questionnaire v2 persisté dans `questionnaire_sessions` (Supabase, RLS, TTL 24 h). Le produit transmission (`/api/demo/*`) reste sur une `Map()` en mémoire — perdu au redémarrage
 - **PII vers Mistral** : le rédacteur ne reçoit que le prénom du défunt, la relation et la dernière réponse fermée (valeurs enum) — jamais l'historique, le nom de famille ni la date de décès
-- **Schema SQL** : `supabase_v1_schema.sql` et `supabase_auth_setup.sql` à la racine — modifications de schema à faire dans Supabase SQL Editor
+- **Schema SQL** : migrations versionnées dans `supabase/migrations/` (à appliquer via SQL Editor ou `supabase db push`) ; `supabase_v1_schema.sql` et `supabase_auth_setup.sql` à la racine = état historique v1
 - **RLS** : les policies Supabase Row Level Security sont actives — les requêtes côté serveur utilisent le token utilisateur via `getSupabaseClient(token)`
