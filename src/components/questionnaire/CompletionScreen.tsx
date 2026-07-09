@@ -2,9 +2,10 @@ import { Link } from 'react-router-dom'
 
 interface CompletionScreenProps {
   stepsCount: number
+  doneCount: number
 }
 
-export function CompletionScreen({ stepsCount }: CompletionScreenProps) {
+export function CompletionScreen({ stepsCount, doneCount }: CompletionScreenProps) {
   return (
     <section className="text-center py-16 px-8 animate-[fadeIn_0.8s_ease-out]">
       {/* Success icon */}
@@ -32,9 +33,15 @@ export function CompletionScreen({ stepsCount }: CompletionScreenProps) {
 
       {/* Description */}
       <p className="text-text-soft max-w-[440px] mx-auto mb-2">
-        Nous avons identifie{' '}
-        <strong className="text-text">{stepsCount} demarches</strong>{' '}
-        a effectuer en fonction de votre situation.
+        Nous avons identifié{' '}
+        <strong className="text-text">{stepsCount} démarches</strong>{' '}
+        à effectuer en fonction de votre situation
+        {doneCount > 0 && (
+          <>
+            , dont <strong className="text-text">{doneCount} déjà faites</strong>
+          </>
+        )}
+        .
       </p>
       <p className="text-text-soft max-w-[440px] mx-auto mb-10">
         Retrouvez votre parcours detaille avec les courriers pre-remplis sur

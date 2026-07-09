@@ -2,20 +2,6 @@ import { STEPS_CATALOG, type StepTemplate } from '@/data/steps-catalog'
 import type { QuestionnaireAnswersV2 } from '@/types/questionnaire'
 import { supabase } from '@/lib/supabase'
 
-// Ré-export transitoire du contrat v1 (utilisé par l'ancien flux jusqu'au Plan 2)
-export interface QuestionnaireAnswers {
-  relation: 'conjoint' | 'parent' | 'enfant' | 'frere_soeur' | 'autre'
-  has_notary: boolean
-  organismes: ('banque' | 'assurance' | 'caf' | 'retraite' | 'employeur' | 'mutuelle' | 'logement' | 'cpam')[]
-  deceased_was_employed: boolean
-  deceased_was_tenant: boolean
-  has_life_insurance: boolean
-  has_joint_account: boolean
-  deceased_firstname?: string
-  deceased_lastname?: string
-  deceased_dod?: string
-}
-
 const URGENCY_ORDER: Record<StepTemplate['urgency'], number> = {
   urgent: 0,
   week: 1,

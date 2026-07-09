@@ -4,13 +4,15 @@ import { useAuth } from '@/hooks/useAuth'
 import { apiFetch } from '@/lib/api'
 import { generateRoadmap, saveRoadmapToDb } from '@/lib/roadmap-generator'
 import { supabase } from '@/lib/supabase'
-import type { QuestionnaireAnswers } from '@/lib/roadmap-generator'
-import { adaptAnswersV1toV2 } from '@/lib/answers-adapter'
+import type { QuestionnaireAnswersV2 } from '@/types/questionnaire'
 import { WelcomeScreen } from '@/components/questionnaire/WelcomeScreen'
 import { QuestionCard, type QuestionData } from '@/components/questionnaire/QuestionCard'
+import { RecapScreen, type RecapEntry } from '@/components/questionnaire/RecapScreen'
 import { CompletionScreen } from '@/components/questionnaire/CompletionScreen'
 
-type Phase = 'welcome' | 'loading' | 'question' | 'completing' | 'done'
+type Phase = 'welcome' | 'loading' | 'question' | 'recap' | 'completing' | 'done'
+
+type ServerData = (QuestionData & { action: 'question' }) | { action: 'recap'; recap: RecapEntry[] }
 
 export function QuestionnairePage() {
   const { user, signOut } = useAuth()
@@ -18,178 +20,166 @@ export function QuestionnairePage() {
   const [phase, setPhase] = useState<Phase>('welcome')
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [currentQuestion, setCurrentQuestion] = useState<QuestionData | null>(null)
-  const [questionCount, setQuestionCount] = useState(0)
+  const [recap, setRecap] = useState<RecapEntry[]>([])
+  const [finalAnswers, setFinalAnswers] = useState<QuestionnaireAnswersV2 | null>(null)
   const [stepsCount, setStepsCount] = useState(0)
+  const [doneCount, setDoneCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // ─── Start questionnaire (calls AI agent) ─────────────────────
+  // ─── Le serveur renvoie soit une question, soit le récapitulatif ──
+
+  const showServerData = useCallback((data: ServerData) => {
+    if (data.action === 'recap') {
+      setRecap(data.recap)
+      setPhase('recap')
+    } else {
+      setCurrentQuestion(data)
+      setPhase('question')
+    }
+  }, [])
+
+  // ─── Démarrage ─────────────────────────────────────────────────
 
   const startQuestionnaire = useCallback(async () => {
     setPhase('loading')
     setError(null)
-
     try {
       const response = await apiFetch('/api/questionnaire/start', { method: 'POST' })
       const result = await response.json()
-
       if (result.success) {
         setSessionId(result.session_id)
-        setQuestionCount(1)
-        setCurrentQuestion(result.data)
-        setPhase('question')
+        showServerData(result.data)
       } else {
-        setError(result.error || 'Erreur lors du demarrage')
+        setError(result.error || 'Erreur lors du démarrage')
         setPhase('welcome')
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Erreur inconnue'
-      setError('Erreur de connexion : ' + message)
+      setError('Erreur de connexion : ' + (err instanceof Error ? err.message : 'inconnue'))
       setPhase('welcome')
     }
-  }, [])
+  }, [showServerData])
 
-  // ─── Submit an answer ─────────────────────────────────────────
+  // ─── Réponse (valeur canonique, jamais le label) ───────────────
 
   const handleAnswer = useCallback(
-    async (questionId: string, answer: unknown) => {
-      if (!sessionId || !currentQuestion) return
-
+    async (questionId: string, value: unknown) => {
+      if (!sessionId) return
       setIsSubmitting(true)
       setError(null)
-
       try {
         const response = await apiFetch('/api/questionnaire/answer', {
           method: 'POST',
-          body: JSON.stringify({
-            session_id: sessionId,
-            question_id: questionId,
-            reponse: answer,
-            question_text: currentQuestion.question || '',
-          }),
+          body: JSON.stringify({ session_id: sessionId, question_id: questionId, value }),
         })
         const result = await response.json()
-
         if (result.success) {
-          if (result.data.action === 'fin_questionnaire') {
-            // Agent signalled completion — extract & generate roadmap
-            await completeQuestionnaire(result.data.answers)
-          } else {
-            setQuestionCount((c) => c + 1)
-            setCurrentQuestion(result.data)
-          }
+          showServerData(result.data)
         } else {
-          setError(result.error || 'Erreur IA')
+          setError(result.error || 'Réponse invalide')
         }
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Erreur inconnue'
-        setError('Erreur de connexion : ' + message)
+        setError('Erreur de connexion : ' + (err instanceof Error ? err.message : 'inconnue'))
       } finally {
         setIsSubmitting(false)
       }
     },
-    [sessionId, currentQuestion] // eslint-disable-line react-hooks/exhaustive-deps
+    [sessionId, showServerData]
   )
 
-  const handleSkip = useCallback(
-    (questionId: string) => {
-      handleAnswer(questionId, null)
-    },
-    [handleAnswer]
-  )
+  // ─── Modifier depuis le récap ──────────────────────────────────
 
-  // ─── Complete: extract answers → roadmap → save ───────────────
-
-  const completeQuestionnaire = useCallback(
-    async (agentAnswers?: Record<string, unknown>) => {
-      if (!user) return
-
-      setPhase('completing')
+  const handleEdit = useCallback(
+    async (questionId: string) => {
+      if (!sessionId) return
+      setPhase('loading')
       setError(null)
-
       try {
-        let answers: QuestionnaireAnswers
-
-        if (agentAnswers && Object.keys(agentAnswers).length > 0) {
-          // Use answers provided directly by the agent
-          answers = normalizeAnswers(agentAnswers)
+        const response = await apiFetch('/api/questionnaire/reask', {
+          method: 'POST',
+          body: JSON.stringify({ session_id: sessionId, question_id: questionId }),
+        })
+        const result = await response.json()
+        if (result.success) {
+          showServerData(result.data)
         } else {
-          // Fallback: call /complete to extract from conversation
-          const response = await apiFetch('/api/questionnaire/complete', {
-            method: 'POST',
-            body: JSON.stringify({ session_id: sessionId }),
-          })
-          const result = await response.json()
-
-          if (!result.success) {
-            throw new Error(result.error || 'Extraction des reponses impossible')
-          }
-
-          answers = normalizeAnswers(result.answers)
+          setError(result.error || 'Modification impossible')
+          setPhase('recap')
         }
-
-        // Save questionnaire answers
-        const { data: questionnaire, error: qError } = await supabase
-          .from('questionnaires')
-          .insert({
-            user_id: user.id,
-            answers,
-            status: 'completed',
-          })
-          .select()
-          .single()
-
-        if (qError || !questionnaire) {
-          throw new Error('Impossible de sauvegarder vos reponses.')
-        }
-
-        // Generate roadmap
-        const steps = generateRoadmap(adaptAnswersV1toV2(answers))
-        setStepsCount(steps.length)
-
-        await saveRoadmapToDb(user.id, questionnaire.id, steps)
-
-        setPhase('done')
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Erreur inattendue'
-        setError(message)
-        setPhase('completing') // stay on completing so retry button shows
+        setError('Erreur de connexion : ' + (err instanceof Error ? err.message : 'inconnue'))
+        setPhase('recap')
       }
     },
-    [user, sessionId]
+    [sessionId, showServerData]
   )
+
+  // ─── Confirmation : answers typées → roadmap (aucune extraction IA) ──
+
+  const confirmAndGenerate = useCallback(async () => {
+    if (!user) return
+    setPhase('completing')
+    setError(null)
+    try {
+      // Idempotent : si /complete a déjà réussi (session supprimée côté serveur),
+      // on réutilise les answers en mémoire au lieu de rappeler l'API.
+      let answers = finalAnswers
+      if (!answers) {
+        const response = await apiFetch('/api/questionnaire/complete', {
+          method: 'POST',
+          body: JSON.stringify({ session_id: sessionId }),
+        })
+        const result = await response.json()
+        if (!result.success) throw new Error(result.error || 'Finalisation impossible')
+        answers = result.answers as QuestionnaireAnswersV2
+        setFinalAnswers(answers)
+      }
+
+      const { data: questionnaire, error: qError } = await supabase
+        .from('questionnaires')
+        .insert({ user_id: user.id, answers, status: 'completed' })
+        .select()
+        .single()
+      if (qError || !questionnaire) throw new Error('Impossible de sauvegarder vos réponses.')
+
+      const steps = generateRoadmap(answers)
+      setStepsCount(steps.length)
+      setDoneCount(steps.filter((s) => s.initial_status === 'done').length)
+      await saveRoadmapToDb(user.id, questionnaire.id, steps)
+
+      setPhase('done')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur inattendue')
+      setPhase('completing') // reste sur l'écran pour afficher le bouton Réessayer
+    }
+  }, [user, sessionId, finalAnswers])
 
   // ─── Render ───────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-bg">
-      {/* Header */}
       <header className="p-8 text-center border-b border-border-soft bg-bg-card">
         <div className="font-display text-[1.75rem] font-medium text-accent tracking-[0.02em]">
           Seren<span className="italic font-normal">.</span>
         </div>
         <nav className="mt-4 flex items-center justify-center gap-8 flex-wrap">
           <span className="text-text-soft text-sm font-medium">{user?.email}</span>
-
           <Link
             to="/dashboard"
             className="text-text-soft no-underline text-sm font-medium uppercase tracking-widest border-b-2 border-text-soft pb-0.5 transition-all duration-200 hover:text-accent hover:border-accent"
           >
             Tableau de bord
           </Link>
-
           <button
             onClick={signOut}
             className="bg-transparent border-none border-b-2 border-text-soft text-text-soft text-sm font-medium uppercase tracking-widest cursor-pointer p-0 pb-0.5 transition-all duration-200 hover:text-accent hover:border-accent"
           >
-            Deconnexion
+            Déconnexion
           </button>
         </nav>
       </header>
 
-      {/* Main content */}
       <main className="max-w-[720px] mx-auto py-12 px-6 pb-24 max-sm:py-8 max-sm:px-4 max-sm:pb-16">
-        {/* Welcome */}
         {phase === 'welcome' && (
           <>
             {error && (
@@ -201,37 +191,40 @@ export function QuestionnairePage() {
           </>
         )}
 
-        {/* Loading first question */}
         {phase === 'loading' && (
           <div className="text-center py-16 px-8">
             <div className="w-12 h-12 border-[3px] border-border border-t-accent rounded-full mx-auto mb-6 animate-spin" />
-            <p className="text-text-soft text-base">Preparation de votre questionnaire...</p>
+            <p className="text-text-soft text-base">Préparation de votre questionnaire...</p>
           </div>
         )}
 
-        {/* Question */}
         {phase === 'question' && currentQuestion && (
           <QuestionCard
             key={currentQuestion.question_id}
             question={currentQuestion}
-            questionCount={questionCount}
-            totalQuestions={20}
             onAnswer={handleAnswer}
-            onSkip={handleSkip}
             isSubmitting={isSubmitting}
             error={error}
           />
         )}
 
-        {/* Completing / generating roadmap */}
+        {phase === 'recap' && (
+          <RecapScreen
+            entries={recap}
+            onEdit={handleEdit}
+            onConfirm={confirmAndGenerate}
+            isSubmitting={isSubmitting}
+            error={error}
+          />
+        )}
+
         {phase === 'completing' && !error && (
           <div className="text-center py-16 px-8">
             <div className="w-12 h-12 border-[3px] border-border border-t-accent rounded-full mx-auto mb-6 animate-spin" />
-            <p className="text-text-soft text-base">Generation de votre parcours personnalise...</p>
+            <p className="text-text-soft text-base">Génération de votre parcours personnalisé...</p>
           </div>
         )}
 
-        {/* Error during completion */}
         {phase === 'completing' && error && (
           <div className="text-center py-16 px-8">
             <div className="bg-[#FEF2F0] border border-[#F5D5D0] text-error py-4 px-5 rounded-radius-sm mb-6 text-[0.95rem] max-w-md mx-auto">
@@ -240,51 +233,17 @@ export function QuestionnairePage() {
             <button
               onClick={() => {
                 setError(null)
-                completeQuestionnaire()
+                confirmAndGenerate()
               }}
               className="bg-accent text-white border-none py-3 px-6 rounded-radius-md cursor-pointer font-medium transition-all duration-200 hover:bg-accent-hover"
             >
-              Reessayer
+              Réessayer
             </button>
           </div>
         )}
 
-        {/* Done */}
-        {phase === 'done' && <CompletionScreen stepsCount={stepsCount} />}
+        {phase === 'done' && <CompletionScreen stepsCount={stepsCount} doneCount={doneCount} />}
       </main>
     </div>
-  )
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────
-
-function normalizeAnswers(raw: Record<string, unknown>): QuestionnaireAnswers {
-  return {
-    relation: normalizeRelation(raw.relation),
-    has_notary: Boolean(raw.has_notary),
-    organismes: normalizeOrganismes(raw.organismes),
-    deceased_was_employed: Boolean(raw.deceased_was_employed),
-    deceased_was_tenant: Boolean(raw.deceased_was_tenant),
-    has_life_insurance: Boolean(raw.has_life_insurance),
-    has_joint_account: Boolean(raw.has_joint_account),
-    deceased_firstname: typeof raw.deceased_firstname === 'string' ? raw.deceased_firstname : undefined,
-    deceased_lastname: typeof raw.deceased_lastname === 'string' ? raw.deceased_lastname : undefined,
-    deceased_dod: typeof raw.deceased_dod === 'string' ? raw.deceased_dod : undefined,
-  }
-}
-
-function normalizeRelation(value: unknown): QuestionnaireAnswers['relation'] {
-  const valid = ['conjoint', 'parent', 'enfant', 'frere_soeur', 'autre'] as const
-  if (typeof value === 'string' && valid.includes(value as typeof valid[number])) {
-    return value as QuestionnaireAnswers['relation']
-  }
-  return 'autre'
-}
-
-function normalizeOrganismes(value: unknown): QuestionnaireAnswers['organismes'] {
-  const valid = ['banque', 'assurance', 'caf', 'retraite', 'employeur', 'mutuelle', 'logement', 'cpam'] as const
-  if (!Array.isArray(value)) return []
-  return value.filter((v): v is typeof valid[number] =>
-    typeof v === 'string' && valid.includes(v as typeof valid[number])
   )
 }
