@@ -842,6 +842,16 @@ git commit -m "feat(questionnaire-v2): routes start/answer/reask/complete sur le
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
 
+> **Note post-revue Task 4 (exécution)** : la revue qualité a fait amender le design ci-dessus —
+> **`/complete` est idempotent** (plus de `deleteSession` : une réponse HTTP perdue n'oblige plus
+> un utilisateur endeuillé à refaire 15 questions ; le TTL `expires_at` nettoie) contrairement au
+> « 404 au 2ᵉ appel » spécifié plus haut. Autres amendements : le fake store des tests clone les
+> sessions (`structuredClone`) pour rendre la persistance observable (une mutation avait prouvé que
+> supprimer `saveAnswers` ne cassait aucun test) ; test du chemin 500 sans fuite de détail interne ;
+> **PII réduite** : la transition vers le LLM n'inclut la dernière réponse que pour les types fermés
+> (le nom de famille et la date de décès ne partent pas chez Mistral) ; devDeps épinglées.
+> Les compteurs de tests des tasks suivantes glissent d'autant (+2 vs plan). Le fichier livré fait foi.
+
 ---
 
 ### Task 5 : Câblage server.js + suppression du legacy questionnaire
