@@ -272,7 +272,8 @@ MISTRAL_MODEL=mistral-small-latest   # modèle du rédacteur
 4. **Décision produit à confirmer** : `has_joint_account` limité aux couples — les comptes joints parent/enfant sont fréquents dans cette démographie ; élargir la question à tous les profils ?
 5. **Limite du modèle (à documenter)** : le questionnaire est centré sur le répondant — un enfant répondant pour un parent veuf ne verra pas la pension de réversion ; l'ex-conjoint divorcé (éligible à réversion) est inexprimable.
 6. **`statut_professionnel: 'fonctionnaire'`** : couvert partiellement en exécution (notification employeur) ; le capital décès fonction publique reste à ajouter au catalogue (Plan 2 éditorial).
-7. **Frontend Plan 2 (cosmétique)** : `CompletionScreen` — afficher « X démarches, dont N déjà faites » quand des étapes sont pré-cochées.
+7. **Frontend Plan 2 (cosmétique)** : ~~`CompletionScreen` — afficher « X démarches, dont N déjà faites »~~ fait en exécution.
+8. **Rédacteur LLM (observé en passe E2E réelle, 2026-07-09)** : le rédacteur formule parfois la question en décalage avec les options affichées — ex. « Pierre travaillait-il au moment de son décès ? » (tournure oui/non) au-dessus d'un select à 6 statuts ; « vivait-il dans un logement qu'il occupait seul ou en couple ? » au-dessus de locataire/propriétaire ; « avait-il un notaire attitré ? » vs l'intention « un notaire a-t-il été contacté pour la succession ». → Ajuster le prompt du rédacteur (`server/lib/writer-prompt.js`) : exiger une formulation ouverte compatible avec les options imposées, en fournissant les libellés des options en contexte (sans les lister dans la question).
 
 ### Premières actions techniques du Plan 2 (issues de la revue finale de branche, 2026-07-08)
 
