@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import { createQuestionnaireRouter } from './routes/questionnaire.js';
 
 dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.env') });
 
@@ -84,9 +85,11 @@ const client = new Mistral({
   apiKey: process.env.MISTRAL_API_KEY,
 });
 
-const AGENT_ID = process.env.MISTRAL_AGENT_ID;
-const QUESTIONNAIRE_AGENT_ID = process.env.MISTRAL_QUESTIONNAIRE_AGENT_ID || process.env.MISTRAL_AGENT_ID;
-const ROADMAP_AGENT_ID = process.env.MISTRAL_ROADMAP_AGENT_ID;
+const AGENT_ID = process.env.MISTRAL_AGENT_ID; // utilisé UNIQUEMENT par le produit transmission (/api/demo/*)
+const MISTRAL_MODEL = process.env.MISTRAL_MODEL || 'mistral-small-latest'; // rédacteur du questionnaire v2
+
+// Questionnaire v2 : flux piloté par le moteur (server/lib), IA limitée à la rédaction des textes.
+app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, mistral: client, model: MISTRAL_MODEL }));
 
 // Client Supabase (ANON - pour opérations non authentifiées)
 const supabase = createClient(
@@ -341,290 +344,6 @@ app.get('/api/user/transmission', requireAuth, async (req, res) => {
       success: false,
       error: error.message
     });
-  }
-});
-
-// ==================== ROUTES QUESTIONNAIRE COMPLET (AI avec mémoire) ====================
-
-const MAX_QUESTIONS = 20;
-
-// Le prompt du questionnaire est maintenant dans l'agent Mistral dédié (QUESTIONNAIRE_AGENT_ID).
-// Voir docs/questionnaire-agent-prompt.md pour le contenu à coller dans la console Mistral.
-
-// Helper : extract text from Mistral response (handles thinking mode array or plain string)
-function extractMistralText(content) {
-  if (typeof content === 'string') return content;
-  if (Array.isArray(content)) {
-    const textBlock = content.find(block => block.type === 'text');
-    if (textBlock?.text) return textBlock.text;
-  }
-  throw new Error('Impossible d\'extraire le texte de la réponse Mistral');
-}
-
-// Helper : sanitize question data from agent (fix common agent mistakes)
-function sanitizeQuestionData(data) {
-  if (data.action !== 'question') return data;
-
-  // Fix options that look like variable names (snake_case or camelCase without spaces)
-  if (Array.isArray(data.options)) {
-    const VARIABLE_LABEL_MAP = {
-      'notaire_existant': 'Oui, un notaire est déjà en charge',
-      'emploi_actuel': 'Oui, il/elle était en activité',
-      'deceased_was_tenant': 'Oui, il/elle était locataire',
-      'deceased_was_landlord': 'Non, il/elle était propriétaire',
-      'has_life_insurance': 'Oui, il/elle avait une assurance vie',
-      'has_joint_account': 'Oui, nous avions un compte joint',
-      'has_notary': 'Oui, un notaire est déjà en charge',
-      'deceased_was_employed': 'Oui, il/elle était en activité professionnelle',
-      'conjoint': 'Conjoint(e) / Partenaire',
-      'parent': 'Père ou mère',
-      'enfant': 'Fils ou fille',
-      'frere_soeur': 'Frère ou sœur',
-      'autre': 'Autre lien',
-    };
-
-    const looksLikeVariable = (s) => /^[a-z][a-z0-9_]*$/.test(s) && s.includes('_');
-
-    data.options = data.options.map(opt => {
-      if (VARIABLE_LABEL_MAP[opt]) return VARIABLE_LABEL_MAP[opt];
-      if (looksLikeVariable(opt)) {
-        // Convert snake_case to readable: "some_variable" → "Some variable"
-        const readable = opt.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
-        console.log(`⚠️ Option variable détectée: "${opt}" → "${readable}"`);
-        return readable;
-      }
-      return opt;
-    });
-  }
-
-  // If question contains multiple '?' it's likely asking multiple questions
-  const questionMarks = (data.question?.match(/\?/g) || []).length;
-  if (questionMarks > 2) {
-    console.log(`⚠️ Question multiple détectée (${questionMarks} "?") — l'agent devrait poser 1 question à la fois`);
-  }
-
-  return data;
-}
-
-// Helper : parse JSON from Mistral response (handles thinking mode + markdown code blocks)
-function parseMistralJson(content) {
-  const text = extractMistralText(content);
-  try {
-    // Try direct parse first
-    return JSON.parse(text);
-  } catch {
-    // Try extracting JSON from markdown code block or raw text
-    const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) || text.match(/(\{[\s\S]*\})/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[1].trim());
-    }
-    throw new Error('Impossible de parser la réponse JSON');
-  }
-}
-
-// Route pour démarrer un nouveau questionnaire
-app.post('/api/questionnaire/start', requireAuth, async (req, res) => {
-  try {
-    const session_id = generateSessionId();
-
-    // Initial user message — l'agent dédié a déjà ses instructions
-    const initialMessage = { role: 'user', content: 'Bonjour, je viens de perdre un proche et j\'ai besoin d\'aide pour les démarches administratives. Pouvez-vous m\'accompagner ?' };
-
-    console.log('\n📤 START - Envoi à l\'agent questionnaire dédié');
-
-    const response = await client.agents.complete({
-      agentId: QUESTIONNAIRE_AGENT_ID,
-      messages: [initialMessage],
-    });
-
-    const rawContent = response.choices[0].message.content;
-    const assistantText = extractMistralText(rawContent);
-    console.log('📥 START - Réponse Mistral:', assistantText);
-
-    let questionData;
-    try {
-      questionData = sanitizeQuestionData(parseMistralJson(rawContent));
-    } catch (parseError) {
-      console.error('❌ Erreur parsing JSON:', parseError);
-      return res.status(500).json({ success: false, error: 'Erreur de format dans la réponse IA' });
-    }
-
-    // Store session with conversation history (always store as string)
-    sessions.set(session_id, {
-      messages: [
-        initialMessage,
-        { role: 'assistant', content: assistantText },
-      ],
-      question_count: 1,
-      is_demo: false,
-      created_at: new Date().toISOString(),
-    });
-
-    res.json({
-      success: true,
-      session_id,
-      data: questionData,
-    });
-  } catch (error) {
-    console.error('❌ Erreur:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Route pour envoyer une réponse et obtenir la question suivante
-app.post('/api/questionnaire/answer', requireAuth, async (req, res) => {
-  try {
-    const { session_id, question_id, reponse, question_text } = req.body;
-
-    if (!session_id) {
-      return res.status(400).json({ success: false, error: 'session_id requis' });
-    }
-
-    const session = sessions.get(session_id);
-    if (!session) {
-      return res.status(404).json({ success: false, error: 'Session non trouvée' });
-    }
-
-    session.question_count += 1;
-
-    // Build user message with their answer
-    const userContent = reponse === null
-      ? `Je passe cette question (${question_id}).`
-      : `Ma réponse à "${question_text || question_id}" : ${typeof reponse === 'object' ? JSON.stringify(reponse) : reponse}`;
-
-    // Append user message to history
-    session.messages.push({ role: 'user', content: userContent });
-
-    // Guard: force completion if max questions reached
-    if (session.question_count >= MAX_QUESTIONS) {
-      console.log(`⚠️ Max questions (${MAX_QUESTIONS}) atteint, extraction forcée`);
-
-      session.messages.push({
-        role: 'user',
-        content: 'Nous avons posé suffisamment de questions. Termine maintenant le questionnaire et retourne le JSON final avec "action": "fin_questionnaire" et le champ "answers" contenant toutes les informations recueillies.',
-      });
-    }
-
-    console.log(`\n📤 ANSWER - Question ${session.question_count} - Envoi à l'agent questionnaire (${session.messages.length} messages)`);
-
-    const response = await client.agents.complete({
-      agentId: QUESTIONNAIRE_AGENT_ID,
-      messages: session.messages,
-    });
-
-    const rawContent = response.choices[0].message.content;
-    const assistantText = extractMistralText(rawContent);
-    console.log('📥 ANSWER - Réponse Mistral:', assistantText);
-
-    // Append assistant response to history (always as string)
-    session.messages.push({ role: 'assistant', content: assistantText });
-
-    let questionData;
-    try {
-      questionData = sanitizeQuestionData(parseMistralJson(rawContent));
-    } catch (parseError) {
-      console.error('❌ Erreur parsing JSON:', parseError);
-      return res.status(500).json({ success: false, error: 'Erreur de format dans la réponse IA' });
-    }
-
-    // If the agent signals completion, clean up and return answers
-    if (questionData.action === 'fin_questionnaire') {
-      console.log('✅ Questionnaire terminé par l\'agent');
-      // Keep session alive briefly for /complete route
-      session.extracted_answers = questionData.answers || {};
-    }
-
-    res.json({ success: true, data: questionData });
-  } catch (error) {
-    console.error('❌ Erreur:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Route pour récupérer les answers structurées et nettoyer la session
-app.post('/api/questionnaire/complete', requireAuth, async (req, res) => {
-  try {
-    const { session_id } = req.body;
-
-    if (!session_id) {
-      return res.status(400).json({ success: false, error: 'session_id requis' });
-    }
-
-    const session = sessions.get(session_id);
-    if (!session) {
-      return res.status(404).json({ success: false, error: 'Session non trouvée' });
-    }
-
-    let answers = session.extracted_answers;
-
-    // If no extracted answers yet, force extraction
-    if (!answers || Object.keys(answers).length === 0) {
-      console.log('🔄 Extraction forcée des réponses');
-
-      session.messages.push({
-        role: 'user',
-        content: `Termine maintenant le questionnaire. Retourne UNIQUEMENT un JSON avec :
-{
-  "action": "fin_questionnaire",
-  "answers": {
-    "relation": "conjoint|parent|enfant|frere_soeur|autre",
-    "deceased_firstname": "string ou null",
-    "deceased_lastname": "string ou null",
-    "deceased_dod": "YYYY-MM-DD ou null",
-    "has_notary": boolean,
-    "deceased_was_employed": boolean,
-    "deceased_was_tenant": boolean,
-    "has_life_insurance": boolean,
-    "has_joint_account": boolean,
-    "organismes": ["banque", "assurance", ...]
-  }
-}
-Remplis chaque champ avec les informations recueillies. Si une information n'a pas été recueillie, mets la valeur par défaut (false pour les booléens, null pour les strings, [] pour les tableaux).`
-      });
-
-      const response = await client.agents.complete({
-        agentId: QUESTIONNAIRE_AGENT_ID,
-        messages: session.messages,
-      });
-
-      const rawContent = response.choices[0].message.content;
-      const content = extractMistralText(rawContent);
-      console.log('📥 EXTRACT - Réponse:', content);
-
-      try {
-        const parsed = parseMistralJson(rawContent);
-        answers = parsed.answers || parsed;
-      } catch {
-        console.error('❌ Extraction failed, using defaults');
-        answers = {};
-      }
-    }
-
-    // Normalize answers to QuestionnaireAnswers shape with defaults
-    const normalizedAnswers = {
-      relation: answers.relation || 'autre',
-      has_notary: answers.has_notary ?? false,
-      organismes: Array.isArray(answers.organismes) ? answers.organismes : [],
-      deceased_was_employed: answers.deceased_was_employed ?? false,
-      deceased_was_tenant: answers.deceased_was_tenant ?? false,
-      has_life_insurance: answers.has_life_insurance ?? false,
-      has_joint_account: answers.has_joint_account ?? false,
-      deceased_firstname: answers.deceased_firstname || undefined,
-      deceased_lastname: answers.deceased_lastname || undefined,
-      deceased_dod: answers.deceased_dod || undefined,
-    };
-
-    // Clean up session
-    sessions.delete(session_id);
-    console.log('✅ Session nettoyée, answers extraites');
-
-    res.json({
-      success: true,
-      answers: normalizedAnswers,
-    });
-  } catch (error) {
-    console.error('❌ Erreur:', error);
-    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -918,57 +637,6 @@ app.post('/api/demo/save', requireAuth, async (req, res) => {
   }
 });
 
-// ==================== ROUTE GÉNÉRATION ROADMAP PERSONNALISÉE ====================
-
-// Route pour générer une roadmap (DÉSACTIVÉ - Utilise toujours la roadmap par défaut)
-app.get('/api/roadmap/:code', requireAuth, async (req, res) => {
-  try {
-    const { code } = req.params;
-
-    console.log('🗺️  Chargement roadmap pour code:', code);
-
-    // Vérifier que le code existe dans Supabase (RLS vérifiera les permissions)
-    const { data, error } = await req.supabaseClient
-      .from('transmissions')
-      .select('*')
-      .eq('access_code', code.toUpperCase())
-      .single();
-
-    if (error || !data) {
-      return res.status(404).json({
-        success: false,
-        error: 'Code invalide ou données non trouvées'
-      });
-    }
-
-    // Simuler un délai de chargement (minimum 2 secondes)
-    const startTime = Date.now();
-    
-    console.log('⏳ Simulation génération roadmap (2s minimum)...');
-    
-    // Attendre minimum 2 secondes
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Retourner directement un objet vide pour forcer l'utilisation de la roadmap par défaut
-    console.log('✅ Roadmap par défaut sera utilisée');
-    console.log(`⏱️  Temps de chargement: ${Date.now() - startTime}ms`);
-
-    // Retourner un échec volontaire pour que le frontend utilise la roadmap par défaut
-    res.json({
-      success: false,
-      error: 'Agent roadmap désactivé, utilisation roadmap par défaut',
-      use_default: true
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
 // ==================== ROUTES UTILITAIRES ====================
 
 // Route de santé
@@ -986,6 +654,6 @@ app.get('*', (req, res) => {
 // Démarrage du serveur
 app.listen(PORT, () => {
   console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
-  console.log(`📝 Agent Mistral ID: ${AGENT_ID}`);
+  console.log(`📝 Rédacteur questionnaire v2 : ${MISTRAL_MODEL} | Agent transmission : ${AGENT_ID ? 'configuré' : 'absent'}`);
   console.log(`🗄️  Supabase URL: ${process.env.SUPABASE_URL ? 'Configuré' : 'Non configuré'}`);
 });
