@@ -9,6 +9,8 @@ import { writeQuestionText } from '../lib/question-writer.js'
 
 const SORTED = [...QUESTIONS_CATALOG].sort((a, b) => a.order - b.order)
 const TRISTATE_LABELS = { oui: 'Oui', non: 'Non', ne_sait_pas: 'Je ne sais pas' }
+// Types à valeurs fermées (enums non identifiants) : seuls autorisés dans le contexte LLM.
+const CLOSED_TYPES = ['boolean', 'tristate', 'select', 'multiselect']
 
 /** Contexte court pour le rédacteur — jamais d'historique complet. */
 function writerContext(answers, last) {
@@ -106,7 +108,12 @@ export function createQuestionnaireRouter({
       if (!check.ok) return res.status(400).json({ success: false, error: check.error })
       session.answers = setAnswer(session.answers, spec, value)
       await store.saveAnswers(req.supabaseClient, session_id, session.answers)
-      const data = await renderNext(session, { question: spec.fallback_text.question, value })
+      // PII : la transition n'envoie la dernière réponse au LLM que pour les types fermés
+      // (valeurs enum non identifiantes). Nom de famille et date de décès ne partent pas.
+      const last = CLOSED_TYPES.includes(spec.type)
+        ? { question: spec.fallback_text.question, value }
+        : undefined
+      const data = await renderNext(session, last)
       res.json({ success: true, data })
     } catch (error) {
       console.error('❌ questionnaire/answer :', error)
@@ -143,7 +150,9 @@ export function createQuestionnaireRouter({
       if (nextQuestion(session.answers) !== null) {
         return res.status(409).json({ success: false, error: 'Questionnaire incomplet' })
       }
-      await store.deleteSession(req.supabaseClient, session_id)
+      // Pas de deleteSession : /complete doit être idempotent. Si la réponse HTTP se perd,
+      // un retry renvoie les mêmes answers au lieu d'un 404 (l'utilisateur ne refait pas
+      // 15 questions). Le TTL expires_at (24 h) se charge du nettoyage.
       res.json({ success: true, answers: session.answers })
     } catch (error) {
       console.error('❌ questionnaire/complete :', error)

@@ -17,7 +17,8 @@ function makeApp() {
       return s
     },
     async loadSession(_c: unknown, id: string) {
-      return sessions.get(id) ?? null
+      const s = sessions.get(id)
+      return s ? structuredClone(s) : null // clone : force les routes à passer par saveAnswers
     },
     async saveAnswers(_c: unknown, id: string, answers: Record<string, unknown>) {
       const s = sessions.get(id)
@@ -87,10 +88,12 @@ describe('POST /api/questionnaire/start', () => {
 
 describe('POST /api/questionnaire/answer', () => {
   let app: express.Express
+  let sessions: Map<string, Session>
   let sessionId: string
   beforeEach(async () => {
     const made = makeApp()
     app = made.app
+    sessions = made.sessions
     const start = await request(app).post('/api/questionnaire/start')
     sessionId = start.body.session_id
   })
@@ -101,6 +104,7 @@ describe('POST /api/questionnaire/answer', () => {
     expect(res.status).toBe(200)
     expect(res.body.data.question_id).toBe('deceased_firstname')
     expect(res.body.data.progress).toEqual({ current: 1, total: 15 }) // branche conjoint ouverte
+    expect(sessions.get(sessionId)?.answers.relation).toBe('conjoint_marie') // persisté via saveAnswers, pas par aliasing
   })
   it('valeur hors options → 400 avec message du moteur', async () => {
     const res = await request(app)
@@ -121,6 +125,24 @@ describe('POST /api/questionnaire/answer', () => {
       .post('/api/questionnaire/answer')
       .send({ session_id: 'sess-inexistante', question_id: 'relation', value: 'parent' })
     expect(res.status).toBe(404)
+  })
+  it('échec de persistance → 500 générique sans détail interne', async () => {
+    // App dédiée avec un saveAnswers qui rejette
+    const app2 = express()
+    app2.use(express.json())
+    app2.use('/api/questionnaire', createQuestionnaireRouter({
+      requireAuth: (req: express.Request & { user?: unknown; supabaseClient?: unknown }, _res: express.Response, next: express.NextFunction) => { req.user = { id: 'u' }; req.supabaseClient = {}; next() },
+      store: {
+        async createSession() { throw new Error('n/a') },
+        async loadSession() { return { id: 's', user_id: 'u', answers: {} } },
+        async saveAnswers() { throw new Error('secret interne boom') },
+        async deleteSession() {},
+      },
+      writeText: async () => ({ question: 'Q de secours suffisamment longue ?', source: 'fallback' as const }),
+    }))
+    const res = await request(app2).post('/api/questionnaire/answer').send({ session_id: 's', question_id: 'relation', value: 'parent' })
+    expect(res.status).toBe(500)
+    expect(res.body.error).not.toContain('secret interne')
   })
 })
 
@@ -158,7 +180,7 @@ describe('parcours complet → récap → complete', () => {
     expect(complete.body.answers.has_joint_account).toBeUndefined()
     expect(complete.body.answers.relation).toBe('parent')
   })
-  it('complete avant la fin → 409 ; après → answers puis session supprimée (404 au 2e appel)', async () => {
+  it('complete avant la fin → 409 ; après → answers, et idempotent (mêmes answers au 2e appel)', async () => {
     const { app } = makeApp()
     const start = await request(app).post('/api/questionnaire/start')
     const early = await request(app).post('/api/questionnaire/complete').send({ session_id: start.body.session_id })
@@ -168,8 +190,8 @@ describe('parcours complet → récap → complete', () => {
     const done = await request(app).post('/api/questionnaire/complete').send({ session_id: sessionId })
     expect(done.status).toBe(200)
     expect(done.body.answers.relation).toBe('conjoint_marie')
-    expect(done.body.answers.deceased_firstname).toBe('Pierre')
     const again = await request(app).post('/api/questionnaire/complete').send({ session_id: sessionId })
-    expect(again.status).toBe(404)
+    expect(again.status).toBe(200) // idempotent : une réponse HTTP perdue n'est pas fatale
+    expect(again.body.answers).toEqual(done.body.answers)
   })
 })
