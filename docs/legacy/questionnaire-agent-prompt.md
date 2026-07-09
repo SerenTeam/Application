@@ -1,3 +1,8 @@
+> **ARCHIVÉ (2026-07-08)** : l'agent conversationnel du questionnaire a été remplacé par le moteur v2
+> (`server/lib/questionnaire-engine.js`) + rédacteur (`server/lib/question-writer.js`, prompt versionné
+> dans `server/lib/writer-prompt.js`). Voir `docs/design-questionnaire-v2.md`. Conservé pour référence :
+> son contenu éditorial a été recyclé dans les fallback_text/writer_hints du catalogue.
+
 # Prompt Agent Mistral — Questionnaire Seren
 
 A copier dans le champ "Instructions" lors de la creation de l'agent sur console.mistral.ai.

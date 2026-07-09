@@ -41,16 +41,18 @@ src/
 ├── data/             # Catalogues statiques (steps-catalog, letter-templates)
 └── types/            # Types TypeScript partagés
 server/
-└── server.js         # Express : routes API /api/questionnaire/*, /api/auth/*, /api/demo/*
+├── server.js         # Express : auth proxy, produit transmission (/api/demo/*), static serving
+├── lib/              # Moteur questionnaire v2, catalogue questions, rédacteur LLM, sessions
+└── routes/           # Routers Express (questionnaire v2)
 ```
 
 ### Flux principal
 
-Questionnaire IA (Mistral agent, ≤20 questions) → `QuestionnaireAnswers` → `generateRoadmap()` → `saveRoadmapToDb()` → Dashboard
+Questionnaire v2 (moteur serveur + rédacteur Mistral, ≤15 questions, récap confirmable) → `QuestionnaireAnswersV2` → `generateRoadmap()` → `saveRoadmapToDb()` → Dashboard
 
 ### Contrat de données clé
 
-`QuestionnaireAnswers` dans `src/types/auth.ts` — contrat entre questionnaire et roadmap-generator. Toute modification impacte le pipeline complet.
+`QuestionnaireAnswersV2` dans `src/types/questionnaire.ts` — contrat entre questionnaire et roadmap-generator. Règle d'or : toute question conditionne ≥ 1 étape (invariants testés dans `tests/invariants.test.ts`)
 
 ## Conventions
 
@@ -67,13 +69,15 @@ Questionnaire IA (Mistral agent, ≤20 questions) → `QuestionnaireAnswers` →
 Fichier `.env` à la racine (gitignored). Variables requises :
 - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` — client Supabase frontend
 - `SUPABASE_URL`, `SUPABASE_ANON_KEY` — client Supabase backend
-- `MISTRAL_API_KEY`, `MISTRAL_AGENT_ID` — agent questionnaire
-- `MISTRAL_QUESTIONNAIRE_AGENT_ID`, `MISTRAL_ROADMAP_AGENT_ID` — agents spécialisés (optionnels)
+- `MISTRAL_API_KEY` — clé API Mistral
+- `MISTRAL_MODEL` — modèle du rédacteur questionnaire v2 (défaut : `mistral-small-latest`)
+- `MISTRAL_AGENT_ID` — agent du produit transmission uniquement (`/api/demo/*`)
 - `CORS_ORIGIN` — origines autorisées, séparées par des virgules (défaut : `http://localhost:5173,http://localhost:3000`). À définir en production (ex. `https://app.seren.fr`)
 
 ## Points d'attention
 
-- **Pas de tests** : aucun framework de test configuré. Valider manuellement via le navigateur
-- **Sessions en mémoire** : les sessions questionnaire sont stockées dans une `Map()` côté serveur — perdu au redémarrage. Pas de persistence inter-process
+- **Tests** : Vitest (`npm test`) — moteur, catalogues, invariants croisés, routes (supertest). Les invariants interdisent toute question sans étape et tout drift entre catalogues
+- **Sessions** : questionnaire v2 persisté dans `questionnaire_sessions` (Supabase, RLS, TTL 24 h). Le produit transmission (`/api/demo/*`) reste sur une `Map()` en mémoire — perdu au redémarrage
+- **PII vers Mistral** : le rédacteur ne reçoit que le prénom du défunt, la relation et la dernière réponse fermée (valeurs enum) — jamais l'historique, le nom de famille ni la date de décès
 - **Schema SQL** : `supabase_v1_schema.sql` et `supabase_auth_setup.sql` à la racine — modifications de schema à faire dans Supabase SQL Editor
 - **RLS** : les policies Supabase Row Level Security sont actives — les requêtes côté serveur utilisent le token utilisateur via `getSupabaseClient(token)`
