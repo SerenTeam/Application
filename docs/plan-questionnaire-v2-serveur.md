@@ -912,6 +912,11 @@ git commit -m "feat(questionnaire-v2): monte les routes v2, supprime l'agent con
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
 
+> **Note (exécution)** : entre la Task 5 et la Task 6, le questionnaire est volontairement
+> **non fonctionnel dans l'UI** (le frontend v1 envoie `reponse`/`question_text` aux routes v2 qui
+> attendent `value` → 400 propre, sans crash ni perte de données). Le commit de la Task 5 n'est pas
+> déployable seul — la branche doit inclure la Task 6 avant tout merge.
+
 ---
 
 ### Task 6 : Frontend v2 (QuestionCard, récap, page, suppression adaptateur)
