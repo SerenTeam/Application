@@ -148,6 +148,7 @@ function FormElement({ question, selectedValue, selectedValues, onValueChange, o
     case 'select':
       return (
         <OptionList
+          name={question.question_id}
           options={question.options || []}
           isMulti={false}
           selectedValue={selectedValue as string | null}
@@ -159,6 +160,7 @@ function FormElement({ question, selectedValue, selectedValues, onValueChange, o
     case 'multiselect':
       return (
         <OptionList
+          name={question.question_id}
           options={question.options || []}
           isMulti={true}
           selectedValue={selectedValue as string | null}
@@ -170,6 +172,7 @@ function FormElement({ question, selectedValue, selectedValues, onValueChange, o
     case 'boolean':
       return (
         <ChoiceRow
+          name={question.question_id}
           items={[
             { label: 'Oui', value: true },
             { label: 'Non', value: false },
@@ -181,6 +184,7 @@ function FormElement({ question, selectedValue, selectedValues, onValueChange, o
     case 'tristate':
       return (
         <ChoiceRow
+          name={question.question_id}
           items={[
             { label: 'Oui', value: 'oui' },
             { label: 'Non', value: 'non' },
@@ -207,6 +211,7 @@ function FormElement({ question, selectedValue, selectedValues, onValueChange, o
 // ─── Option list (select / multiselect) — affiche label, soumet value ─────────
 
 interface OptionListProps {
+  name: string
   options: QuestionOption[]
   isMulti: boolean
   selectedValue: string | null
@@ -215,8 +220,8 @@ interface OptionListProps {
   onValuesChange: (values: string[]) => void
 }
 
-function OptionList({ options, isMulti, selectedValue, selectedValues, onValueChange, onValuesChange }: OptionListProps) {
-  function handleClick(value: string) {
+function OptionList({ name, options, isMulti, selectedValue, selectedValues, onValueChange, onValuesChange }: OptionListProps) {
+  function handleChange(value: string) {
     if (isMulti) {
       const next = selectedValues.includes(value)
         ? selectedValues.filter((v) => v !== value)
@@ -234,16 +239,21 @@ function OptionList({ options, isMulti, selectedValue, selectedValues, onValueCh
       {options.map(({ value, label }) => (
         <label
           key={value}
-          onClick={(e) => {
-            e.preventDefault()
-            handleClick(value)
-          }}
           className={cn(
             'flex items-center py-4 px-5 bg-bg border-2 border-border rounded-radius-md cursor-pointer transition-all duration-200',
             'hover:border-accent hover:bg-accent-soft',
+            'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent has-[:focus-visible]:ring-offset-2',
             isSelected(value) && 'border-accent bg-accent-soft'
           )}
         >
+          <input
+            type={isMulti ? 'checkbox' : 'radio'}
+            name={name}
+            value={value}
+            checked={isSelected(value)}
+            onChange={() => handleChange(value)}
+            className="sr-only"
+          />
           {isMulti ? (
             <span
               className={cn(
@@ -273,27 +283,33 @@ function OptionList({ options, isMulti, selectedValue, selectedValues, onValueCh
 // ─── Choice row (boolean / tristate) ─────────────────────────────────────────
 
 interface ChoiceRowProps {
+  name: string
   items: Array<{ label: string; value: unknown }>
   selectedValue: unknown
   onValueChange: (value: unknown) => void
 }
 
-function ChoiceRow({ items, selectedValue, onValueChange }: ChoiceRowProps) {
+function ChoiceRow({ name, items, selectedValue, onValueChange }: ChoiceRowProps) {
   return (
     <div className="flex gap-4 max-sm:flex-col">
       {items.map(({ label, value }) => (
         <label
           key={label}
-          onClick={(e) => {
-            e.preventDefault()
-            onValueChange(value)
-          }}
           className={cn(
             'flex-1 flex items-center justify-center py-4 px-5 bg-bg border-2 border-border rounded-radius-md cursor-pointer transition-all duration-200',
             'hover:border-accent hover:bg-accent-soft',
+            'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent has-[:focus-visible]:ring-offset-2',
             selectedValue === value && 'border-accent bg-accent-soft'
           )}
         >
+          <input
+            type="radio"
+            name={name}
+            value={String(value)}
+            checked={selectedValue === value}
+            onChange={() => onValueChange(value)}
+            className="sr-only"
+          />
           <span
             className={cn(
               'w-5 h-5 border-2 border-border rounded-full mr-4 flex items-center justify-center transition-all duration-200 shrink-0',
