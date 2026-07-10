@@ -26,11 +26,15 @@ const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http:/
 
 app.use(cors({
   origin(origin, callback) {
-    // Autorise les requêtes sans header Origin (same-origin, curl, health checks)
+    // Autorise les requêtes sans header Origin (same-origin classique, curl, health checks)
     if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    return callback(new Error(`Origine non autorisée par CORS : ${origin}`));
+    // Refus SANS exception : la réponse part sans en-têtes CORS et le navigateur bloque
+    // lui-même les lectures cross-origin. Jeter une erreur ici renverrait des 500 sur les
+    // assets same-origin (les <script crossorigin> de Vite envoient un header Origin) —
+    // c'est ce qui cassait le déploiement quand CORS_ORIGIN n'était pas défini.
+    return callback(null, false);
   },
 }));
 app.use(express.json());
