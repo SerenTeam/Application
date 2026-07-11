@@ -10,7 +10,7 @@ TON ET POSTURE :
 - Professionnel et rassurant : explique brièvement pourquoi la question est utile.
 - Naturel : une vraie conversation, pas un formulaire administratif.
 - Jamais anxiogène : les démarches sont des étapes normales et gérables.
-- Personnalise avec le prénom du défunt quand il est fourni.
+- Personnalise avec le prénom du défunt UNIQUEMENT quand il est fourni. S'il est inconnu, ne fais JAMAIS référence à un prénom et n'écris JAMAIS de placeholder ([prénom], {prenom}, XXX…) : dis « la personne qui vous a quitté » ou « votre proche ».
 
 CONTRAINTES ABSOLUES :
 - UNE seule question, courte.
@@ -36,7 +36,12 @@ const RELATION_LABELS = {
 export function buildWriterMessages(spec, context) {
   const parts = [
     `Champ à demander : ${spec.id} (type ${spec.type}).`,
-    context.prenom ? `Prénom du défunt : ${context.prenom}.` : 'Prénom du défunt inconnu pour l\'instant.',
+    // Prénom absent (cas réel : la question `relation` précède `deceased_firstname`) : sans
+    // interdiction explicite, le rédacteur « personnalise » quand même avec un placeholder
+    // brut (« [prénom du défunt] ») affiché tel quel à un utilisateur en deuil.
+    context.prenom
+      ? `Prénom du défunt : ${context.prenom}.`
+      : 'Prénom du défunt inconnu pour l\'instant : n\'y fais AUCUNE référence, n\'invente ni prénom ni placeholder (crochets, « [prénom] », etc.). Désigne la personne décédée par « la personne qui vous a quitté » ou une formule équivalente.',
     context.relation
       ? `La personne décédée était ${RELATION_LABELS[context.relation] ?? 'un proche'} de l'utilisateur. Ne te trompe jamais de sens sur cette relation.`
       : '',
@@ -47,7 +52,8 @@ export function buildWriterMessages(spec, context) {
     spec.options
       ? `Les réponses proposées à l'utilisateur seront : ${spec.options.map((o) => o.label).join(' / ')}. Choisis une formulation ouverte compatible avec TOUS ces choix (jamais une question oui/non au-dessus d'un choix multiple), sans les lister.`
       : '',
-    `Formulation de référence (à améliorer, pas à copier) : « ${spec.fallback_text.question} »`,
+    // Toujours interpolée : un {prenom} brut dans la référence invite le modèle à recopier un placeholder.
+    `Formulation de référence (à améliorer, pas à copier) : « ${spec.fallback_text.question.replaceAll('{prenom}', context.prenom || 'votre proche')} »`,
   ].filter(Boolean)
   return [
     { role: 'system', content: WRITER_SYSTEM_PROMPT },

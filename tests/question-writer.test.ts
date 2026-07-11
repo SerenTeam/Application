@@ -86,7 +86,8 @@ describe('buildWriterMessages', () => {
     expect(messages[1].content).toContain('Pierre')
     expect(messages[1].content).toContain('l\'époux ou l\'épouse')
     expect(messages[1].content).toContain('indice métier')
-    expect(messages[1].content).toContain(SPEC.fallback_text.question)
+    // formulation de référence interpolée avec le prénom, jamais le {prenom} brut
+    expect(messages[1].content).toContain('À quelle date Pierre est-il/elle décédé(e) ?')
   })
   it('contexte vide : aucun « undefined » dans le contenu', () => {
     const messages = buildWriterMessages(SPEC, {})
@@ -107,5 +108,17 @@ describe('buildWriterMessages', () => {
     const messages = buildWriterMessages(spec, {})
     expect(messages[1].content).toContain('Premier choix')
     expect(messages[1].content).toContain('formulation ouverte')
+  })
+  it('prénom inconnu : interdiction explicite d\'y faire référence ou d\'inventer un placeholder (bug réel : « [prénom du défunt] » affiché)', () => {
+    const content = buildWriterMessages(SPEC, {})[1].content
+    expect(content).toContain('AUCUNE référence')
+    expect(content).toContain('placeholder')
+    expect(content).toContain('la personne qui vous a quitté')
+  })
+  it('le {prenom} de la formulation de référence est toujours interpolé, jamais transmis brut', () => {
+    expect(buildWriterMessages(SPEC, {})[1].content).not.toContain('{prenom}')
+    const withName = buildWriterMessages(SPEC, CTX)[1].content
+    expect(withName).not.toContain('{prenom}')
+    expect(withName).toContain('À quelle date Pierre est-il/elle décédé(e) ?')
   })
 })
