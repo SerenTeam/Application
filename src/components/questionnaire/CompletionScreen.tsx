@@ -28,7 +28,7 @@ export function CompletionScreen({ stepsCount, doneCount }: CompletionScreenProp
 
       {/* Title */}
       <h2 className="font-display text-[2rem] font-medium mb-4">
-        Votre parcours est pret
+        Votre parcours est prêt
       </h2>
 
       {/* Description */}
@@ -44,7 +44,7 @@ export function CompletionScreen({ stepsCount, doneCount }: CompletionScreenProp
         .
       </p>
       <p className="text-text-soft max-w-[440px] mx-auto mb-10">
-        Retrouvez votre parcours detaille avec les courriers pre-remplis sur
+        Retrouvez votre parcours détaillé avec les courriers pré-remplis sur
         votre tableau de bord.
       </p>
 

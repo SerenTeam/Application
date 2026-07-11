@@ -53,6 +53,30 @@ describe('invariant : pas de question morte, pas d’étape orpheline', () => {
       }
     }
   })
+  it('chaque valeur d\'option d\'une question conditionnelle influence ≥ 1 étape, sauf valeurs neutres documentées', () => {
+    // Une valeur « neutre » signifie légitimement « rien à faire de plus » — liste exhaustive et volontaire.
+    const NEUTRAL: Record<string, string[]> = {
+      relation: ['parent', 'enfant', 'frere_soeur', 'autre'], // pacse/concubin pilotent le transfert de contrats (étape ligne ~491) ; les autres relations sont neutres par nature
+      statut_professionnel: ['retraite', 'sans_activite'], // CARSAT/impôts déjà inconditionnels
+      logement: ['heberge_ou_autre'],
+      enfants: ['aucun', 'majeurs'], // pension d'orphelin = backlog éditorial futur
+      has_life_insurance: ['non'],
+      contrat_obseques: ['non'],
+    }
+    for (const q of QUESTIONS_CATALOG) {
+      const values = q.options?.map((o: { value: string }) => o.value)
+        ?? (q.type === 'tristate' ? ['oui', 'non', 'ne_sait_pas'] : null)
+      if (!values || IDENTITY_FIELDS.includes(q.id) || SPECIAL_FIELDS.includes(q.id)) continue
+      for (const v of values) {
+        if (NEUTRAL[q.id]?.includes(v)) continue
+        const used = STEPS_CATALOG.some((s) => {
+          const cond = (s.applicable_when as Record<string, unknown>)[q.id]
+          return Array.isArray(cond) && cond.includes(v)
+        })
+        expect(used, `valeur inerte non documentée : ${q.id}=${v}`).toBe(true)
+      }
+    }
+  })
   it('chaque valeur de condition en tableau est une option valide de la question du même champ', () => {
     const TRISTATE_VALUES = ['oui', 'non', 'ne_sait_pas']
     const byId = Object.fromEntries(

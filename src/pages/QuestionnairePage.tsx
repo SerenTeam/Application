@@ -252,7 +252,7 @@ export function QuestionnairePage() {
         {sessionExpired && (
           <div className="text-center py-16 px-8">
             <div className="bg-[#FEF2F0] border border-[#F5D5D0] text-error py-4 px-5 rounded-radius-sm mb-6 text-[0.95rem] max-w-md mx-auto">
-              Votre session a expiré (24 h). Vos réponses n'ont pas été perdues côté serveur si vous aviez terminé — sinon, il faudra recommencer. Nous sommes désolés.
+              Votre session a expiré après 24 heures d'inactivité. Nous sommes désolés — il faudra reprendre le questionnaire depuis le début. Vos réponses ne sont conservées que le temps de la session, par respect de votre vie privée.
             </div>
             <button
               onClick={() => {
