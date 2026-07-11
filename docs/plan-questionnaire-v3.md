@@ -16,7 +16,7 @@
 
 ### Task 0 : Branche
 
-- [ ] **Step 1**
+- [x] **Step 1**
 ```bash
 cd /Users/arnaudgay/Documents/git/Seren/Application
 git checkout -b feat/questionnaire-v3
@@ -31,7 +31,7 @@ npm test   # 64 passed attendus au départ
 - Modify: `server/lib/questions-catalog.js` (question `has_joint_account`)
 - Modify: `tests/questionnaire-engine.test.ts`, `tests/questionnaire-routes.test.ts` (compteurs)
 
-- [ ] **Step 1 : Retirer la condition**
+- [x] **Step 1 : Retirer la condition**
 
 Dans `server/lib/questions-catalog.js`, question `has_joint_account` : remplacer `applicable_when: { relation: ['conjoint_marie', 'pacse', 'concubin'] },` par :
 ```javascript
@@ -41,7 +41,7 @@ Dans `server/lib/questions-catalog.js`, question `has_joint_account` : remplacer
 ```
 Le `fallback_text` existant (« Aviez-vous un compte bancaire joint avec {prenom} ? ») convient à toutes les relations — ne pas y toucher.
 
-- [ ] **Step 2 : Adapter les tests (rouges d'abord — lancer `npm test` après chaque édition)**
+- [x] **Step 2 : Adapter les tests (rouges d'abord — lancer `npm test` après chaque édition)**
 
 `tests/questionnaire-engine.test.ts` :
 - test `'conjoint marié : 15 questions…'` : inchangé (15).
@@ -70,9 +70,9 @@ Le `fallback_text` existant (« Aviez-vous un compte bancaire joint avec {prenom
 ```
 (supprimer l'appel/assertions `has_joint_account` qui suivaient).
 
-- [ ] **Step 3 : Vérifier** — `npm test` → 64 passed ; `npx tsc --noEmit`.
+- [x] **Step 3 : Vérifier** — `npm test` → 64 passed ; `npx tsc --noEmit`.
 
-- [ ] **Step 4 : Commit**
+- [x] **Step 4 : Commit**
 ```bash
 git add server/lib/questions-catalog.js tests/questionnaire-engine.test.ts tests/questionnaire-routes.test.ts
 git commit -m "feat(questionnaire-v3): la question compte joint est posée à tous les profils
@@ -102,7 +102,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 Constat E2E (spec, point 8 de la checklist) : le rédacteur formule parfois en oui/non au-dessus d'un select à 6 choix. Fix : lui donner les libellés d'options en contexte, avec interdiction de les lister.
 
-- [ ] **Step 1 : Test rouge** — dans le describe `buildWriterMessages` de `tests/question-writer.test.ts` :
+- [x] **Step 1 : Test rouge** — dans le describe `buildWriterMessages` de `tests/question-writer.test.ts` :
 ```typescript
   it('les libellés des options sont fournis au rédacteur pour une formulation compatible', () => {
     const spec = { ...SPEC, type: 'select', options: [{ value: 'a', label: 'Premier choix' }, { value: 'b', label: 'Second choix' }] }
@@ -113,14 +113,14 @@ Constat E2E (spec, point 8 de la checklist) : le rédacteur formule parfois en o
 ```
 Run → FAIL.
 
-- [ ] **Step 2 : Implémenter** — dans `buildWriterMessages` (`server/lib/writer-prompt.js`), ajouter dans `parts`, juste avant la ligne « Formulation de référence » :
+- [x] **Step 2 : Implémenter** — dans `buildWriterMessages` (`server/lib/writer-prompt.js`), ajouter dans `parts`, juste avant la ligne « Formulation de référence » :
 ```javascript
     spec.options
       ? `Les réponses proposées à l'utilisateur seront : ${spec.options.map((o) => o.label).join(' / ')}. Choisis une formulation ouverte compatible avec TOUS ces choix (jamais une question oui/non au-dessus d'un choix multiple), sans les lister.`
       : '',
 ```
 
-- [ ] **Step 3 : Vérifier** — `npm test` → 65 ; spot-check Mistral réel (3 générations `statut_professionnel`, contexte relation parent) : la question ne doit plus être une tournure oui/non. Commande :
+- [x] **Step 3 : Vérifier** — `npm test` → 65 ; spot-check Mistral réel (3 générations `statut_professionnel`, contexte relation parent) : la question ne doit plus être une tournure oui/non. Commande :
 ```bash
 node --input-type=module -e "
 import 'dotenv/config'; import { Mistral } from '@mistralai/mistralai'
@@ -132,7 +132,7 @@ for (let i = 0; i < 3; i++) console.log((await writeQuestionText({ spec, context
 "
 ```
 
-- [ ] **Step 4 : Commit**
+- [x] **Step 4 : Commit**
 ```bash
 git add server/lib/writer-prompt.js tests/question-writer.test.ts
 git commit -m "fix(questionnaire-v3): le rédacteur connaît les options et formule des questions ouvertes compatibles
@@ -147,7 +147,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 **Files:**
 - Create: `supabase/migrations/20260711100000_purge_sessions_cron.sql`
 
-- [ ] **Step 1 : Écrire la migration**
+- [x] **Step 1 : Écrire la migration**
 ```sql
 -- Purge physique des sessions expirées (l'expiration n'était jusqu'ici qu'une invisibilité
 -- à la lecture — la table grossissait sans borne). L'index questionnaire_sessions_expires_idx
@@ -163,7 +163,7 @@ select cron.schedule(
 
 - [ ] **Step 2 : ⚠️ USER STEP** — appliquer dans le SQL Editor Supabase. Si `pg_cron` n'est pas disponible sur le plan du projet, l'activer d'abord via Dashboard → Database → Extensions. Vérification : `select jobname, schedule from cron.job;` doit lister `purge-questionnaire-sessions`.
 
-- [ ] **Step 3 : Commit**
+- [x] **Step 3 : Commit**
 ```bash
 git add supabase/migrations/20260711100000_purge_sessions_cron.sql
 git commit -m "feat(questionnaire-v3): purge nocturne pg_cron des sessions expirées
@@ -182,7 +182,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 Chaque `/start` = 1 ligne BDD + 1 appel LLM. Limiteur en mémoire par utilisateur (suffisant mono-instance ; si multi-instances un jour, passer à un compteur BDD).
 
-- [ ] **Step 1 : Tests rouges** — `tests/rate-limit.test.ts` :
+- [x] **Step 1 : Tests rouges** — `tests/rate-limit.test.ts` :
 ```typescript
 import { describe, it, expect, vi, afterEach } from 'vitest'
 // @ts-expect-error — module JS serveur
@@ -218,7 +218,7 @@ describe('createUserRateLimiter', () => {
 ```
 Run → FAIL.
 
-- [ ] **Step 2 : Implémenter** — `server/lib/rate-limit.js` :
+- [x] **Step 2 : Implémenter** — `server/lib/rate-limit.js` :
 ```javascript
 // Limiteur en mémoire par utilisateur (fenêtre glissante). Suffisant en mono-instance ;
 // pour du multi-instances, remplacer par un compteur partagé (BDD/Redis).
@@ -240,7 +240,7 @@ export function createUserRateLimiter({ max, windowMs, message = 'Trop de requê
 }
 ```
 
-- [ ] **Step 3 : Brancher sur /start** — dans `server/routes/questionnaire.js` :
+- [x] **Step 3 : Brancher sur /start** — dans `server/routes/questionnaire.js` :
 - import : `import { createUserRateLimiter } from '../lib/rate-limit.js'`
 - dans `createQuestionnaireRouter`, avant les routes :
 ```javascript
@@ -250,9 +250,9 @@ export function createUserRateLimiter({ max, windowMs, message = 'Trop de requê
 ```
 - route start : `router.post('/start', requireAuth, startLimiter, async (req, res) => {`
 
-- [ ] **Step 4 : Vérifier** — `npm test` → 67 ; `node --check` sur les 2 fichiers. Test manuel rapide : 11 `curl /start` authentifiés → le 11ᵉ répond 429.
+- [x] **Step 4 : Vérifier** — `npm test` → 67 ; `node --check` sur les 2 fichiers. Test manuel rapide : 11 `curl /start` authentifiés → le 11ᵉ répond 429.
 
-- [ ] **Step 5 : Commit**
+- [x] **Step 5 : Commit**
 ```bash
 git add server/lib/rate-limit.js server/routes/questionnaire.js tests/rate-limit.test.ts
 git commit -m "feat(questionnaire-v3): rate limiting par utilisateur sur /start (10/h)
@@ -269,7 +269,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Modify: `src/pages/QuestionnairePage.tsx`
 - Test: `tests/questionnaire-routes.test.ts` (+2)
 
-- [ ] **Step 1 : Tests rouges** — describe `parcours complet…` :
+- [x] **Step 1 : Tests rouges** — describe `parcours complet…` :
 ```typescript
   it('resume : session en cours → prochaine question ; session finie → récap', async () => {
     const { app } = makeApp()
@@ -289,7 +289,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
   })
 ```
 
-- [ ] **Step 2 : Route** — dans `createQuestionnaireRouter`, après `/reask` :
+- [x] **Step 2 : Route** — dans `createQuestionnaireRouter`, après `/reask` :
 ```javascript
   router.post('/resume', requireAuth, async (req, res) => {
     try {
@@ -307,7 +307,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
   })
 ```
 
-- [ ] **Step 3 : Frontend** — `src/pages/QuestionnairePage.tsx` :
+- [x] **Step 3 : Frontend** — `src/pages/QuestionnairePage.tsx` :
 - après un `/start` réussi : `sessionStorage.setItem('seren_questionnaire_session', result.session_id)`
 - dans `confirmAndGenerate` après `setPhase('done')` ET dans le bouton « Recommencer » de session expirée : `sessionStorage.removeItem('seren_questionnaire_session')`
 - au montage (nouveau `useEffect` + callback `resumeSession`) :
@@ -342,9 +342,9 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
   }, [])
 ```
 
-- [ ] **Step 4 : Vérifier** — `npm test` → 69 ; `npx tsc --noEmit` ; `npx vite build`. Manuel : démarrer un questionnaire sur 5173, répondre à 3 questions, F5 → on reprend à la question 4.
+- [x] **Step 4 : Vérifier** — `npm test` → 69 ; `npx tsc --noEmit` ; `npx vite build`. Manuel : démarrer un questionnaire sur 5173, répondre à 3 questions, F5 → on reprend à la question 4.
 
-- [ ] **Step 5 : Commit**
+- [x] **Step 5 : Commit**
 ```bash
 git add server/routes/questionnaire.js src/pages/QuestionnairePage.tsx tests/questionnaire-routes.test.ts
 git commit -m "feat(questionnaire-v3): reprise de session après refresh (route /resume + sessionStorage)
@@ -366,7 +366,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 3. **Template obligatoire** (identique aux 30 étapes existantes) : `id`, `title` (infinitif), `description` (2 phrases, ton empathique), `theme`, `urgency`+`urgency_label`, `when_to_do`, `why_to_do`, `what_you_do` (2-4 actions concrètes), `responsable`, `requires_notary`, `applicable_when`, `source_url`, `display_order` (38+ dans l'ordre ci-dessous). `organisme_key` UNIQUEMENT si listé ci-dessous.
 4. Les invariants (`npm test`) DOIVENT rester verts après chaque étape ajoutée.
 
-- [ ] **Step 1 : Axe banque/succession (toujours applicables)**
+- [x] **Step 1 : Axe banque/succession (toujours applicables)**
 
 | id | condition | organisme_key | à vérifier sur la source |
 |---|---|---|---|
@@ -374,14 +374,14 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 | `banque-recherche-ficoba` | `{}` | — | procédure Ficoba pour les héritiers (qui, comment, gratuit ?) |
 | `succession-acte-notoriete` | `{}` | — | seuil au-delà duquel l'acte de notoriété est exigé par les banques, coût approximatif chez le notaire |
 
-- [ ] **Step 2 : Axe droits du conjoint** (fiches réversion/veuvage spécifiques)
+- [x] **Step 2 : Axe droits du conjoint** (fiches réversion/veuvage spécifiques)
 
 | id | condition | à vérifier |
 |---|---|---|
 | `administratif-reversion-agirc-arrco` | `relation: ['conjoint_marie']` | conditions Agirc-Arrco (pas de condition de ressources, remariage, taux 60 %) — distincte de la réversion de base déjà couverte |
 | `administratif-allocation-veuvage` | `relation: ['conjoint_marie']` | conditions d'âge (<55 ans), ressources, durée, organisme (Cnav/MSA) |
 
-- [ ] **Step 3 : Axe statut professionnel** (ferme les valeurs d'enum encore inertes)
+- [x] **Step 3 : Axe statut professionnel** (ferme les valeurs d'enum encore inertes)
 
 | id | condition | à vérifier |
 |---|---|---|
@@ -390,35 +390,40 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 | `administratif-urssaf-independant` | `statut_professionnel: ['independant']` | radiation/cessation d'activité auprès de l'URSSAF, formalités entreprise individuelle, capital décès des indépendants |
 | `administratif-france-travail` | `statut_professionnel: ['demandeur_emploi']` | informer France Travail, allocation décès éventuelle aux ayants droit |
 
-- [ ] **Step 4 : Axe logement/patrimoine**
+- [x] **Step 4 : Axe logement/patrimoine**
 
 | id | condition | à vérifier |
 |---|---|---|
 | `logement-attestation-immobiliere` | `logement: ['proprietaire']` | attestation de propriété immobilière notariée : délai (~6 mois lié à la déclaration de succession), rôle du notaire (`requires_notary: true`, `responsable: 'partage'`) |
 | `logement-ne-pas-resilier-trop-tot` | `{}` | étape « warning » (`warning_badge` renseigné) : ne PAS résilier eau/gaz/électricité/assurance habitation avant l'accord des héritiers — l'assurance habitation doit être MAINTENUE |
 
-- [ ] **Step 5 : Axe obsèques/utilisateur**
+- [x] **Step 5 : Axe obsèques/utilisateur**
 
 | id | condition | à vérifier |
 |---|---|---|
 | `obseques-utiliser-contrat` | `contrat_obseques: ['oui']` | comment activer un contrat obsèques existant (assureur, pompes funèbres, volontés) — ferme la valeur 'oui' encore inerte |
 | `administratif-conge-deuil` | `{}` | congé de deuil du PROCHE (l'utilisateur) : 3 jours minimum, 12-14 jours + congé de deuil si enfant, justificatifs |
 
-- [ ] **Step 6 : Axe numérique (CNIL)** — enrichir les DEUX étapes existantes `numerique-reseaux-sociaux` et `numerique-boite-email` : ajouter dans `what_you_do` le signalement de décès aux plateformes / compte commémoratif (Facebook, Instagram, LinkedIn) et le droit des héritiers à la clôture (loi République numérique) ; ajouter `source_url` vers la page CNIL « mort numérique ». Ne pas créer de nouvelle étape.
+- [x] **Step 6 : Axe numérique (CNIL)** — enrichir les DEUX étapes existantes `numerique-reseaux-sociaux` et `numerique-boite-email` : ajouter dans `what_you_do` le signalement de décès aux plateformes / compte commémoratif (Facebook, Instagram, LinkedIn) et le droit des héritiers à la clôture (loi République numérique) ; ajouter `source_url` vers la page CNIL « mort numérique ». Ne pas créer de nouvelle étape.
 
-- [ ] **Step 7 : Re-sourcing des 7 étapes du Plan 1** — remplacer le `source_url` générique F16507 des étapes `assurance-vie-recherche-agira`, `famille-juge-tutelles`, `patrimoine-carte-grise`, `patrimoine-assurance-emprunteur`, `administratif-aide-domicile`, `obseques-recherche-contrat-agira`, `succession-recherche-testament-fcddv` par leur fiche spécifique, et vérifier au passage chaque fait chiffré (15 j AGIRA, 1 mois assureur, 30 j aide à domicile, ~18 € FCDDV, formulaireagira.fr, adsn.notaires.fr). Corriger `patrimoine-assurance-emprunteur` : « obligatoire pour l'immobilier » → « quasi systématiquement exigée par les banques ».
+- [x] **Step 7 : Re-sourcing des 7 étapes du Plan 1** — remplacer le `source_url` générique F16507 des étapes `assurance-vie-recherche-agira`, `famille-juge-tutelles`, `patrimoine-carte-grise`, `patrimoine-assurance-emprunteur`, `administratif-aide-domicile`, `obseques-recherche-contrat-agira`, `succession-recherche-testament-fcddv` par leur fiche spécifique, et vérifier au passage chaque fait chiffré (15 j AGIRA, 1 mois assureur, 30 j aide à domicile, ~18 € FCDDV, formulaireagira.fr, adsn.notaires.fr). Corriger `patrimoine-assurance-emprunteur` : « obligatoire pour l'immobilier » → « quasi systématiquement exigée par les banques ».
 
-- [ ] **Step 8 : Test d'atteignabilité étendu** — dans `tests/roadmap-generator.test.ts`, étendre les profils du test `'atteignabilité'` pour couvrir les nouvelles conditions (`statut_professionnel: 'fonctionnaire'`, `'independant'`, `'demandeur_emploi'`, `logement: 'proprietaire'`, `contrat_obseques: 'oui'`). Le test existant échouera pour toute étape inatteignable — le faire passer prouve la couverture.
+- [x] **Step 8 : Test d'atteignabilité étendu** — dans `tests/roadmap-generator.test.ts`, étendre les profils du test `'atteignabilité'` pour couvrir les nouvelles conditions (`statut_professionnel: 'fonctionnaire'`, `'independant'`, `'demandeur_emploi'`, `logement: 'proprietaire'`, `contrat_obseques: 'oui'`). Le test existant échouera pour toute étape inatteignable — le faire passer prouve la couverture.
 
-- [ ] **Step 9 : Vérifier** — `npm test` (tous verts, invariants inclus) ; `npx tsc --noEmit` ; `npx vite build`.
+- [x] **Step 9 : Vérifier** — `npm test` (tous verts, invariants inclus) ; `npx tsc --noEmit` ; `npx vite build`.
 
-- [ ] **Step 10 : Commit** (un commit par axe est accepté, sinon un seul)
+- [x] **Step 10 : Commit** (un commit par axe est accepté, sinon un seul)
 ```bash
 git add src/data/steps-catalog.ts tests/roadmap-generator.test.ts
 git commit -m "feat(questionnaire-v3): lot éditorial — 13 nouvelles étapes sourcées + enrichissement numérique + re-sourcing Plan 1
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```
+
+> **Note post-revue Task 6 (exécution)** : 3 des 13 étapes citent la page officielle de
+> l'opérateur plutôt que service-public.fr au sens strict (agirc-arrco.fr, inpi.fr,
+> francetravail.fr) — l'esprit de la règle (fiche officielle précise, faits vérifiés dessus)
+> est respecté.
 
 ---
 
@@ -428,7 +433,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Modify: `tests/invariants.test.ts`
 - Modify: `src/components/questionnaire/CompletionScreen.tsx`, `src/pages/QuestionnairePage.tsx`
 
-- [ ] **Step 1 : Invariant par valeur (avec liste neutre explicite)** — ajouter dans `tests/invariants.test.ts` :
+- [x] **Step 1 : Invariant par valeur (avec liste neutre explicite)** — ajouter dans `tests/invariants.test.ts` :
 ```typescript
   it('chaque valeur d’option d’une question conditionnelle influence ≥ 1 étape, sauf valeurs neutres documentées', () => {
     // Une valeur « neutre » signifie légitimement « rien à faire de plus » — liste exhaustive et volontaire.
@@ -457,16 +462,16 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```
 Ce test DOIT passer après la Task 6 (il vérifie que fonctionnaire/independant/demandeur_emploi/proprietaire/contrat 'oui' sont désormais branchés). S'il échoue : soit une étape manque (Task 6 incomplète), soit une valeur doit être ajoutée à `NEUTRAL` avec justification en commentaire.
 
-- [ ] **Step 2 : Accents de `CompletionScreen.tsx`** — corriger le texte statique : `pret` → `prêt`, `detaille` → `détaillé`, `pre-remplis` → `pré-remplis`, `a effectuer` → `à effectuer` (title et paragraphes).
+- [x] **Step 2 : Accents de `CompletionScreen.tsx`** — corriger le texte statique : `pret` → `prêt`, `detaille` → `détaillé`, `pre-remplis` → `pré-remplis`, `a effectuer` → `à effectuer` (title et paragraphes).
 
-- [ ] **Step 3 : Message de session expirée** — dans `QuestionnairePage.tsx`, remplacer le texte ambigu (« Vos réponses n'ont pas été perdues côté serveur si vous aviez terminé — sinon, il faudra recommencer. Nous sommes désolés. ») par :
+- [x] **Step 3 : Message de session expirée** — dans `QuestionnairePage.tsx`, remplacer le texte ambigu (« Vos réponses n'ont pas été perdues côté serveur si vous aviez terminé — sinon, il faudra recommencer. Nous sommes désolés. ») par :
 ```
 Votre session a expiré après 24 heures d'inactivité. Nous sommes désolés — il faudra reprendre le questionnaire depuis le début. Vos réponses ne sont conservées que le temps de la session, par respect de votre vie privée.
 ```
 
-- [ ] **Step 4 : Vérifier** — `npm test` (+1 test) ; `npx tsc --noEmit` ; `npx vite build`.
+- [x] **Step 4 : Vérifier** — `npm test` (+1 test) ; `npx tsc --noEmit` ; `npx vite build`.
 
-- [ ] **Step 5 : Commit**
+- [x] **Step 5 : Commit**
 ```bash
 git add tests/invariants.test.ts src/components/questionnaire/CompletionScreen.tsx src/pages/QuestionnairePage.tsx
 git commit -m "test(questionnaire-v3): invariant d'atteignabilité par valeur + passe UX (accents, message expiration)
@@ -478,12 +483,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ### Task 8 : Vérification finale, relecture humaine, revue globale
 
-- [ ] **Step 1 : Suite complète**
+- [x] **Step 1 : Suite complète**
 ```bash
 npx tsc --noEmit && npm test && npx vite build && node --check server/server.js && node --check server/routes/questionnaire.js && node --check server/lib/rate-limit.js
 ```
 
-- [ ] **Step 2 : E2E navigateur** (compte de test : `test.e2e.claude@seren-test.fr` / `TestSeren2026!`) — profil **enfant du défunt, père indépendant propriétaire, contrat obsèques 'oui'** : vérifier compte joint posé (nouveau), étapes URSSAF/attestation immobilière/contrat obsèques dans la roadmap, reprise après F5 en cours de questionnaire, formulations du rédacteur compatibles avec les options.
+- [x] **Step 2 : E2E navigateur** (compte de test : `test.e2e.claude@seren-test.fr` / `TestSeren2026!`) — profil **enfant du défunt, père indépendant propriétaire, contrat obsèques 'oui'** : vérifier compte joint posé (nouveau), étapes URSSAF/attestation immobilière/contrat obsèques dans la roadmap, reprise après F5 en cours de questionnaire, formulations du rédacteur compatibles avec les options.
 
 - [ ] **Step 3 : ⚠️ USER STEP — relecture juridique/éditoriale** : Arnaud (ou un juriste) relit les ~14 nouvelles étapes + les points de la checklist du spec (`docs/design-questionnaire-v2.md`, section « Points obligatoires pour la relecture ») — en particulier `famille-juge-tutelles` (réforme 2019) et tous les montants/délais.
 

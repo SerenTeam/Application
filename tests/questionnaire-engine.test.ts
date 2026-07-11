@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 // @ts-expect-error — module JS serveur
 import { nextQuestion, validateAnswer, setAnswer, progress } from '../server/lib/questionnaire-engine.js'
 // @ts-expect-error — module JS serveur
@@ -91,7 +91,7 @@ describe('validateAnswer', () => {
   })
 })
 
-describe('setAnswer — purge des branches invalidées (correction au récap)', () => {
+describe('setAnswer — conservation des réponses (catalogue 100 % universel) et purge synthétique', () => {
   it('changer relation conjoint→parent : has_joint_account n\'est plus purgé (question universelle, décision 2026-07-11)', () => {
     let answers: Answers = {}
     answers = setAnswer(answers, spec('relation'), 'conjoint_marie')
@@ -108,6 +108,34 @@ describe('setAnswer — purge des branches invalidées (correction au récap)', 
   })
   it('trim les valeurs texte', () => {
     expect(setAnswer({}, spec('deceased_firstname'), '  Pierre  ').deceased_firstname).toBe('Pierre')
+  })
+  // Le catalogue réel n'a plus aucune question conditionnelle (Task 1 a rendu has_joint_account
+  // universelle) : aucun scénario réel n'exerce plus la boucle de purge de setAnswer. Le seam
+  // disponible pour la tester quand même, sans toucher au moteur, est le module questions-catalog.js
+  // que le moteur importe : on le mocke avec un catalogue synthétique de 2 questions, on réimporte
+  // le moteur (module frais après vi.resetModules), et on exécute le VRAI code de purge dessus.
+  it('purge réellement la réponse d\'une branche devenue inapplicable (catalogue synthétique via mock du module questions-catalog.js)', async () => {
+    vi.resetModules()
+    vi.doMock('../server/lib/questions-catalog.js', () => ({
+      QUESTIONS_CATALOG: [
+        { id: 'q1', type: 'select', options: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }], applicable_when: {}, order: 1 },
+        { id: 'q2', type: 'boolean', applicable_when: { q1: ['a'] }, order: 2 },
+      ],
+    }))
+    try {
+      // @ts-expect-error — module JS serveur
+      const engine = await import('../server/lib/questionnaire-engine.js')
+      const q1 = { id: 'q1', type: 'select', applicable_when: {} }
+      const q2 = { id: 'q2', type: 'boolean', applicable_when: { q1: ['a'] } }
+      let synthetic: Answers = engine.setAnswer({}, q1, 'a')
+      synthetic = engine.setAnswer(synthetic, q2, true)
+      expect(synthetic.q2).toBe(true) // q1='a' → q2 applicable, la réponse est conservée
+      synthetic = engine.setAnswer(synthetic, q1, 'b') // q1 change : q2 n'est plus applicable
+      expect(synthetic.q2).toBeUndefined() // purgé par la boucle de setAnswer
+    } finally {
+      vi.doUnmock('../server/lib/questions-catalog.js')
+      vi.resetModules()
+    }
   })
 })
 

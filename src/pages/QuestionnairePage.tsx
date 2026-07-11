@@ -48,8 +48,9 @@ export function QuestionnairePage() {
   useEffect(() => {
     const saved = sessionStorage.getItem('seren_questionnaire_session')
     if (!saved || phase !== 'welcome') return
-    // Garde d'annulation : sous StrictMode (dev) l'effet se déclenche deux fois. Sans elle,
-    // deux /resume concurrents = deux générations Mistral gaspillées + setState après démontage.
+    // Garde d'annulation : sous StrictMode (dev) l'effet se déclenche deux fois, donc les deux
+    // requêtes /resume partent quand même (la garde ne les empêche pas). Elle évite seulement
+    // qu'une réponse arrivée après le démontage du premier effet applique son état obsolète.
     let ignore = false
     ;(async () => {
       setPhase('loading')

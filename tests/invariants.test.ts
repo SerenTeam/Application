@@ -56,7 +56,7 @@ describe('invariant : pas de question morte, pas d’étape orpheline', () => {
   it('chaque valeur d\'option d\'une question conditionnelle influence ≥ 1 étape, sauf valeurs neutres documentées', () => {
     // Une valeur « neutre » signifie légitimement « rien à faire de plus » — liste exhaustive et volontaire.
     const NEUTRAL: Record<string, string[]> = {
-      relation: ['parent', 'enfant', 'frere_soeur', 'autre'], // pacse/concubin pilotent le transfert de contrats (étape ligne ~491) ; les autres relations sont neutres par nature
+      relation: ['parent', 'enfant', 'frere_soeur', 'autre'], // pacse/concubin pilotent le transfert de contrats (étape logement-transfert-contrats) ; les autres relations sont neutres par nature
       statut_professionnel: ['retraite', 'sans_activite'], // CARSAT/impôts déjà inconditionnels
       logement: ['heberge_ou_autre'],
       enfants: ['aucun', 'majeurs'], // pension d'orphelin = backlog éditorial futur

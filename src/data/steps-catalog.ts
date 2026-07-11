@@ -1048,7 +1048,7 @@ export const STEPS_CATALOG: StepTemplate[] = [
     warning_badge: 'À ne pas faire trop tôt',
     requires_notary: false,
     applicable_when: {},
-    source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F37096/0_0_2_1_1_0_0_1_0_0_0_0_0',
+    source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F37096',
     display_order: 48,
   },
   // ── OBSÈQUES / UTILISATEUR (lot 6c) ────────────────────────────────────
@@ -1092,7 +1092,7 @@ export const STEPS_CATALOG: StepTemplate[] = [
     responsable: 'vous',
     requires_notary: false,
     applicable_when: {},
-    source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F2278?lang=fr',
+    source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F2278',
     display_order: 50,
   },
 ]

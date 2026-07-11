@@ -75,8 +75,12 @@ export function createQuestionnaireRouter({
   const router = Router()
 
   // Chaque /start coûte 1 ligne BDD + 1 appel LLM : 10/h par utilisateur suffit largement
-  // pour un usage légitime (recommencer quelques fois) et coupe l'abus.
+  // pour un usage légitime (recommencer quelques fois) et coupe l'abus. Ce plafond ne borne
+  // que la création de sessions — /resume, /answer et /reask ont chacun leur propre limite.
   const startLimiter = createUserRateLimiter({ max: 10, windowMs: 60 * 60 * 1000 })
+  // /resume déclenche aussi une génération LLM : limite plus lâche que /start (les refreshs
+  // légitimes sont fréquents), mais bornée. /answer et /reask restent couverts par le backlog.
+  const resumeLimiter = createUserRateLimiter({ max: 60, windowMs: 60 * 60 * 1000 })
 
   async function renderNext(session, last) {
     const spec = nextQuestion(session.answers)
@@ -153,7 +157,7 @@ export function createQuestionnaireRouter({
     }
   })
 
-  router.post('/resume', requireAuth, async (req, res) => {
+  router.post('/resume', requireAuth, resumeLimiter, async (req, res) => {
     try {
       const { session_id } = req.body
       if (!session_id) return res.status(400).json({ success: false, error: 'session_id requis' })
