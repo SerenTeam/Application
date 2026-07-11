@@ -102,4 +102,10 @@ describe('buildWriterMessages', () => {
     const autre = buildWriterMessages(SPEC, { relation: 'autre' })
     expect(autre[1].content).toContain('un proche de l\'utilisateur')
   })
+  it('les libellés des options sont fournis au rédacteur pour une formulation compatible', () => {
+    const spec = { ...SPEC, type: 'select', options: [{ value: 'a', label: 'Premier choix' }, { value: 'b', label: 'Second choix' }] }
+    const messages = buildWriterMessages(spec, {})
+    expect(messages[1].content).toContain('Premier choix')
+    expect(messages[1].content).toContain('formulation ouverte')
+  })
 })

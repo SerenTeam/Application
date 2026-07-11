@@ -44,6 +44,9 @@ export function buildWriterMessages(spec, context) {
       ? `Question précédente : « ${context.derniereQuestion} » — réponse donnée : ${JSON.stringify(context.derniereReponse)}. Tu peux ouvrir par une courte transition qui en tient compte.`
       : '',
     spec.writer_hints ? `Contexte métier à glisser si pertinent : ${spec.writer_hints}` : '',
+    spec.options
+      ? `Les réponses proposées à l'utilisateur seront : ${spec.options.map((o) => o.label).join(' / ')}. Choisis une formulation ouverte compatible avec TOUS ces choix (jamais une question oui/non au-dessus d'un choix multiple), sans les lister.`
+      : '',
     `Formulation de référence (à améliorer, pas à copier) : « ${spec.fallback_text.question} »`,
   ].filter(Boolean)
   return [
