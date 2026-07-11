@@ -74,6 +74,15 @@ Fichier `.env` à la racine (gitignored). Variables requises :
 - `MISTRAL_AGENT_ID` — agent du produit transmission uniquement (`/api/demo/*`)
 - `CORS_ORIGIN` — origines autorisées, séparées par des virgules (défaut : `http://localhost:5173,http://localhost:3000`). À définir en production (ex. `https://app.seren.fr`)
 
+## Workflow & état du projet (source de vérité — survit aux réinitialisations de mémoire)
+
+- **Process établi** : brainstorming → spec (`docs/design-*.md`) → plan (`docs/plan-*.md`) → exécution **subagent-driven** (1 subagent frais par task + revue spec + revue qualité, correctifs systématiques, chaque déviation documentée par une « note post-revue » dans le plan). Merge **local** dans `main` (fast-forward) ; Arnaud pushe lui-même sur GitHub. Décisions produit → lui demander ; correctifs techniques des revues → appliquer sans re-consulter.
+- **Fait** : Plans 1 & 2 (refonte questionnaire v2 : moteur serveur + rédacteur Mistral à fallback + sessions Supabase + frontend récap) livrés, mergés, validés E2E réel.
+- **À exécuter** : `docs/plan-questionnaire-v3.md` (lot éditorial ~14 étapes sourcées, réglage rédacteur, pg_cron, rate limiting, reprise de session). En réserve : `docs/design-envoi-courriers.md` (feature envoi), `docs/plan-points-attention.md` (§1 CLI Supabase et §4 audit RLS restants).
+- **Compte de test E2E** (jetable, projet de dev) : `test.e2e.claude@seren-test.fr` / `TestSeren2026!` — confirmation email désactivée sur le projet Supabase.
+- **Produit transmission** (`/api/demo/*`, `DemoPage`, `AccessPage`, table `transmissions`) : produit DISTINCT du questionnaire, toujours sur l'ancien agent Mistral (`MISTRAL_AGENT_ID`) et une `Map()` mémoire — **ne pas toucher sans décision explicite**.
+- **Déploiement** : Render (`https://application-0vxw.onrender.com`). Les variables `VITE_*` sont figées au build → tout changement de `.env` côté client exige un redéploiement. `CORS_ORIGIN` recommandé sur Render.
+
 ## Points d'attention
 
 - **Tests** : Vitest (`npm test`) — moteur, catalogues, invariants croisés, routes (supertest). Les invariants interdisent toute question sans étape et tout drift entre catalogues
