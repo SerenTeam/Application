@@ -153,6 +153,21 @@ export function createQuestionnaireRouter({
     }
   })
 
+  router.post('/resume', requireAuth, async (req, res) => {
+    try {
+      const { session_id } = req.body
+      if (!session_id) return res.status(400).json({ success: false, error: 'session_id requis' })
+      const session = await store.loadSession(req.supabaseClient, session_id)
+      if (!session) return res.status(404).json({ success: false, error: 'Session non trouvée ou expirée' })
+      // Reprise par construction : nextQuestion(answers) repart exactement où on en était.
+      const data = await renderNext(session)
+      res.json({ success: true, data })
+    } catch (error) {
+      console.error('❌ questionnaire/resume :', error)
+      res.status(500).json({ success: false, error: 'Erreur lors de la reprise' })
+    }
+  })
+
   router.post('/complete', requireAuth, async (req, res) => {
     try {
       const { session_id } = req.body

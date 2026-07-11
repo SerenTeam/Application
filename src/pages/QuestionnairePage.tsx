@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { apiFetch } from '@/lib/api'
@@ -43,6 +43,43 @@ export function QuestionnairePage() {
     }
   }, [])
 
+  // ─── Reprise après refresh (session_id conservé en sessionStorage) ──
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem('seren_questionnaire_session')
+    if (!saved || phase !== 'welcome') return
+    // Garde d'annulation : sous StrictMode (dev) l'effet se déclenche deux fois. Sans elle,
+    // deux /resume concurrents = deux générations Mistral gaspillées + setState après démontage.
+    let ignore = false
+    ;(async () => {
+      setPhase('loading')
+      try {
+        const response = await apiFetch('/api/questionnaire/resume', {
+          method: 'POST',
+          body: JSON.stringify({ session_id: saved }),
+        })
+        if (ignore) return
+        if (response.status === 404) {
+          sessionStorage.removeItem('seren_questionnaire_session')
+          setPhase('welcome')
+          return
+        }
+        const result = await response.json()
+        if (ignore) return
+        if (result.success) {
+          setSessionId(saved)
+          showServerData(result.data)
+        } else {
+          setPhase('welcome')
+        }
+      } catch {
+        if (!ignore) setPhase('welcome')
+      }
+    })()
+    return () => { ignore = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // ─── Démarrage ─────────────────────────────────────────────────
 
   const startQuestionnaire = useCallback(async () => {
@@ -53,6 +90,7 @@ export function QuestionnairePage() {
       const result = await response.json()
       if (result.success) {
         setSessionId(result.session_id)
+        sessionStorage.setItem('seren_questionnaire_session', result.session_id)
         showServerData(result.data)
       } else {
         setError(result.error || 'Erreur lors du démarrage')
@@ -177,6 +215,7 @@ export function QuestionnairePage() {
       setDoneCount(steps.filter((s) => s.initial_status === 'done').length)
       await saveRoadmapToDb(user.id, qId, steps)
 
+      sessionStorage.removeItem('seren_questionnaire_session')
       setPhase('done')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erreur inattendue')
@@ -217,6 +256,7 @@ export function QuestionnairePage() {
             </div>
             <button
               onClick={() => {
+                sessionStorage.removeItem('seren_questionnaire_session')
                 setSessionExpired(false); setSessionId(null); setCurrentQuestion(null)
                 setRecap([]); setFinalAnswers(null); setQuestionnaireId(null)
                 setError(null); setEditingFromRecap(false); setPhase('welcome')

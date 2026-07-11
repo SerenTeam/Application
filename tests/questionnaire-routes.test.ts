@@ -211,4 +211,20 @@ describe('parcours complet → récap → complete', () => {
     expect(again.status).toBe(200) // idempotent : une réponse HTTP perdue n'est pas fatale
     expect(again.body.answers).toEqual(done.body.answers)
   })
+  it('resume : session en cours → prochaine question ; session finie → récap', async () => {
+    const { app } = makeApp()
+    const start = await request(app).post('/api/questionnaire/start')
+    await request(app).post('/api/questionnaire/answer').send({ session_id: start.body.session_id, question_id: 'relation', value: 'parent' })
+    const mid = await request(app).post('/api/questionnaire/resume').send({ session_id: start.body.session_id })
+    expect(mid.status).toBe(200)
+    expect(mid.body.data.question_id).toBe('deceased_firstname')
+    const { sessionId } = await runToRecap(app)
+    const done = await request(app).post('/api/questionnaire/resume').send({ session_id: sessionId })
+    expect(done.body.data.action).toBe('recap')
+  })
+  it('resume : session inconnue → 404', async () => {
+    const { app } = makeApp()
+    const res = await request(app).post('/api/questionnaire/resume').send({ session_id: 'sess-inexistante' })
+    expect(res.status).toBe(404)
+  })
 })
