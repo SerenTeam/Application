@@ -86,6 +86,10 @@ describe('atteignabilité', () => {
     const reached = new Set([
       ...ids(maximal),
       ...ids({ ...maximal, has_life_insurance: 'ne_sait_pas', contrat_obseques: 'oui', relation: 'concubin' }),
+      // Chaque valeur de statut_professionnel qui conditionne une étape doit être représentée
+      ...ids({ ...maximal, statut_professionnel: 'fonctionnaire' }),
+      ...ids({ ...maximal, statut_professionnel: 'independant' }),
+      ...ids({ ...maximal, statut_professionnel: 'demandeur_emploi' }),
     ])
     for (const s of STEPS_CATALOG) {
       if (Object.keys(s.applicable_when).length > 0) {
