@@ -84,12 +84,22 @@ describe('buildWriterMessages', () => {
     expect(messages[0].role).toBe('system')
     expect(messages[1].role).toBe('user')
     expect(messages[1].content).toContain('Pierre')
-    expect(messages[1].content).toContain('conjoint_marie')
+    expect(messages[1].content).toContain('l\'époux ou l\'épouse')
     expect(messages[1].content).toContain('indice métier')
     expect(messages[1].content).toContain(SPEC.fallback_text.question)
   })
   it('contexte vide : aucun « undefined » dans le contenu', () => {
     const messages = buildWriterMessages(SPEC, {})
     expect(messages[1].content).not.toContain('undefined')
+  })
+  it('la relation est transmise sans ambiguïté de direction (bug réel : parent lu comme enfant)', () => {
+    const parent = buildWriterMessages(SPEC, { relation: 'parent' })
+    expect(parent[1].content).toContain('le père ou la mère de l\'utilisateur')
+    expect(parent[1].content).not.toMatch(/défunt : parent/)
+    const enfant = buildWriterMessages(SPEC, { relation: 'enfant' })
+    expect(enfant[1].content).toContain('le fils ou la fille de l\'utilisateur')
+    // valeur inconnue : repli neutre, jamais l'enum brut
+    const autre = buildWriterMessages(SPEC, { relation: 'autre' })
+    expect(autre[1].content).toContain('un proche de l\'utilisateur')
   })
 })

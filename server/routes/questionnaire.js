@@ -110,8 +110,10 @@ export function createQuestionnaireRouter({
       await store.saveAnswers(req.supabaseClient, session_id, session.answers)
       // PII : la transition n'envoie la dernière réponse au LLM que pour les types fermés
       // (valeurs enum non identifiantes). Nom de famille et date de décès ne partent pas.
+      // Libellé humain plutôt qu'enum brut : « Mon père ou ma mère » est sans ambiguïté
+      // de direction, là où « parent » a fait écrire au rédacteur qu'un enfant était décédé.
       const last = CLOSED_TYPES.includes(spec.type)
-        ? { question: spec.fallback_text.question, value }
+        ? { question: spec.fallback_text.question, value: displayValue(spec, value) }
         : undefined
       const data = await renderNext(session, last)
       res.json({ success: true, data })

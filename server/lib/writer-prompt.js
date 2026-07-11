@@ -18,12 +18,28 @@ CONTRAINTES ABSOLUES :
 - Ne JAMAIS demander autre chose que le champ imposé.
 - Réponds UNIQUEMENT en JSON : {"question": "…", "aide": "…"} — "aide" est optionnelle (1 phrase max).`
 
+// Libellés SANS ambiguïté de direction. La valeur enum brute (« parent ») se lit dans
+// les deux sens — « le défunt est mon parent » ou « je suis le parent du défunt » — et a
+// causé un bug réel : le rédacteur parlait d'un enfant perdu à un utilisateur qui venait
+// de perdre son père. On dit donc explicitement QUI était la personne décédée.
+const RELATION_LABELS = {
+  conjoint_marie: 'l\'époux ou l\'épouse',
+  pacse: 'le ou la partenaire de PACS',
+  concubin: 'le compagnon ou la compagne',
+  parent: 'le père ou la mère',
+  enfant: 'le fils ou la fille',
+  frere_soeur: 'le frère ou la sœur',
+  autre: 'un proche',
+}
+
 /** Construit les messages du rédacteur : contexte court et constant (~400 tokens), jamais d'historique. */
 export function buildWriterMessages(spec, context) {
   const parts = [
     `Champ à demander : ${spec.id} (type ${spec.type}).`,
     context.prenom ? `Prénom du défunt : ${context.prenom}.` : 'Prénom du défunt inconnu pour l\'instant.',
-    context.relation ? `Lien de l'utilisateur avec le défunt : ${context.relation}.` : '',
+    context.relation
+      ? `La personne décédée était ${RELATION_LABELS[context.relation] ?? 'un proche'} de l'utilisateur. Ne te trompe jamais de sens sur cette relation.`
+      : '',
     context.derniereQuestion !== undefined && context.derniereReponse !== undefined
       ? `Question précédente : « ${context.derniereQuestion} » — réponse donnée : ${JSON.stringify(context.derniereReponse)}. Tu peux ouvrir par une courte transition qui en tient compte.`
       : '',
