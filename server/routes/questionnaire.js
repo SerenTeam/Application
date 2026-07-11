@@ -6,6 +6,7 @@ import { QUESTIONS_CATALOG } from '../lib/questions-catalog.js'
 import { nextQuestion, validateAnswer, setAnswer, matchesWhen, progress } from '../lib/questionnaire-engine.js'
 import * as supabaseStore from '../lib/sessions-store.js'
 import { writeQuestionText } from '../lib/question-writer.js'
+import { createUserRateLimiter } from '../lib/rate-limit.js'
 
 const SORTED = [...QUESTIONS_CATALOG].sort((a, b) => a.order - b.order)
 const TRISTATE_LABELS = { oui: 'Oui', non: 'Non', ne_sait_pas: 'Je ne sais pas' }
@@ -73,6 +74,10 @@ export function createQuestionnaireRouter({
 }) {
   const router = Router()
 
+  // Chaque /start coûte 1 ligne BDD + 1 appel LLM : 10/h par utilisateur suffit largement
+  // pour un usage légitime (recommencer quelques fois) et coupe l'abus.
+  const startLimiter = createUserRateLimiter({ max: 10, windowMs: 60 * 60 * 1000 })
+
   async function renderNext(session, last) {
     const spec = nextQuestion(session.answers)
     if (spec === null) return { action: 'recap', recap: buildRecap(session.answers) }
@@ -80,7 +85,7 @@ export function createQuestionnaireRouter({
     return toRendered(spec, session.answers, text)
   }
 
-  router.post('/start', requireAuth, async (req, res) => {
+  router.post('/start', requireAuth, startLimiter, async (req, res) => {
     try {
       const session = await store.createSession(req.supabaseClient, req.user.id)
       const data = await renderNext(session)
