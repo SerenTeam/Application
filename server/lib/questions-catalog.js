@@ -162,7 +162,9 @@ export const QUESTIONS_CATALOG = [
   {
     id: 'has_joint_account',
     type: 'boolean',
-    applicable_when: { relation: ['conjoint_marie', 'pacse', 'concubin'] },
+    // Élargi à tous les profils (décision 2026-07-11) : les comptes joints parent/enfant âgé
+    // sont fréquents — un enfant co-titulaire doit voir l'étape « débloquer le compte joint ».
+    applicable_when: {},
     obligatoire: true,
     fallback_text: {
       question: 'Aviez-vous un compte bancaire joint avec {prenom} ?',

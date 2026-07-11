@@ -80,6 +80,18 @@ git commit -m "feat(questionnaire-v3): la question compte joint est posée à to
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```
 
+> **Note post-revue Task 1 (exécution)** : `has_joint_account` était **la seule** question du
+> catalogue à porter un `applicable_when` non vide. La rendre universelle a supprimé le dernier
+> scénario où l'API pouvait déclarer une question « inapplicable » — le test d'intégration
+> pré-existant `'question inapplicable → 400'` (tests/questionnaire-routes.test.ts) n'était donc
+> plus exerçable avec le catalogue réel. Il a été retiré (net **64 → 63 tests**) et remplacé par
+> un commentaire explicatif à son emplacement. Le mécanisme `matchesWhen` sous-jacent (utilisé par
+> la route pour renvoyer le 400) reste couvert unitairement par le test de parité
+> `isApplicable` ↔ `matchesWhen` dans tests/invariants.test.ts. À réintroduire au niveau route si
+> un lot ultérieur (ex. Task 6, éditorial) rétablit des questions conditionnelles. Aussi mis à
+> jour : le commentaire désormais faux de `src/types/questionnaire.ts` (le champ n'est plus
+> conditionné au couple).
+
 ---
 
 ### Task 2 : Rédacteur — formulation compatible avec les options

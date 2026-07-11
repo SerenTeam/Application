@@ -37,10 +37,10 @@ describe('nextQuestion — séquences par profil', () => {
     expect(sequence[0]).toBe('relation')
     expect(sequence[sequence.length - 1]).toBe('organismes_contactes')
   })
-  it('enfant du défunt : 14 questions, pas de compte joint', () => {
+  it('enfant du défunt : 15 questions, compte joint désormais posé (décision 2026-07-11)', () => {
     const { sequence } = runProfile({ relation: 'enfant' })
-    expect(sequence).toHaveLength(14)
-    expect(sequence).not.toContain('has_joint_account')
+    expect(sequence).toHaveLength(15)
+    expect(sequence).toContain('has_joint_account')
   })
   it('null quand tout est répondu', () => {
     const { answers } = runProfile({})
@@ -92,7 +92,7 @@ describe('validateAnswer', () => {
 })
 
 describe('setAnswer — purge des branches invalidées (correction au récap)', () => {
-  it('changer relation conjoint→parent purge has_joint_account', () => {
+  it('changer relation conjoint→parent : has_joint_account n\'est plus purgé (question universelle, décision 2026-07-11)', () => {
     let answers: Answers = {}
     answers = setAnswer(answers, spec('relation'), 'conjoint_marie')
     // avance jusqu'à has_joint_account
@@ -103,7 +103,7 @@ describe('setAnswer — purge des branches invalidées (correction au récap)', 
     expect(answers.has_joint_account).toBe(true)
     // correction : plus conjoint → la branche devient inapplicable et sa réponse est purgée
     answers = setAnswer(answers, spec('relation'), 'parent')
-    expect(answers.has_joint_account).toBeUndefined()
+    expect(answers.has_joint_account).toBe(true) // la question est universelle : la réponse survit
     expect(nextQuestion(answers)?.id).toBe('has_vehicle')
   })
   it('trim les valeurs texte', () => {
@@ -116,7 +116,7 @@ describe('progress', () => {
     let answers: Answers = {}
     const p0 = progress(answers)
     expect(p0.current).toBe(0)
-    expect(p0.total).toBeGreaterThanOrEqual(14)
+    expect(p0.total).toBe(15)
     answers = setAnswer(answers, spec('relation'), 'conjoint_marie')
     const p1 = progress(answers)
     expect(p1.current).toBe(1)

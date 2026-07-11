@@ -30,8 +30,8 @@ export interface QuestionnaireAnswersV2 {
   enfants: Enfants
   has_notary: boolean
   has_life_insurance: TriState
-  // Complémentaires (universelles sauf has_joint_account)
-  has_joint_account?: boolean // demandé seulement si relation ∈ couple
+  // Complémentaires (universelles)
+  has_joint_account?: boolean // demandé à tous les profils (décision 2026-07-11)
   has_vehicle: boolean
   has_credits: boolean
   employait_aide_domicile: boolean

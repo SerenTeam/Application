@@ -82,7 +82,7 @@ describe('POST /api/questionnaire/start', () => {
     expect(q.options[0]).toEqual({ value: 'conjoint_marie', label: 'Mon époux / mon épouse' })
     expect(q.fallback_text).toBeUndefined()
     expect(q.writer_hints).toBeUndefined()
-    expect(q.progress).toEqual({ current: 0, total: 14 })
+    expect(q.progress).toEqual({ current: 0, total: 15 })
   })
 })
 
@@ -113,13 +113,14 @@ describe('POST /api/questionnaire/answer', () => {
     expect(res.status).toBe(400)
     expect(res.body.error).toBe('Option inconnue')
   })
-  it('question inapplicable → 400', async () => {
-    await request(app).post('/api/questionnaire/answer').send({ session_id: sessionId, question_id: 'relation', value: 'parent' })
-    const res = await request(app)
-      .post('/api/questionnaire/answer')
-      .send({ session_id: sessionId, question_id: 'has_joint_account', value: true })
-    expect(res.status).toBe(400)
-  })
+  // NOTE post-revue (Task 1, plan v3, décision 2026-07-11) : has_joint_account était la seule
+  // question du catalogue avec un applicable_when non vide. Devenue universelle, il n'existe
+  // plus aucune question conditionnelle à rendre « inapplicable » via l'API avec le catalogue
+  // réel — le test 'question inapplicable → 400' qui vivait ici ne peut plus être exercé.
+  // Le mécanisme matchesWhen (utilisé par la route pour le 400) reste couvert unitairement par
+  // tests/invariants.test.ts (parité isApplicable ↔ matchesWhen avec des specs synthétiques).
+  // À réintroduire au niveau route si un futur lot (ex. Task 6, éditorial) rétablit des
+  // questions conditionnelles.
   it('session inconnue → 404', async () => {
     const res = await request(app)
       .post('/api/questionnaire/answer')
@@ -175,28 +176,25 @@ describe('parcours complet → récap → complete', () => {
     expect(res.status).toBe(200)
     expect(res.body.data.current_value).toEqual(['banque'])
   })
-  it('correction parent→conjoint depuis le récap : la branche compte joint est posée avant de revenir au récap', async () => {
+  it('correction parent→conjoint depuis le récap : aucune question rouverte, has_joint_account déjà répondu', async () => {
     const { app } = makeApp()
     const { sessionId } = await runToRecap(app) // profil conjoint_marie complet
-    // bascule vers parent (purge has_joint_account) puis retour vers conjoint
+    // bascule vers parent (has_joint_account survit, question universelle) puis retour vers conjoint
     await request(app).post('/api/questionnaire/answer').send({ session_id: sessionId, question_id: 'relation', value: 'parent' })
     const back = await request(app).post('/api/questionnaire/answer').send({ session_id: sessionId, question_id: 'relation', value: 'conjoint_marie' })
     expect(back.status).toBe(200)
-    expect(back.body.data.action).toBe('question') // la branche rouverte est posée…
-    expect(back.body.data.question_id).toBe('has_joint_account')
-    const done = await request(app).post('/api/questionnaire/answer').send({ session_id: sessionId, question_id: 'has_joint_account', value: false })
-    expect(done.body.data.action).toBe('recap') // …puis retour au récap
+    expect(back.body.data.action).toBe('recap') // aucune question rouverte : has_joint_account déjà répondu
   })
-  it('correction au récap : relation conjoint→parent purge le compte joint et repose la branche', async () => {
+  it('correction au récap : relation conjoint→parent conserve le compte joint (question universelle)', async () => {
     const { app } = makeApp()
     const { sessionId } = await runToRecap(app)
     const res = await request(app)
       .post('/api/questionnaire/answer')
       .send({ session_id: sessionId, question_id: 'relation', value: 'parent' })
     expect(res.status).toBe(200)
-    expect(res.body.data.action).toBe('recap') // has_joint_account purgé, plus rien d'applicable à demander
+    expect(res.body.data.action).toBe('recap')
     const complete = await request(app).post('/api/questionnaire/complete').send({ session_id: sessionId })
-    expect(complete.body.answers.has_joint_account).toBeUndefined()
+    expect(complete.body.answers.has_joint_account).toBe(true)
     expect(complete.body.answers.relation).toBe('parent')
   })
   it('complete avant la fin → 409 ; après → answers, et idempotent (mêmes answers au 2e appel)', async () => {
