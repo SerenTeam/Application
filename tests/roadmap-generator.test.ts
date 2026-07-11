@@ -90,6 +90,9 @@ describe('atteignabilité', () => {
       ...ids({ ...maximal, statut_professionnel: 'fonctionnaire' }),
       ...ids({ ...maximal, statut_professionnel: 'independant' }),
       ...ids({ ...maximal, statut_professionnel: 'demandeur_emploi' }),
+      // Chaque valeur de logement / contrat_obseques qui conditionne une étape doit être représentée
+      ...ids({ ...maximal, logement: 'proprietaire' }),
+      ...ids({ ...maximal, contrat_obseques: 'oui' }),
     ])
     for (const s of STEPS_CATALOG) {
       if (Object.keys(s.applicable_when).length > 0) {
