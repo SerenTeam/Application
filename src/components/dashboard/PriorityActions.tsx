@@ -15,7 +15,7 @@ export function PriorityActions({
   if (steps.length === 0) {
     return (
       <p className="text-text-soft">
-        Toutes les etapes prioritaires sont completes !
+        Toutes les étapes prioritaires sont complètes !
       </p>
     )
   }

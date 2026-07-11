@@ -41,7 +41,7 @@ export function RoadmapView({
         Roadmap Administrative
       </h1>
       <p className="text-text-soft text-[1.05rem] mb-8">
-        Suivez etape par etape les demarches administratives apres le deces
+        Suivez étape par étape les démarches administratives après le décès
       </p>
 
       <div className="max-w-[900px]">
@@ -196,7 +196,7 @@ function StepItem({
             </label>
             <textarea
               defaultValue={note}
-              placeholder="Ajoutez vos notes, numeros de dossier, dates, etc."
+              placeholder="Ajoutez vos notes, numéros de dossier, dates, etc."
               onBlur={(e) => onSaveNote(e.target.value)}
               className={cn(
                 'w-full p-3 border-2 border-border rounded-[8px] font-body text-[0.95rem]',
@@ -256,7 +256,7 @@ function StepLetterSection({
         className="flex items-center gap-2 bg-accent-soft text-accent border border-accent/20 py-2.5 px-4 rounded-radius-md text-sm font-medium cursor-pointer transition-all duration-200 hover:bg-accent hover:text-white mb-4"
       >
         <Mail className="h-4 w-4" />
-        Generer le courrier — {template.organisme}
+        Générer le courrier — {template.organisme}
       </button>
     )
   }

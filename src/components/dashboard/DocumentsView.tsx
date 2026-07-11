@@ -22,7 +22,7 @@ export function DocumentsView({ items }: DocumentsViewProps) {
         Documents transmis
       </h1>
       <p className="text-text-soft text-[1.05rem] mb-8">
-        Informations et documents laisses par votre proche
+        Informations et documents laissés par votre proche
       </p>
 
       {categoryEntries.length === 0 ? (
@@ -38,7 +38,7 @@ export function DocumentsView({ items }: DocumentsViewProps) {
               const isSkipped = item.reponse === null
               let display: string
               if (isSkipped) {
-                display = 'Non renseigne'
+                display = 'Non renseigné'
               } else if (typeof item.reponse === 'boolean') {
                 display = item.reponse ? 'Oui' : 'Non'
               } else {

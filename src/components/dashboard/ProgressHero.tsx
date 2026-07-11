@@ -22,9 +22,9 @@ export function ProgressHero({ completed, total }: ProgressHeroProps) {
 
       {/* Stats */}
       <div className="flex flex-col md:flex-row justify-center gap-4 md:gap-12 mt-6">
-        <StatBlock value={completed} label="Terminees" />
-        <StatBlock value={total} label="Etapes totales" />
-        <StatBlock value={`${percentage}%`} label="Complete" />
+        <StatBlock value={completed} label="Terminées" />
+        <StatBlock value={total} label="Étapes totales" />
+        <StatBlock value={`${percentage}%`} label="Complété" />
       </div>
     </div>
   )

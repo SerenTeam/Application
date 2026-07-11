@@ -6,7 +6,7 @@ interface QuickAccessProps {
 
 const BUTTONS: { view: DashboardView; icon: string; label: string }[] = [
   { view: 'documents', icon: '\uD83D\uDCC4', label: 'Documents transmis' },
-  { view: 'roadmap', icon: '\uD83D\uDDFA\uFE0F', label: 'Roadmap complete' },
+  { view: 'roadmap', icon: '\uD83D\uDDFA\uFE0F', label: 'Roadmap compl\u00E8te' },
   { view: 'contacts', icon: '\uD83D\uDCDE', label: 'Contacts' },
 ]
 

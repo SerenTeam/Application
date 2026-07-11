@@ -30,7 +30,7 @@ export function CGUCheckbox({ checked, onCheckedChange, error }: CGUCheckboxProp
             rel="noopener noreferrer"
             className="text-accent underline hover:text-accent-hover"
           >
-            conditions generales d'utilisation
+            conditions générales d'utilisation
           </a>{' '}
           et la{' '}
           <a
@@ -39,12 +39,12 @@ export function CGUCheckbox({ checked, onCheckedChange, error }: CGUCheckboxProp
             rel="noopener noreferrer"
             className="text-accent underline hover:text-accent-hover"
           >
-            politique de confidentialite
+            politique de confidentialité
           </a>
         </Label>
       </div>
       <p id="cgu-description" className="text-xs text-text-muted pl-7">
-        Vos donnees sont protegees et ne seront jamais partagees sans votre consentement.
+        Vos données sont protégées et ne seront jamais partagées sans votre consentement.
       </p>
       {error && (
         <p className="text-sm text-error pl-7" role="alert">

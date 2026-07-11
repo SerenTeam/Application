@@ -36,10 +36,10 @@ interface DbStep {
 
 // Map urgency → phase label
 const URGENCY_PHASE: Record<string, string> = {
-  urgent: 'Actions urgentes (premieres 48h)',
+  urgent: 'Actions urgentes (premières 48h)',
   week: 'Dans la semaine',
   month: 'Dans le mois',
-  later: 'A plus long terme',
+  later: 'À plus long terme',
 }
 
 const URGENCY_ORDER = ['urgent', 'week', 'month', 'later']
@@ -167,7 +167,7 @@ export function DashboardPage() {
         .order('display_order', { ascending: true })
 
       if (sErr) {
-        setError('Impossible de charger vos demarches.')
+        setError('Impossible de charger vos démarches.')
         setIsLoading(false)
         return
       }
@@ -249,7 +249,7 @@ export function DashboardPage() {
     return (
       <LoadingOverlay
         message="Chargement de votre parcours..."
-        detail="Recuperation des demarches"
+        detail="Récupération des démarches"
         isError={false}
       />
     )
@@ -291,7 +291,7 @@ export function DashboardPage() {
             onClick={signOut}
             className="text-text-soft text-sm hover:text-accent transition-colors cursor-pointer bg-transparent border-none font-body"
           >
-            Deconnexion
+            Déconnexion
           </button>
         </nav>
       </header>
@@ -334,7 +334,7 @@ export function DashboardPage() {
           {activeView === 'documents' && (
             <div className="animate-fade-in text-center py-16">
               <p className="text-text-soft mb-6">
-                Retrouvez vos courriers pre-remplis sur la page dediee.
+                Retrouvez vos courriers pré-remplis sur la page dédiée.
               </p>
               <Link
                 to="/documents"
@@ -389,7 +389,7 @@ function DashboardOverview({
       />
 
       <h3 className="font-display text-2xl font-medium mb-5 mt-10 text-text">
-        Acces rapides
+        Accès rapides
       </h3>
       <QuickAccess onNavigate={onNavigate} />
     </div>

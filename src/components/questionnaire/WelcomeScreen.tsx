@@ -25,14 +25,14 @@ export function WelcomeScreen({ onStart }: WelcomeScreenProps) {
 
       {/* Title */}
       <h1 className="font-display text-[2.5rem] leading-tight font-medium text-text mb-4 max-sm:text-[2rem]">
-        Nous sommes la pour vous accompagner
+        Nous sommes là pour vous accompagner
       </h1>
 
       {/* Description */}
       <p className="text-lg text-text-soft max-w-[480px] mx-auto mb-10">
         Ce questionnaire rapide (une quinzaine de questions) nous permet de comprendre votre
-        situation et de generer un parcours personnalise avec les demarches
-        administratives a effectuer.
+        situation et de générer un parcours personnalisé avec les démarches
+        administratives à effectuer.
       </p>
 
       {/* Start button */}

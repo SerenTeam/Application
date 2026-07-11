@@ -54,7 +54,7 @@ export function AccessPage() {
 
     const trimmed = code.trim()
     if (trimmed.length !== 8) {
-      setError('Le code doit contenir 8 caracteres')
+      setError('Le code doit contenir 8 caractères')
       return
     }
 
@@ -74,7 +74,7 @@ export function AccessPage() {
         // The original code redirects to dashboard with the code
         navigate(`/dashboard?code=${accessCode}`)
       } else {
-        setError(result.error || 'Code invalide ou donnees non trouvees')
+        setError(result.error || 'Code invalide ou données non trouvées')
         setScreen('codeEntry')
       }
     } catch (err) {
@@ -102,7 +102,7 @@ export function AccessPage() {
 
   const formatAnswer = (answer: unknown): { text: string; skipped: boolean } => {
     if (answer === null || answer === undefined) {
-      return { text: 'Non renseigne', skipped: true }
+      return { text: 'Non renseigné', skipped: true }
     }
     if (typeof answer === 'boolean') {
       return { text: answer ? 'Oui' : 'Non', skipped: false }
@@ -134,7 +134,7 @@ export function AccessPage() {
             onClick={signOut}
             className="border-b-2 border-text-soft bg-transparent p-0 pb-0.5 text-[0.875rem] font-medium uppercase tracking-widest text-text-soft transition-colors hover:border-accent hover:text-accent"
           >
-            Deconnexion
+            Déconnexion
           </button>
         </div>
       </header>
@@ -144,10 +144,10 @@ export function AccessPage() {
         {screen === 'codeEntry' && (
           <section className="animate-fadeIn rounded-[20px] bg-bg-card p-12 shadow-md max-sm:p-8">
             <h1 className="mb-4 text-center font-display text-[2rem] font-medium text-accent max-sm:text-[1.5rem]">
-              Acces aux informations
+              Accès aux informations
             </h1>
             <p className="mb-8 text-center text-[1.05rem] text-text-soft">
-              Entrez le code d'acces qui vous a ete transmis pour consulter les informations laissees par votre proche.
+              Entrez le code d'accès qui vous a été transmis pour consulter les informations laissées par votre proche.
             </p>
 
             <form onSubmit={handleSubmit}>
@@ -156,7 +156,7 @@ export function AccessPage() {
                   htmlFor="accessCode"
                   className="mb-2 block font-medium text-text"
                 >
-                  Code d'acces
+                  Code d'accès
                 </label>
                 <input
                   ref={inputRef}
@@ -185,7 +185,7 @@ export function AccessPage() {
                 disabled={isSubmitting}
                 className="flex w-full items-center justify-center gap-2 rounded-[12px] bg-accent px-8 py-4 text-[1.05rem] font-medium text-white transition-all hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Acceder aux informations
+                Accéder aux informations
                 <ArrowRight className="h-5 w-5" />
               </button>
             </form>
@@ -196,7 +196,7 @@ export function AccessPage() {
         {screen === 'loading' && (
           <div className="py-16 text-center">
             <div className="mx-auto mb-6 h-12 w-12 animate-spin rounded-full border-[3px] border-border border-t-accent" />
-            <p className="text-text-soft">Recuperation des informations...</p>
+            <p className="text-text-soft">Récupération des informations...</p>
           </div>
         )}
 

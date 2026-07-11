@@ -24,7 +24,7 @@ export function ContactsView({ items }: ContactsViewProps) {
         Contacts
       </h1>
       <p className="text-text-soft text-[1.05rem] mb-8">
-        Personnes et organismes a contacter
+        Personnes et organismes à contacter
       </p>
 
       {contacts.length === 0 ? (

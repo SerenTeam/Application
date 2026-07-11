@@ -208,7 +208,7 @@ function HistoryPanel({ history }: { history: AnswerHistoryEntry[] }) {
   if (history.length === 0) return null
 
   const formatAnswer = (answer: unknown): string => {
-    if (answer === null || answer === undefined) return 'Passee'
+    if (answer === null || answer === undefined) return 'Passée'
     if (typeof answer === 'boolean') return answer ? 'Oui' : 'Non'
     if (Array.isArray(answer)) return answer.join(', ')
     return String(answer)
@@ -217,7 +217,7 @@ function HistoryPanel({ history }: { history: AnswerHistoryEntry[] }) {
   return (
     <div className="mt-8 rounded-[12px] border border-border bg-bg-card p-6">
       <h3 className="mb-4 text-[0.85rem] font-semibold uppercase tracking-widest text-text-muted">
-        Vos reponses
+        Vos réponses
       </h3>
       <ul>
         {history.map((item, i) => (
@@ -482,7 +482,7 @@ export function DemoPage() {
         return (
           <textarea
             className="w-full rounded-[12px] border-2 border-border bg-bg px-5 py-4 text-base text-text transition-colors placeholder:text-text-muted focus:border-accent focus:outline-none"
-            placeholder="Votre reponse..."
+            placeholder="Votre réponse..."
             rows={4}
             onChange={(e) => handleTextChange(e.target.value)}
           />
@@ -492,7 +492,7 @@ export function DemoPage() {
           <input
             type={currentQuestion.type || 'text'}
             className="w-full rounded-[12px] border-2 border-border bg-bg px-5 py-4 text-base text-text transition-colors placeholder:text-text-muted focus:border-accent focus:outline-none"
-            placeholder="Votre reponse..."
+            placeholder="Votre réponse..."
             onChange={(e) => handleTextChange(e.target.value)}
           />
         )
@@ -515,7 +515,7 @@ export function DemoPage() {
             to="/access"
             className="text-[0.9rem] text-text-soft transition-colors hover:text-accent"
           >
-            Acces proches
+            Accès proches
           </Link>
         </nav>
       </header>
@@ -528,10 +528,10 @@ export function DemoPage() {
               <Heart className="h-9 w-9 text-accent" />
             </div>
             <h1 className="mb-4 font-display text-[2.5rem] font-medium leading-tight text-text max-sm:text-[1.75rem]">
-              Preparez l'avenir pour vos proches
+              Préparez l'avenir pour vos proches
             </h1>
             <p className="mx-auto mb-10 max-w-[480px] text-[1.1rem] text-text-soft">
-              Ce questionnaire vous guide pour rassembler les informations essentielles qui faciliteront les demarches de vos proches le moment venu.
+              Ce questionnaire vous guide pour rassembler les informations essentielles qui faciliteront les démarches de vos proches le moment venu.
             </p>
             <button
               onClick={startDemo}
@@ -547,7 +547,7 @@ export function DemoPage() {
         {screen === 'loading' && (
           <div className="py-16 text-center">
             <div className="mx-auto mb-6 h-12 w-12 animate-spin rounded-full border-[3px] border-border border-t-accent" />
-            <p className="text-text-soft">Preparation de la question suivante...</p>
+            <p className="text-text-soft">Préparation de la question suivante...</p>
           </div>
         )}
 
@@ -570,7 +570,7 @@ export function DemoPage() {
                 <div className="mb-6 flex animate-fadeIn items-center gap-3 rounded-[8px] border border-green-400/30 bg-green-400/10 px-4 py-3">
                   <CheckCircle className="h-5 w-5 shrink-0 text-accent" />
                   <p className="text-[0.85rem] text-accent">
-                    Question adaptee selon vos reponses precedentes
+                    Question adaptée selon vos réponses précédentes
                   </p>
                 </div>
               )}
@@ -623,23 +623,23 @@ export function DemoPage() {
               <CheckCircle className="h-12 w-12 text-accent" />
             </div>
             <h2 className="mb-4 font-display text-[2rem] font-medium text-accent">
-              Questionnaire termine
+              Questionnaire terminé
             </h2>
             <p className="mx-auto mb-8 max-w-[450px] text-text-soft">
-              Vos informations ont ete sauvegardees avec succes.
+              Vos informations ont été sauvegardées avec succès.
             </p>
 
             {/* Before payment */}
             {!paymentDone && (
               <div>
                 <p className="mt-8 text-text-soft">
-                  Procedez au paiement pour securiser definitivement vos donnees et recevoir votre code d'acces.
+                  Procédez au paiement pour sécuriser définitivement vos données et recevoir votre code d'accès.
                 </p>
                 <a
                   href={paymentLink}
                   className="mt-6 inline-flex items-center gap-3 rounded-[12px] bg-accent px-8 py-4 text-base font-medium text-white shadow-md transition-all hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-lg no-underline"
                 >
-                  Proceder au paiement
+                  Procéder au paiement
                   <ArrowRight className="h-5 w-5" />
                 </a>
               </div>
@@ -649,20 +649,20 @@ export function DemoPage() {
             {paymentDone && accessCode && (
               <div className="mx-auto mt-8 max-w-[400px] rounded-[12px] border-2 border-accent bg-accent-soft p-6">
                 <p className="mb-2 text-[0.9rem] text-text-soft">
-                  Paiement confirme ! Voici votre code d'acces :
+                  Paiement confirmé ! Voici votre code d'accès :
                 </p>
                 <div className="my-3 rounded-[8px] bg-white px-3 py-3 text-center font-mono text-[2rem] font-bold tracking-[0.3em] text-accent">
                   {accessCode}
                 </div>
                 <p className="mt-3 text-[0.85rem] text-text-muted">
-                  Conservez ce code precieusement et transmettez-le a vos proches.
+                  Conservez ce code précieusement et transmettez-le à vos proches.
                 </p>
                 <p className="mt-6 text-center text-[0.9rem] text-text-soft">
                   Vos proches pourront consulter ces informations sur{' '}
                   <Link to="/access" className="font-medium text-accent underline">
                     cette page
                   </Link>{' '}
-                  avec le code d'acces.
+                  avec le code d'accès.
                 </p>
               </div>
             )}

@@ -132,16 +132,16 @@ function CookieModal({ onSave, onClose }: ModalProps) {
 
         <p className="mb-5 text-sm text-text-soft leading-relaxed">
           Choisissez les cookies que vous souhaitez autoriser. Les cookies
-          necessaires assurent le bon fonctionnement du site et ne peuvent pas
-          etre desactives.
+          nécessaires assurent le bon fonctionnement du site et ne peuvent pas
+          être désactivés.
         </p>
 
         {/* Categories */}
         <div className="space-y-3">
           <CategoryCard
             icon={<Shield className="h-5 w-5" />}
-            title="Necessaires"
-            description="Authentification, securite et fonctionnement de base. Ces cookies sont indispensables."
+            title="Nécessaires"
+            description="Authentification, sécurité et fonctionnement de base. Ces cookies sont indispensables."
             toggleId="cookie-necessary"
             checked={true}
             disabled={true}
@@ -151,7 +151,7 @@ function CookieModal({ onSave, onClose }: ModalProps) {
           <CategoryCard
             icon={<BarChart3 className="h-5 w-5" />}
             title="Analytics"
-            description="Nous aident a comprendre comment vous utilisez Seren pour ameliorer votre experience (PostHog)."
+            description="Nous aident à comprendre comment vous utilisez Seren pour améliorer votre expérience (PostHog)."
             toggleId="cookie-analytics"
             checked={analytics}
             onChange={setAnalytics}
@@ -160,7 +160,7 @@ function CookieModal({ onSave, onClose }: ModalProps) {
           <CategoryCard
             icon={<Settings2 className="h-5 w-5" />}
             title="Fonctionnels"
-            description="Memorisent vos preferences (theme, langue) pour personnaliser votre experience."
+            description="Mémorisent vos préférences (thème, langue) pour personnaliser votre expérience."
             toggleId="cookie-functional"
             checked={functional}
             onChange={setFunctional}
@@ -216,7 +216,7 @@ export function CookieBanner() {
       <div
         className="fixed inset-x-0 bottom-0 z-50 animate-[fade-in_0.3s_ease-out] border-t border-border bg-bg-card px-4 py-5 shadow-lg sm:px-6"
         role="region"
-        aria-label="Banniere de consentement cookies"
+        aria-label="Bannière de consentement cookies"
       >
         <div className="mx-auto flex max-w-4xl flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
           {/* Texte */}
@@ -226,8 +226,8 @@ export function CookieBanner() {
               aria-hidden="true"
             />
             <p className="text-sm text-text-soft leading-relaxed">
-              Nous utilisons des cookies pour ameliorer votre experience sur
-              Seren. Vous pouvez personnaliser vos choix a tout moment.{' '}
+              Nous utilisons des cookies pour améliorer votre expérience sur
+              Seren. Vous pouvez personnaliser vos choix à tout moment.{' '}
               <a
                 href="/security"
                 className="font-medium text-accent underline hover:text-accent-hover"
