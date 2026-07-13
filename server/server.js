@@ -97,17 +97,22 @@ const AGENT_ID = process.env.MISTRAL_AGENT_ID;
 const QUESTIONNAIRE_AGENT_ID = process.env.MISTRAL_QUESTIONNAIRE_AGENT_ID || process.env.MISTRAL_AGENT_ID;
 const ROADMAP_AGENT_ID = process.env.MISTRAL_ROADMAP_AGENT_ID;
 
-// Client Supabase (ANON - pour opérations non authentifiées)
+// Clé publique Supabase : accepte l'ancien nom (SUPABASE_ANON_KEY, clés JWT legacy)
+// et le nouveau (SUPABASE_PUBLISHABLE_KEY, clés sb_publishable_…) — les environnements
+// déployés peuvent utiliser l'une ou l'autre convention.
+const SUPABASE_PUBLIC_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || '';
+
+// Client Supabase (clé publique - pour opérations non authentifiées)
 const supabase = createClient(
   process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_ANON_KEY || ''
+  SUPABASE_PUBLIC_KEY
 );
 
 // Helper pour créer un client Supabase avec contexte utilisateur authentifié
 function getSupabaseClient(accessToken) {
   return createClient(
     process.env.SUPABASE_URL || '',
-    process.env.SUPABASE_ANON_KEY || '',
+    SUPABASE_PUBLIC_KEY,
     {
       global: {
         headers: {
