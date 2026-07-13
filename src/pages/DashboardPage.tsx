@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { STEPS_CATALOG } from '@/data/steps-catalog'
+import { LanguageSwitch } from '@/components/layout/LanguageSwitch'
 import {
   Sidebar,
   MobileNav,
@@ -293,6 +294,7 @@ export function DashboardPage() {
           >
             Déconnexion
           </button>
+          <LanguageSwitch />
         </nav>
       </header>
 

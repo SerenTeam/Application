@@ -2,6 +2,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { ChangePasswordForm } from '@/components/profile/ChangePasswordForm'
 import { ArrowLeft } from 'lucide-react'
 import { useNavigate, Link } from 'react-router-dom'
+import { LanguageSwitch } from '@/components/layout/LanguageSwitch'
 
 export function ProfilePage() {
   const { user, signOut } = useAuth()
@@ -20,6 +21,7 @@ export function ProfilePage() {
           <button onClick={signOut} className="text-text-soft text-sm hover:text-accent transition-colors">
             Déconnexion
           </button>
+          <LanguageSwitch />
         </nav>
       </header>
 

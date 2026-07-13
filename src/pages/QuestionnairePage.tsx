@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { apiFetch } from '@/lib/api'
+import { LanguageSwitch } from '@/components/layout/LanguageSwitch'
 import { generateRoadmap, saveRoadmapToDb } from '@/lib/roadmap-generator'
 import { supabase } from '@/lib/supabase'
 import type { QuestionnaireAnswersV2 } from '@/types/questionnaire'
@@ -246,6 +247,7 @@ export function QuestionnairePage() {
           >
             Déconnexion
           </button>
+          <LanguageSwitch />
         </nav>
       </header>
 

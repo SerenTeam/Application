@@ -151,6 +151,16 @@ git add src/i18n tests/i18n.test.ts src/components/layout/LanguageSwitch.tsx src
 git commit -m "feat(i18n): détection de langue, contexte, toggle FR/EN persistant"
 ```
 
+> **Note post-revue Task 1 (exécution)** : (a) le plan annonçait « 6 passed » mais son bloc de
+> tests littéral ne contient que **5 `it()`** (4 detectLang + 1 fmt) — le code a été suivi à la
+> lettre, les compteurs réels sont donc **77 après Task 1** (baseline 72 + 5) ; les jalons
+> suivants deviennent **78 pour la Task 3** et **81 pour la Task 4** (au lieu de 79 et 82).
+> (b) Il n'existe pas de header commun : le header est dupliqué inline dans **4 pages**
+> (`DashboardPage`, `QuestionnairePage`, `ProfilePage`, `AccessPage`). Le `<LanguageSwitch />`
+> a été branché dans les **3 premières** et délibérément PAS dans `AccessPage` — produit
+> transmission gelé, hors périmètre (CLAUDE.md + `docs/design-i18n.md`), et le toggle y serait
+> une affordance morte puisque le contenu de cette page reste français dans les deux langues.
+
 ---
 
 ### Task 2 : Dictionnaires UI + extraction des chaînes React
