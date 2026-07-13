@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import { createBasicAuthGate } from './lib/basic-auth.js';
 
 dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.env') });
 
@@ -33,6 +34,14 @@ app.use(cors({
   },
 }));
 app.use(express.json());
+
+// Porte d'accès type .htaccess pour les environnements non publics (préprod/staging) :
+// active uniquement si SITE_PASSWORD est défini. Voir server/lib/basic-auth.js.
+app.use(createBasicAuthGate({
+  user: process.env.SITE_USER || 'seren',
+  password: process.env.SITE_PASSWORD,
+  realm: 'Seren',
+}));
 
 // Serve static files: prefer dist/ (built), fallback to public/
 const distDir = path.join(__dirname, '../dist');
