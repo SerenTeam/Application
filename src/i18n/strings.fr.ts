@@ -14,10 +14,10 @@ export const STRINGS_FR = {
       documents: 'Documents',
       contacts: 'Contacts',
     },
-    legalTitle: "Conditions Generales d'Utilisation",
-    legalContent: 'Contenu a venir...',
-    securityTitle: 'Politique de confidentialite',
-    securityContent: 'Contenu a venir...',
+    legalTitle: "Conditions Générales d'Utilisation",
+    legalContent: 'Contenu à venir...',
+    securityTitle: 'Politique de confidentialité',
+    securityContent: 'Contenu à venir...',
     offlineMessage:
       'Vous semblez être hors ligne. Certaines fonctionnalités peuvent être indisponibles.',
     cookie: {

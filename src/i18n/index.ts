@@ -17,6 +17,13 @@ export function persistLang(lang: Lang): void {
   try { localStorage.setItem(STORAGE_KEY, lang) } catch { /* stockage indisponible : tant pis */ }
 }
 
+// Titre d'onglet par langue (hors dictionnaires : consommé par LanguageContext,
+// qui ne peut pas dépendre de useT sans dépendance circulaire).
+export const DOCUMENT_TITLES: Record<Lang, string> = {
+  fr: 'Seren – Accompagnement après un décès',
+  en: 'Seren – Guidance after a loss',
+}
+
 // Interpolation minimaliste : remplace {clé} par vars[clé] ; laisse intact si absent.
 export function fmt(template: string, vars: Record<string, string | number>): string {
   return template.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m))

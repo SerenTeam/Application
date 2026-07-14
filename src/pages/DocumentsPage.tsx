@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast'
 import { ArrowLeft, FileText, X } from 'lucide-react'
 import { useT } from '@/i18n/useT'
 import { fmt } from '@/i18n'
+import { LanguageSwitch } from '@/components/layout/LanguageSwitch'
 
 type ThemeFilter = 'all' | 'banque' | 'assurance' | 'administratif' | 'logement' | 'succession' | 'numerique' | 'fiscal'
 type StatusFilter = 'all' | 'sent' | 'not_sent'
@@ -129,6 +130,9 @@ export function DocumentsPage() {
             <p className="text-sm text-text-muted">
               {fmt(t.lettersPage.countLabel, { count: documents.length, s: documents.length !== 1 ? 's' : '' })}
             </p>
+          </div>
+          <div className="ml-auto">
+            <LanguageSwitch />
           </div>
         </div>
 

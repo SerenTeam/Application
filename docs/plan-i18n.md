@@ -366,6 +366,19 @@ npx tsc --noEmit && npm test && npx vite build && node --check server/server.js 
 
 - [ ] **Step 5 : Revue globale de branche** (contrôleur) puis `superpowers:finishing-a-development-branch` (merge local dans `main` — Arnaud pushe).
 
+> **Note post-revue Task 5 (revue globale, exécution)** : correctifs appliqués suite à la revue —
+> (a) le toggle manquait sur les pages auth et Courriers (déviation de la spec « visible sur toutes
+> les pages ») : ajouté dans `AuthLayout` (couvre Login/Signup/Reset) et dans le header de
+> `DocumentsPage` ; il reste absent des pages d'erreur et du produit transmission (assumé).
+> (b) `document.title` bascule désormais avec la langue (`DOCUMENT_TITLES` dans `src/i18n/index.ts`) ;
+> au passage le titre statique d'`index.html` « Seren - Transmission patrimoniale » (slogan de
+> l'ancien produit) devient « Seren – Accompagnement après un décès » — **wording produit à valider
+> par Arnaud**. (c) accents restaurés dans `legalTitle`/`securityTitle`/contenus du dictionnaire FR ;
+> commentaire unicode de `types.ts` réécrit en clair. (d) CLAUDE.md réellement mis à jour
+> (convention i18n + état du projet + USER STEP migration marqué bloquant avant déploiement).
+> Restent non cochés : E2E questionnaire complet et merge — bloqués sur la migration `lang`
+> (USER STEP), le `/start` échouant sans la colonne.
+
 ---
 
 **Backlog exclu** (cf. spec) : emails Supabase Auth, locale des montants, traduction des courriers, produit transmission, 3ᵉ locale, re-génération de la question courante lors d'un toggle en pleine session.

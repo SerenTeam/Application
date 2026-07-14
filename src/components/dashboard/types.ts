@@ -72,7 +72,7 @@ export interface NavItem {
   icon: string
 }
 
-// Les libell\u00E9s vivent dans les dictionnaires i18n (t.layout.nav.<id>).
+// Les libellés vivent dans les dictionnaires i18n (t.layout.nav.<id>).
 export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', icon: '\uD83D\uDCCA' },
   { id: 'roadmap', icon: '\uD83D\uDDFA\uFE0F' },

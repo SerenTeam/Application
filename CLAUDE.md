@@ -56,7 +56,8 @@ Questionnaire v2 (moteur serveur + rédacteur Mistral, ≤15 questions, récap c
 
 ## Conventions
 
-- **Langue du code** : noms de variables/fonctions en anglais, commentaires et UI en français
+- **Langue du code** : noms de variables/fonctions en anglais, commentaires en français ; l'UI est bilingue FR/EN (voir i18n)
+- **i18n** : détection device + toggle FR/EN persistant (`src/i18n/` — `useLang`/`useT`). Chaînes UI dans les dictionnaires typés `strings.{fr,en}.ts` (parité des clés garantie par tsc — jamais de chaîne UI en dur dans les composants), catalogues d'étapes jumeaux `steps-catalog.{fr,en}.ts` (invariant de parité structurelle testé), textes du catalogue de questions serveur en `{ fr, en }` résolus par `textIn()`, langue de session figée au `/start` (colonne `lang`), messages d'erreur par clés (`server/lib/messages.js`). Les **courriers restent toujours en français** (destinés aux organismes français) ; le produit transmission reste FR
 - **Imports** : alias `@/` → `src/` (configuré dans tsconfig + vite)
 - **Styling** : Tailwind utility-first, pas de CSS modules. Design empathique (Cormorant Garamond display, DM Sans body, palette #3B5998 / #FAF9F7)
 - **Composants UI** : Shadcn/ui via `components/ui/` — ne pas réinventer les primitives
@@ -77,8 +78,8 @@ Fichier `.env` à la racine (gitignored). Variables requises :
 ## Workflow & état du projet (source de vérité — survit aux réinitialisations de mémoire)
 
 - **Process établi** : brainstorming → spec (`docs/design-*.md`) → plan (`docs/plan-*.md`) → exécution **subagent-driven** (1 subagent frais par task + revue spec + revue qualité, correctifs systématiques, chaque déviation documentée par une « note post-revue » dans le plan). Merge **local** dans `main` (fast-forward) ; Arnaud pushe lui-même sur GitHub. Décisions produit → lui demander ; correctifs techniques des revues → appliquer sans re-consulter.
-- **Fait** : Plans 1, 2 & 3 (refonte questionnaire v2 : moteur serveur + rédacteur Mistral à fallback + sessions Supabase + frontend récap ; puis lot éditorial 13 étapes sourcées, rédacteur options-aware, rate limiting /start+/resume, reprise de session, invariant par valeur) livrés, mergés, validés E2E réel.
-- **En attente (USER STEPS Plan 3)** : appliquer `supabase/migrations/20260711100000_purge_sessions_cron.sql` dans le SQL Editor Supabase (vérif : `select jobname from cron.job;`) ; relecture juridique/éditoriale des 13 nouvelles étapes du catalogue (montants/délais + checklist de `docs/design-questionnaire-v2.md`).
+- **Fait** : Plans 1, 2 & 3 (refonte questionnaire v2 : moteur serveur + rédacteur Mistral à fallback + sessions Supabase + frontend récap ; puis lot éditorial 13 étapes sourcées, rédacteur options-aware, rate limiting /start+/resume, reprise de session, invariant par valeur) livrés, mergés, validés E2E réel. Plan 4 (i18n FR/EN : détection device + toggle, dictionnaires typés, catalogues jumeaux, serveur bilingue — spec `docs/design-i18n.md`) exécuté et revu.
+- **En attente (USER STEPS)** : ⚠️ appliquer `supabase/migrations/20260713120000_sessions_lang.sql` **AVANT tout déploiement du code i18n** (sans la colonne `lang`, chaque `/start` échoue en 500, FR compris) ; appliquer `supabase/migrations/20260711100000_purge_sessions_cron.sql` (vérif : `select jobname from cron.job;`) ; relecture juridique/éditoriale des 13 étapes du Plan 3 (montants/délais + checklist de `docs/design-questionnaire-v2.md`).
 - **À exécuter** : en réserve — `docs/design-envoi-courriers.md` (feature envoi), `docs/plan-points-attention.md` (§1 CLI Supabase et §4 audit RLS restants), backlog fin de `docs/plan-questionnaire-v3.md` (pension d'orphelin, personas non couvertes, multi-instances rate limiter).
 - **Compte de test E2E** (jetable, projet de dev) : `test.e2e.claude@seren-test.fr` / `TestSeren2026!` — confirmation email désactivée sur le projet Supabase.
 - **Produit transmission** (`/api/demo/*`, `DemoPage`, `AccessPage`, table `transmissions`) : produit DISTINCT du questionnaire, toujours sur l'ancien agent Mistral (`MISTRAL_AGENT_ID`) et une `Map()` mémoire — **ne pas toucher sans décision explicite**.
