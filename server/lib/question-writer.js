@@ -2,18 +2,21 @@
 // Garantie structurelle : ne bloque JAMAIS le questionnaire. Timeout, erreur réseau,
 // JSON invalide ou champ manquant → fallback_text interpolé du catalogue.
 import { buildWriterMessages } from './writer-prompt.js'
+import { textIn } from './questions-catalog.js'
 
 const DEFAULT_TIMEOUT_MS = 3000
 const MIN_QUESTION_LENGTH = 10
 const MAX_QUESTION_LENGTH = 300
 const MAX_AIDE_LENGTH = 200
 
-/** Interpole {prenom} dans les textes de secours du catalogue. */
-export function interpolateFallback(spec, prenom) {
-  const p = prenom || 'votre proche'
+/** Interpole {prenom} dans les textes de secours du catalogue, dans la langue de session. */
+export function interpolateFallback(spec, prenom, lang = 'fr') {
+  const p = prenom || (lang === 'en' ? 'your loved one' : 'votre proche')
+  const question = textIn(spec.fallback_text.question, lang)
+  const aide = textIn(spec.fallback_text.aide, lang)
   return {
-    question: spec.fallback_text.question.replaceAll('{prenom}', p),
-    aide: spec.fallback_text.aide?.replaceAll('{prenom}', p),
+    question: question.replaceAll('{prenom}', p),
+    aide: aide?.replaceAll('{prenom}', p),
   }
 }
 
@@ -21,8 +24,8 @@ export function interpolateFallback(spec, prenom) {
  * Rédige le texte d'une question via Mistral.
  * @returns {Promise<{ question: string, aide?: string, source: 'llm'|'fallback' }>}
  */
-export async function writeQuestionText({ spec, context, mistral, model, timeoutMs = DEFAULT_TIMEOUT_MS }) {
-  const fallback = { ...interpolateFallback(spec, context.prenom), source: 'fallback' }
+export async function writeQuestionText({ spec, context, mistral, model, timeoutMs = DEFAULT_TIMEOUT_MS, lang = 'fr' }) {
+  const fallback = { ...interpolateFallback(spec, context.prenom, lang), source: 'fallback' }
   if (!mistral) return fallback
   try {
     // Timeout natif du SDK : annule réellement la requête HTTP (AbortSignal), contrairement
@@ -30,7 +33,7 @@ export async function writeQuestionText({ spec, context, mistral, model, timeout
     const completion = await mistral.chat.complete(
       {
         model,
-        messages: buildWriterMessages(spec, context),
+        messages: buildWriterMessages(spec, context, lang),
         responseFormat: { type: 'json_object' },
       },
       { timeoutMs }

@@ -121,4 +121,11 @@ describe('buildWriterMessages', () => {
     expect(withName).not.toContain('{prenom}')
     expect(withName).toContain('À quelle date Pierre est-il/elle décédé(e) ?')
   })
+  it('buildWriterMessages en anglais : instructions EN et libellés EN', () => {
+    const spec = { ...SPEC, type: 'select', options: [{ value: 'a', label: { fr: 'Premier choix', en: 'First choice' } }] }
+    const messages = buildWriterMessages(spec, {}, 'en')
+    expect(messages[0].content).toMatch(/English/i)
+    expect(messages[1].content).toContain('First choice')
+    expect(messages[1].content).not.toContain('Premier choix')
+  })
 })

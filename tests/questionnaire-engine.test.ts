@@ -82,6 +82,19 @@ describe('validateAnswer', () => {
     expect(validateAnswer(spec('deceased_dod'), '10/04/2026').ok).toBe(false)
     expect(validateAnswer(spec('deceased_dod'), '2999-01-01').ok).toBe(false)
   })
+  // i18n (docs/design-i18n.md, Task 4) : le moteur reste agnostique de la langue — `error`
+  // est une CLÉ stable (server/lib/messages.js), jamais un texte affichable directement.
+  // Les routes traduisent via msg(session.lang, check.error).
+  it('les erreurs sont des clés stables, pas du texte affichable', () => {
+    expect(validateAnswer(spec('relation'), 'cousin').error).toBe('unknown_option')
+    expect(validateAnswer(spec('has_notary'), 'oui').error).toBe('yes_no_expected')
+    expect(validateAnswer(spec('has_life_insurance'), true).error).toBe('tristate_expected')
+    expect(validateAnswer(spec('organismes_contactes'), ['banque', 'banque']).error).toBe('duplicates')
+    expect(validateAnswer(spec('organismes_contactes'), ['pole_emploi']).error).toBe('unknown_option_in_selection')
+    expect(validateAnswer(spec('deceased_firstname'), '   ').error).toBe('text_required')
+    expect(validateAnswer(spec('deceased_firstname'), 'x'.repeat(201)).error).toBe('text_too_long')
+    expect(validateAnswer(spec('deceased_dod'), '2999-01-01').error).toBe('date_future')
+  })
   it('date : rejette les dates calendaires impossibles', () => {
     expect(validateAnswer(spec('deceased_dod'), '2026-02-30').ok).toBe(false)
     expect(validateAnswer(spec('deceased_dod'), '2026-04-31').ok).toBe(false)

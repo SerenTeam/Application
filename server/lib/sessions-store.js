@@ -5,8 +5,10 @@
 
 const TABLE = 'questionnaire_sessions'
 
-export async function createSession(client, userId) {
-  const { data, error } = await client.from(TABLE).insert({ user_id: userId }).select().single()
+// lang figée pour toute la session (Task 4 i18n) : nécessite la migration
+// supabase/migrations/20260713120000_sessions_lang.sql appliquée (colonne `lang`, USER STEP).
+export async function createSession(client, userId, lang = 'fr') {
+  const { data, error } = await client.from(TABLE).insert({ user_id: userId, lang }).select().single()
   if (error || !data) throw new Error(`Création de session impossible : ${error?.message ?? 'réponse vide'}`)
   return data
 }

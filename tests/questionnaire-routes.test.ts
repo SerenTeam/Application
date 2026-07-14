@@ -3,16 +3,18 @@ import express from 'express'
 import request from 'supertest'
 // @ts-expect-error — module JS serveur
 import { createQuestionnaireRouter } from '../server/routes/questionnaire.js'
+// @ts-expect-error — module JS serveur
+import { textIn } from '../server/lib/questions-catalog.js'
 
 // ── Fakes ────────────────────────────────────────────────────────────────
-type Session = { id: string; user_id: string; answers: Record<string, unknown> }
+type Session = { id: string; user_id: string; answers: Record<string, unknown>; lang: 'fr' | 'en' }
 
 function makeApp() {
   const sessions = new Map<string, Session>()
   let seq = 0
   const store = {
-    async createSession(_c: unknown, userId: string) {
-      const s: Session = { id: `sess-${++seq}`, user_id: userId, answers: {} }
+    async createSession(_c: unknown, userId: string, lang: 'fr' | 'en' = 'fr') {
+      const s: Session = { id: `sess-${++seq}`, user_id: userId, answers: {}, lang }
       sessions.set(s.id, s)
       return s
     },
@@ -34,9 +36,9 @@ function makeApp() {
     next()
   }
   // writer synchrone déterministe : pas de LLM dans les tests de routes
-  const writeText = async ({ spec }: { spec: { fallback_text: { question: string; aide?: string } } }) => ({
-    question: spec.fallback_text.question,
-    aide: spec.fallback_text.aide,
+  const writeText = async ({ spec, lang }: { spec: { fallback_text: { question: unknown; aide?: unknown } }; lang: 'fr' | 'en' }) => ({
+    question: textIn(spec.fallback_text.question, lang),
+    aide: textIn(spec.fallback_text.aide, lang),
     source: 'fallback' as const,
   })
   const app = express()
@@ -84,6 +86,20 @@ describe('POST /api/questionnaire/start', () => {
     expect(q.writer_hints).toBeUndefined()
     expect(q.progress).toEqual({ current: 0, total: 15 })
   })
+  it('start avec lang:en → session en anglais, textes EN, resume conserve la langue', async () => {
+    const { app } = makeApp()
+    const start = await request(app).post('/api/questionnaire/start').send({ lang: 'en' })
+    expect(start.status).toBe(200)
+    const q = start.body.data
+    expect(q.options[0].label).toBe('My husband / my wife')
+    const resume = await request(app).post('/api/questionnaire/resume').send({ session_id: start.body.session_id })
+    expect(resume.body.data.options[0].label).toBe('My husband / my wife')
+  })
+  it('start avec lang invalide → 400', async () => {
+    const { app } = makeApp()
+    const res = await request(app).post('/api/questionnaire/start').send({ lang: 'de' })
+    expect(res.status).toBe(400)
+  })
 })
 
 describe('POST /api/questionnaire/answer', () => {
@@ -106,12 +122,21 @@ describe('POST /api/questionnaire/answer', () => {
     expect(res.body.data.progress).toEqual({ current: 1, total: 15 }) // branche conjoint ouverte
     expect(sessions.get(sessionId)?.answers.relation).toBe('conjoint_marie') // persisté via saveAnswers, pas par aliasing
   })
-  it('valeur hors options → 400 avec message du moteur', async () => {
+  it('valeur hors options → 400 avec message du moteur (traduit FR)', async () => {
     const res = await request(app)
       .post('/api/questionnaire/answer')
       .send({ session_id: sessionId, question_id: 'relation', value: 'cousin' })
     expect(res.status).toBe(400)
     expect(res.body.error).toBe('Option inconnue')
+  })
+  it('même erreur, session en anglais → message traduit EN', async () => {
+    const { app: appEn } = makeApp()
+    const start = await request(appEn).post('/api/questionnaire/start').send({ lang: 'en' })
+    const res = await request(appEn)
+      .post('/api/questionnaire/answer')
+      .send({ session_id: start.body.session_id, question_id: 'relation', value: 'cousin' })
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('Unknown option')
   })
   // NOTE post-revue (Task 1, plan v3, décision 2026-07-11) : has_joint_account était la seule
   // question du catalogue avec un applicable_when non vide. Devenue universelle, il n'existe

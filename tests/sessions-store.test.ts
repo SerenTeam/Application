@@ -23,13 +23,20 @@ function fakeClient(result: { data?: unknown; error?: { message: string } | null
 }
 
 describe('sessions-store', () => {
-  it('createSession insère user_id et retourne la ligne', async () => {
-    const row = { id: 'abc', user_id: 'u1', answers: {} }
+  it('createSession insère user_id + lang (défaut fr) et retourne la ligne', async () => {
+    const row = { id: 'abc', user_id: 'u1', answers: {}, lang: 'fr' }
     const { client, calls } = fakeClient({ data: row, error: null })
     const session = await createSession(client, 'u1')
     expect(session).toEqual(row)
     expect(calls).toContainEqual(['from', ['questionnaire_sessions']])
-    expect(calls).toContainEqual(['insert', [{ user_id: 'u1' }]])
+    expect(calls).toContainEqual(['insert', [{ user_id: 'u1', lang: 'fr' }]])
+  })
+  it('createSession propage la langue explicite (en)', async () => {
+    const row = { id: 'abc', user_id: 'u1', answers: {}, lang: 'en' }
+    const { client, calls } = fakeClient({ data: row, error: null })
+    const session = await createSession(client, 'u1', 'en')
+    expect(session).toEqual(row)
+    expect(calls).toContainEqual(['insert', [{ user_id: 'u1', lang: 'en' }]])
   })
   it('loadSession filtre les sessions expirées (gt expires_at)', async () => {
     const { client, calls } = fakeClient({ data: null, error: null })

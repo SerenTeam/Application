@@ -93,7 +93,10 @@ export function QuestionnairePage() {
     setPhase('loading')
     setError(null)
     try {
-      const response = await apiFetch('/api/questionnaire/start', { method: 'POST' })
+      const response = await apiFetch('/api/questionnaire/start', {
+        method: 'POST',
+        body: JSON.stringify({ lang }),
+      })
       const result = await response.json()
       if (result.success) {
         setSessionId(result.session_id)
@@ -107,7 +110,7 @@ export function QuestionnairePage() {
       setError(fmt(t.questionnaire.connectionError, { detail: err instanceof Error ? err.message : t.questionnaire.unknownDetail }))
       setPhase('welcome')
     }
-  }, [showServerData, t])
+  }, [showServerData, t, lang])
 
   // ─── Réponse (valeur canonique, jamais le label) ───────────────
 

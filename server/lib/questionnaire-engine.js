@@ -33,27 +33,31 @@ export function nextQuestion(answers) {
   return null
 }
 
-/** Valide une valeur contre la spec (type + options canoniques). */
+/**
+ * Valide une valeur contre la spec (type + options canoniques).
+ * `error` est une CLÉ stable (server/lib/messages.js), pas un texte affichable : le moteur
+ * reste agnostique de la langue, les routes traduisent via `msg(session.lang, check.error)`.
+ */
 export function validateAnswer(spec, value) {
   const fail = (error) => ({ ok: false, error })
   switch (spec.type) {
     case 'boolean':
-      return typeof value === 'boolean' ? { ok: true } : fail('Réponse oui/non attendue')
+      return typeof value === 'boolean' ? { ok: true } : fail('yes_no_expected')
     case 'tristate':
-      return TRISTATE.includes(value) ? { ok: true } : fail('Valeur attendue : oui, non ou ne_sait_pas')
+      return TRISTATE.includes(value) ? { ok: true } : fail('tristate_expected')
     case 'select':
-      return spec.options.some((o) => o.value === value) ? { ok: true } : fail('Option inconnue')
+      return spec.options.some((o) => o.value === value) ? { ok: true } : fail('unknown_option')
     case 'multiselect':
       if (!Array.isArray(value)) return fail('Tableau attendu')
-      if (new Set(value).size !== value.length) return fail('Doublons dans la sélection')
+      if (new Set(value).size !== value.length) return fail('duplicates')
       return value.every((v) => spec.options.some((o) => o.value === v))
         ? { ok: true }
-        : fail('Option inconnue dans la sélection')
+        : fail('unknown_option_in_selection')
     case 'text': {
-      if (typeof value !== 'string') return fail('Texte requis')
+      if (typeof value !== 'string') return fail('text_required')
       const trimmed = value.trim()
-      if (trimmed.length === 0) return fail('Texte requis')
-      return trimmed.length <= TEXT_MAX ? { ok: true } : fail(`Maximum ${TEXT_MAX} caractères`)
+      if (trimmed.length === 0) return fail('text_required')
+      return trimmed.length <= TEXT_MAX ? { ok: true } : fail('text_too_long')
     }
     case 'date': {
       if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return fail('Format AAAA-MM-JJ attendu')
@@ -61,7 +65,7 @@ export function validateAnswer(spec, value) {
       // Round-trip : rejette les dates impossibles (ex. 2026-02-30) que Date.parse normalise silencieusement
       if (Number.isNaN(t) || new Date(t).toISOString().slice(0, 10) !== value) return fail('Date invalide')
       // Date-only = minuit UTC ; +14 h de tolérance couvre tous les fuseaux réels (ex. Nouvelle-Calédonie)
-      return t <= Date.now() + 14 * 3600 * 1000 ? { ok: true } : fail('La date ne peut pas être dans le futur')
+      return t <= Date.now() + 14 * 3600 * 1000 ? { ok: true } : fail('date_future')
     }
     default:
       return fail(`Type de question inconnu : ${spec.type}`)

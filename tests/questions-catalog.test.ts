@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — module JS serveur sans déclarations
-import { QUESTIONS_CATALOG } from '../server/lib/questions-catalog.js'
+import { QUESTIONS_CATALOG, textIn } from '../server/lib/questions-catalog.js'
 
 // Clés autorisées = champs du contrat v2 (dupliqué sciemment : le test casse si l'un bouge sans l'autre)
 const CONTRACT_KEYS = [
@@ -21,22 +21,26 @@ describe('questions-catalog', () => {
     const orders = QUESTIONS_CATALOG.map((q: { order: number }) => q.order)
     expect(new Set(orders).size).toBe(orders.length)
   })
-  it('select/multiselect ont ≥ 2 options { value, label } ; boolean/tristate/text/date n\'en ont pas', () => {
+  it('select/multiselect ont ≥ 2 options { value, label: { fr, en } } ; boolean/tristate/text/date n\'en ont pas', () => {
     for (const q of QUESTIONS_CATALOG) {
       if (q.type === 'select' || q.type === 'multiselect') {
         expect(q.options.length).toBeGreaterThanOrEqual(2)
         for (const o of q.options) {
           expect(typeof o.value).toBe('string')
-          expect(o.label.length).toBeGreaterThan(0)
+          for (const lang of ['fr', 'en'] as const) {
+            expect(textIn(o.label, lang).length).toBeGreaterThan(0)
+          }
         }
       } else {
         expect(q.options).toBeUndefined()
       }
     }
   })
-  it('chaque question a un fallback_text.question non vide', () => {
+  it('chaque question a un fallback_text.question non vide, en français et en anglais', () => {
     for (const q of QUESTIONS_CATALOG) {
-      expect(q.fallback_text.question.trim().length).toBeGreaterThan(10)
+      for (const lang of ['fr', 'en'] as const) {
+        expect(textIn(q.fallback_text.question, lang).trim().length).toBeGreaterThan(10)
+      }
     }
   })
   it('les questions conditionnelles référencent des champs posés avant elles', () => {
