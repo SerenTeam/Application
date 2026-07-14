@@ -1,10 +1,12 @@
 import { Clock } from 'lucide-react'
+import { useT } from '@/i18n/useT'
 
 /**
  * SER-65 — Page de maintenance planifiée.
  * Ton apaisant, pas de CTA car l'app est indisponible.
  */
 export function MaintenancePage() {
+  const t = useT()
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-bg px-6">
       <div className="w-full max-w-md rounded-[20px] bg-bg-card p-8 text-center shadow-md">
@@ -14,16 +16,15 @@ export function MaintenancePage() {
         />
 
         <h1 className="mb-3 font-display text-[2rem] font-medium text-text">
-          Seren est en maintenance
+          {t.errors.maintenanceTitle}
         </h1>
 
         <p className="mb-2 text-[1.05rem] text-text-soft">
-          Nous améliorons le service pour mieux vous accompagner.
-          Revenez dans quelques minutes.
+          {t.errors.maintenanceDescription}
         </p>
 
         <p className="text-sm text-text-muted">
-          Vos données restent en sécurité pendant cette opération.
+          {t.errors.maintenanceDataSafe}
         </p>
       </div>
     </div>

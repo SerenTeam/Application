@@ -1,5 +1,6 @@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useT } from '@/i18n/useT'
 import type { LetterVariable } from '@/data/letter-templates'
 
 interface LetterVariablesFormProps {
@@ -9,6 +10,7 @@ interface LetterVariablesFormProps {
 }
 
 export function LetterVariablesForm({ variables, values, onVariableChange }: LetterVariablesFormProps) {
+  const t = useT()
   // Only show variables that need user input (not auto-filled or empty auto-filled)
   const editableVariables = variables.filter((v) => !v.auto_filled || !values[v.key]?.trim())
 
@@ -17,7 +19,7 @@ export function LetterVariablesForm({ variables, values, onVariableChange }: Let
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-medium text-text-primary">
-        Complétez les informations manquantes
+        {t.lettersPage.completeInfo}
       </h3>
       <div className="grid gap-4 sm:grid-cols-2">
         {editableVariables.map((variable) => (

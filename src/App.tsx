@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from '@/hooks/useAuth'
 import { LanguageProvider } from '@/i18n/LanguageContext'
+import { useT } from '@/i18n/useT'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
 import { OfflineBanner } from '@/components/layout/OfflineBanner'
@@ -21,12 +22,35 @@ import { NotFoundPage } from '@/pages/errors/NotFoundPage'
 import { ErrorPage } from '@/pages/errors/ErrorPage'
 import { MaintenancePage } from '@/pages/errors/MaintenancePage'
 
+// Pages légales : contenu à venir. `LanguageProvider` doit envelopper `AuthProvider`
+// (et non l'inverse) pour que useAuth.ts puisse résoudre la langue active via useT()
+// dans son propre corps de composant (toast de session expirée).
+function LegalPlaceholder() {
+  const t = useT()
+  return (
+    <div className="min-h-screen bg-bg p-12 max-w-3xl mx-auto">
+      <h1 className="font-display text-3xl text-accent mb-4">{t.layout.legalTitle}</h1>
+      <p className="text-text-soft">{t.layout.legalContent}</p>
+    </div>
+  )
+}
+
+function SecurityPlaceholder() {
+  const t = useT()
+  return (
+    <div className="min-h-screen bg-bg p-12 max-w-3xl mx-auto">
+      <h1 className="font-display text-3xl text-accent mb-4">{t.layout.securityTitle}</h1>
+      <p className="text-text-soft">{t.layout.securityContent}</p>
+    </div>
+  )
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <AuthProvider>
-          <LanguageProvider>
+        <LanguageProvider>
+          <AuthProvider>
             <OfflineBanner />
 
             <Routes>
@@ -36,8 +60,8 @@ export default function App() {
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/reset-password/confirm" element={<ResetPasswordConfirmPage />} />
               <Route path="/reset-password/success" element={<ResetPasswordSuccessPage />} />
-              <Route path="/legal" element={<div className="min-h-screen bg-bg p-12 max-w-3xl mx-auto"><h1 className="font-display text-3xl text-accent mb-4">Conditions Generales d&apos;Utilisation</h1><p className="text-text-soft">Contenu a venir...</p></div>} />
-              <Route path="/security" element={<div className="min-h-screen bg-bg p-12 max-w-3xl mx-auto"><h1 className="font-display text-3xl text-accent mb-4">Politique de confidentialite</h1><p className="text-text-soft">Contenu a venir...</p></div>} />
+              <Route path="/legal" element={<LegalPlaceholder />} />
+              <Route path="/security" element={<SecurityPlaceholder />} />
 
               {/* Error routes */}
               <Route path="/erreur" element={<ErrorPage />} />
@@ -57,8 +81,8 @@ export default function App() {
 
             <CookieBanner />
             <Toaster />
-          </LanguageProvider>
-        </AuthProvider>
+          </AuthProvider>
+        </LanguageProvider>
       </BrowserRouter>
     </ErrorBoundary>
   )

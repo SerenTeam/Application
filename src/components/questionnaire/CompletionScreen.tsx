@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom'
+import { useT } from '@/i18n/useT'
+import { fmt } from '@/i18n'
 
 interface CompletionScreenProps {
   stepsCount: number
@@ -6,6 +8,7 @@ interface CompletionScreenProps {
 }
 
 export function CompletionScreen({ stepsCount, doneCount }: CompletionScreenProps) {
+  const t = useT()
   return (
     <section className="text-center py-16 px-8 animate-[fadeIn_0.8s_ease-out]">
       {/* Success icon */}
@@ -28,24 +31,23 @@ export function CompletionScreen({ stepsCount, doneCount }: CompletionScreenProp
 
       {/* Title */}
       <h2 className="font-display text-[2rem] font-medium mb-4">
-        Votre parcours est prêt
+        {t.completion.title}
       </h2>
 
       {/* Description */}
       <p className="text-text-soft max-w-[440px] mx-auto mb-2">
-        Nous avons identifié{' '}
-        <strong className="text-text">{stepsCount} démarches</strong>{' '}
-        à effectuer en fonction de votre situation
+        {t.completion.introPrefix}{' '}
+        <strong className="text-text">{fmt(t.completion.stepsUnit, { count: stepsCount })}</strong>{' '}
+        {t.completion.situationSuffix}
         {doneCount > 0 && (
           <>
-            , dont <strong className="text-text">{doneCount} déjà faites</strong>
+            {t.completion.donePrefix} <strong className="text-text">{fmt(t.completion.doneUnit, { count: doneCount })}</strong>
           </>
         )}
         .
       </p>
       <p className="text-text-soft max-w-[440px] mx-auto mb-10">
-        Retrouvez votre parcours détaillé avec les courriers pré-remplis sur
-        votre tableau de bord.
+        {t.completion.dashboardHint}
       </p>
 
       {/* CTA */}
@@ -53,7 +55,7 @@ export function CompletionScreen({ stepsCount, doneCount }: CompletionScreenProp
         to="/dashboard"
         className="inline-flex items-center gap-3 bg-accent text-white border-none py-4 px-8 text-base font-body font-medium rounded-radius-md cursor-pointer transition-all duration-300 shadow-md hover:bg-accent-hover hover:-translate-y-0.5 hover:shadow-lg no-underline group"
       >
-        Voir mon parcours
+        {t.completion.viewRoadmap}
         <svg
           xmlns="http://www.w3.org/2000/svg"
           fill="none"

@@ -10,9 +10,12 @@ import { PasswordConfirmField } from '@/components/auth/PasswordConfirmField'
 import { usePasswordValidation } from '@/hooks/usePasswordValidation'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase'
-import { changePasswordSchema, type ChangePasswordValues } from '@/utils/validation'
+import { makeSchemas, type ChangePasswordValues } from '@/utils/validation'
+import { useT } from '@/i18n/useT'
 
 export function ChangePasswordForm() {
+  const t = useT()
+  const { changePasswordSchema } = makeSchemas(t)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -38,7 +41,7 @@ export function ChangePasswordForm() {
       // Verify current password
       const { data: { user } } = await supabase.auth.getUser()
       if (!user?.email) {
-        setError('Utilisateur non trouvé')
+        setError(t.profile.userNotFound)
         return
       }
 
@@ -48,7 +51,7 @@ export function ChangePasswordForm() {
       })
 
       if (signInError) {
-        setError('Le mot de passe actuel est incorrect')
+        setError(t.profile.currentPasswordIncorrect)
         return
       }
 
@@ -63,13 +66,13 @@ export function ChangePasswordForm() {
       }
 
       toast({
-        title: 'Mot de passe modifié',
-        description: 'Votre mot de passe a été mis à jour avec succès.',
+        title: t.profile.changeSuccessTitle,
+        description: t.profile.changeSuccessDescription,
       })
 
       form.reset()
     } catch {
-      setError('Une erreur est survenue. Veuillez réessayer.')
+      setError(t.profile.genericError)
     } finally {
       setIsSubmitting(false)
     }
@@ -78,13 +81,13 @@ export function ChangePasswordForm() {
   return (
     <div className="rounded-[20px] bg-bg-card p-6 sm:p-8 shadow-md">
       <h2 className="mb-4 font-display text-[1.5rem] font-medium text-text">
-        Modifier le mot de passe
+        {t.profile.changePasswordTitle}
       </h2>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>
         {/* Current password */}
         <div className="space-y-2">
-          <Label htmlFor="currentPassword">Mot de passe actuel</Label>
+          <Label htmlFor="currentPassword">{t.profile.currentPasswordLabel}</Label>
           <PasswordInput
             id="currentPassword"
             autoComplete="current-password"
@@ -99,7 +102,7 @@ export function ChangePasswordForm() {
 
         {/* New password */}
         <div className="space-y-2">
-          <Label htmlFor="newPassword">Nouveau mot de passe</Label>
+          <Label htmlFor="newPassword">{t.profile.newPasswordLabel}</Label>
           <PasswordInput
             id="newPassword"
             autoComplete="new-password"
@@ -136,7 +139,7 @@ export function ChangePasswordForm() {
           disabled={isSubmitting}
           className="w-full"
         >
-          {isSubmitting ? 'Modification...' : 'Modifier le mot de passe'}
+          {isSubmitting ? t.profile.submitting : t.profile.submit}
         </Button>
       </form>
     </div>

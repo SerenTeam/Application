@@ -1,78 +1,80 @@
 import { z } from 'zod'
+import type { Strings } from '@/i18n/strings.fr'
 
-// ─── Champs réutilisables ────────────────────────────────────────────────
+// ─── Schémas paramétrés par langue ───────────────────────────────────────
+// Les messages zod ne peuvent pas être figés à l'import (ils dépendent de la
+// langue active) : chaque écran appelle `makeSchemas(t)` avec son `useT()`.
 
-/** Email — validation format uniquement (pas d'existence en base) */
-export const emailSchema = z
-  .string()
-  .min(1, 'Veuillez renseigner votre adresse email.')
-  .email('Cette adresse email n\u2019est pas valide.')
+export function makeSchemas(t: Strings) {
+  const emailSchema = z
+    .string()
+    .min(1, t.validation.emailRequired)
+    .email(t.validation.emailInvalid)
 
-/** Mot de passe — 4 règles SER-38 */
-export const passwordSchema = z
-  .string()
-  .min(8, 'Au moins 8 caractères')
-  .regex(/[A-Z]/, 'Une majuscule requise')
-  .regex(/\d/, 'Un chiffre requis')
-  .regex(/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/, 'Un caractère spécial requis')
+  const passwordSchema = z
+    .string()
+    .min(8, t.validation.passwordMinLength)
+    .regex(/[A-Z]/, t.validation.passwordUppercase)
+    .regex(/\d/, t.validation.passwordDigit)
+    .regex(/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/, t.validation.passwordSpecialChar)
 
-// ─── Schémas formulaires ─────────────────────────────────────────────────
+  const signupSchema = z
+    .object({
+      email: emailSchema,
+      password: passwordSchema,
+      confirmPassword: z.string(),
+      acceptCGU: z.literal(true, {
+        errorMap: () => ({ message: t.validation.acceptCguRequired }),
+      }),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: t.validation.passwordsMismatch,
+      path: ['confirmPassword'],
+    })
 
-/** Inscription (SER-5) */
-export const signupSchema = z
-  .object({
+  const loginSchema = z.object({
     email: emailSchema,
-    password: passwordSchema,
-    confirmPassword: z.string(),
-    acceptCGU: z.literal(true, {
-      errorMap: () => ({ message: 'Vous devez accepter les CGU pour continuer' }),
-    }),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'Les mots de passe ne correspondent pas',
-    path: ['confirmPassword'],
+    password: z.string().min(1, t.validation.passwordRequired),
   })
 
-export type SignupFormValues = z.infer<typeof signupSchema>
-
-/** Connexion (SER-12) */
-export const loginSchema = z.object({
-  email: emailSchema,
-  password: z.string().min(1, 'Veuillez renseigner votre mot de passe.'),
-})
-
-export type LoginFormValues = z.infer<typeof loginSchema>
-
-/** Demande de réinitialisation (SER-13 étape 1) */
-export const resetPasswordRequestSchema = z.object({
-  email: emailSchema,
-})
-
-export type ResetPasswordRequestValues = z.infer<typeof resetPasswordRequestSchema>
-
-/** Nouveau mot de passe (SER-13 étape 2) */
-export const resetPasswordConfirmSchema = z
-  .object({
-    password: passwordSchema,
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'Les mots de passe ne correspondent pas',
-    path: ['confirmPassword'],
+  const resetPasswordRequestSchema = z.object({
+    email: emailSchema,
   })
 
-export type ResetPasswordConfirmValues = z.infer<typeof resetPasswordConfirmSchema>
+  const resetPasswordConfirmSchema = z
+    .object({
+      password: passwordSchema,
+      confirmPassword: z.string(),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: t.validation.passwordsMismatch,
+      path: ['confirmPassword'],
+    })
 
-/** Changement de mot de passe (SER-22) */
-export const changePasswordSchema = z
-  .object({
-    currentPassword: z.string().min(1, 'Mot de passe actuel requis'),
-    newPassword: passwordSchema,
-    confirmNewPassword: z.string(),
-  })
-  .refine((data) => data.newPassword === data.confirmNewPassword, {
-    message: 'Les mots de passe ne correspondent pas',
-    path: ['confirmNewPassword'],
-  })
+  const changePasswordSchema = z
+    .object({
+      currentPassword: z.string().min(1, t.validation.currentPasswordRequired),
+      newPassword: passwordSchema,
+      confirmNewPassword: z.string(),
+    })
+    .refine((data) => data.newPassword === data.confirmNewPassword, {
+      message: t.validation.passwordsMismatch,
+      path: ['confirmNewPassword'],
+    })
 
-export type ChangePasswordValues = z.infer<typeof changePasswordSchema>
+  return {
+    emailSchema,
+    passwordSchema,
+    signupSchema,
+    loginSchema,
+    resetPasswordRequestSchema,
+    resetPasswordConfirmSchema,
+    changePasswordSchema,
+  }
+}
+
+export type SignupFormValues = z.infer<ReturnType<typeof makeSchemas>['signupSchema']>
+export type LoginFormValues = z.infer<ReturnType<typeof makeSchemas>['loginSchema']>
+export type ResetPasswordRequestValues = z.infer<ReturnType<typeof makeSchemas>['resetPasswordRequestSchema']>
+export type ResetPasswordConfirmValues = z.infer<ReturnType<typeof makeSchemas>['resetPasswordConfirmSchema']>
+export type ChangePasswordValues = z.infer<ReturnType<typeof makeSchemas>['changePasswordSchema']>

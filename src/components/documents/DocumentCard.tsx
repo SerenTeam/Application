@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Copy, Download, Eye, Trash2, Check, Send } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import { useT } from '@/i18n/useT'
+import { useLang } from '@/i18n/LanguageContext'
+import { fmt } from '@/i18n'
 
 const THEME_ICONS: Record<string, string> = {
   banque: '\uD83C\uDFE6',
@@ -31,9 +34,9 @@ interface DocumentCardProps {
   onDelete: (id: string) => void
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, lang: 'fr' | 'en'): string {
   try {
-    return new Date(iso).toLocaleDateString('fr-FR', {
+    return new Date(iso).toLocaleDateString(lang === 'en' ? 'en-GB' : 'fr-FR', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
@@ -44,6 +47,8 @@ function formatDate(iso: string): string {
 }
 
 export function DocumentCard({ document: doc, onView, onDelete }: DocumentCardProps) {
+  const t = useT()
+  const { lang } = useLang()
   const [copied, setCopied] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -55,7 +60,7 @@ export function DocumentCard({ document: doc, onView, onDelete }: DocumentCardPr
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      toast({ title: 'Impossible de copier', description: 'Veuillez sélectionner le texte manuellement.' })
+      toast({ title: t.errors.copyFailedTitle, description: t.errors.copyFailedDescription })
     }
   }
 
@@ -82,9 +87,9 @@ export function DocumentCard({ document: doc, onView, onDelete }: DocumentCardPr
       }
 
       const date = new Date(doc.created_at).toISOString().slice(0, 10)
-      pdf.save(`Courrier-${date}.pdf`)
+      pdf.save(`${t.lettersPage.pdfFilenamePrefix}-${date}.pdf`)
     } catch {
-      toast({ title: 'Erreur', description: 'Impossible de générer le PDF.' })
+      toast({ title: t.lettersPage.pdfErrorTitle, description: t.lettersPage.pdfErrorDescription })
     }
   }
 
@@ -99,7 +104,7 @@ export function DocumentCard({ document: doc, onView, onDelete }: DocumentCardPr
               <p className="text-xs text-text-muted truncate">{doc.step_title}</p>
             )}
             <p className="text-xs text-text-muted mt-0.5">
-              Généré le {formatDate(doc.created_at)}
+              {fmt(t.lettersPage.generatedOn, { date: formatDate(doc.created_at, lang) })}
             </p>
           </div>
         </div>
@@ -107,7 +112,7 @@ export function DocumentCard({ document: doc, onView, onDelete }: DocumentCardPr
         {doc.is_sent && (
           <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success shrink-0">
             <Send className="h-3 w-3" />
-            Envoyé
+            {t.lettersPage.sentBadge}
           </span>
         )}
       </div>
@@ -115,11 +120,11 @@ export function DocumentCard({ document: doc, onView, onDelete }: DocumentCardPr
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" onClick={() => onView(doc)} className="gap-1.5 text-xs">
           <Eye className="h-3.5 w-3.5" />
-          Voir
+          {t.lettersPage.view}
         </Button>
         <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5 text-xs">
           {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-          {copied ? 'Copié !' : 'Copier'}
+          {copied ? t.lettersPage.copied : t.lettersPage.copy}
         </Button>
         <Button variant="outline" size="sm" onClick={handleDownload} className="gap-1.5 text-xs">
           <Download className="h-3.5 w-3.5" />
@@ -129,7 +134,7 @@ export function DocumentCard({ document: doc, onView, onDelete }: DocumentCardPr
         {confirmDelete ? (
           <div className="flex gap-1.5 ml-auto">
             <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} className="text-xs">
-              Annuler
+              {t.lettersPage.cancel}
             </Button>
             <Button
               variant="outline"
@@ -137,7 +142,7 @@ export function DocumentCard({ document: doc, onView, onDelete }: DocumentCardPr
               onClick={() => { onDelete(doc.id); setConfirmDelete(false) }}
               className="text-xs text-error border-error/30 hover:bg-error/5"
             >
-              Confirmer
+              {t.lettersPage.confirm}
             </Button>
           </div>
         ) : (

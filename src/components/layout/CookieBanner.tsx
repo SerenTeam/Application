@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Cookie, Shield, BarChart3, Settings2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useT } from '@/i18n/useT'
 import {
   useCookieConsent,
   DEFAULT_CONSENT,
@@ -100,6 +101,7 @@ interface ModalProps {
 }
 
 function CookieModal({ onSave, onClose }: ModalProps) {
+  const t = useT()
   const [analytics, setAnalytics] = useState(false)
   const [functional, setFunctional] = useState(false)
 
@@ -112,36 +114,34 @@ function CookieModal({ onSave, onClose }: ModalProps) {
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Gestion des cookies"
+      aria-label={t.layout.cookie.settingsAriaLabel}
     >
       <div className="relative w-full max-w-lg rounded-[var(--radius-lg)] bg-bg-card p-6 shadow-lg animate-[fade-in_0.2s_ease-out]">
         {/* Header */}
         <div className="mb-5 flex items-center justify-between">
           <h2 className="font-display text-xl font-medium text-text">
-            Gestion des cookies
+            {t.layout.cookie.modalTitle}
           </h2>
           <button
             type="button"
             onClick={onClose}
             className="rounded-sm p-1 text-text-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            aria-label="Fermer"
+            aria-label={t.layout.cookie.closeAriaLabel}
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <p className="mb-5 text-sm text-text-soft leading-relaxed">
-          Choisissez les cookies que vous souhaitez autoriser. Les cookies
-          nécessaires assurent le bon fonctionnement du site et ne peuvent pas
-          être désactivés.
+          {t.layout.cookie.modalDescription}
         </p>
 
         {/* Categories */}
         <div className="space-y-3">
           <CategoryCard
             icon={<Shield className="h-5 w-5" />}
-            title="Nécessaires"
-            description="Authentification, sécurité et fonctionnement de base. Ces cookies sont indispensables."
+            title={t.layout.cookie.necessaryTitle}
+            description={t.layout.cookie.necessaryDescription}
             toggleId="cookie-necessary"
             checked={true}
             disabled={true}
@@ -150,8 +150,8 @@ function CookieModal({ onSave, onClose }: ModalProps) {
 
           <CategoryCard
             icon={<BarChart3 className="h-5 w-5" />}
-            title="Analytics"
-            description="Nous aident à comprendre comment vous utilisez Seren pour améliorer votre expérience (PostHog)."
+            title={t.layout.cookie.analyticsTitle}
+            description={t.layout.cookie.analyticsDescription}
             toggleId="cookie-analytics"
             checked={analytics}
             onChange={setAnalytics}
@@ -159,8 +159,8 @@ function CookieModal({ onSave, onClose }: ModalProps) {
 
           <CategoryCard
             icon={<Settings2 className="h-5 w-5" />}
-            title="Fonctionnels"
-            description="Mémorisent vos préférences (thème, langue) pour personnaliser votre expérience."
+            title={t.layout.cookie.functionalTitle}
+            description={t.layout.cookie.functionalDescription}
             toggleId="cookie-functional"
             checked={functional}
             onChange={setFunctional}
@@ -170,10 +170,10 @@ function CookieModal({ onSave, onClose }: ModalProps) {
         {/* Actions */}
         <div className="mt-6 flex gap-3">
           <Button variant="outline" onClick={onClose} className="flex-1">
-            Annuler
+            {t.layout.cookie.cancel}
           </Button>
           <Button onClick={handleSave} className="flex-1">
-            Enregistrer mes choix
+            {t.layout.cookie.saveChoices}
           </Button>
         </div>
       </div>
@@ -192,6 +192,7 @@ function CookieModal({ onSave, onClose }: ModalProps) {
  * Le composant gere aussi la modale de personnalisation.
  */
 export function CookieBanner() {
+  const t = useT()
   const { consent, update } = useCookieConsent()
   const [showModal, setShowModal] = useState(false)
 
@@ -216,7 +217,7 @@ export function CookieBanner() {
       <div
         className="fixed inset-x-0 bottom-0 z-50 animate-[fade-in_0.3s_ease-out] border-t border-border bg-bg-card px-4 py-5 shadow-lg sm:px-6"
         role="region"
-        aria-label="Bannière de consentement cookies"
+        aria-label={t.layout.cookie.bannerAriaLabel}
       >
         <div className="mx-auto flex max-w-4xl flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
           {/* Texte */}
@@ -226,13 +227,12 @@ export function CookieBanner() {
               aria-hidden="true"
             />
             <p className="text-sm text-text-soft leading-relaxed">
-              Nous utilisons des cookies pour améliorer votre expérience sur
-              Seren. Vous pouvez personnaliser vos choix à tout moment.{' '}
+              {t.layout.cookie.bannerText}{' '}
               <a
                 href="/security"
                 className="font-medium text-accent underline hover:text-accent-hover"
               >
-                En savoir plus
+                {t.layout.cookie.learnMore}
               </a>
             </p>
           </div>
@@ -245,7 +245,7 @@ export function CookieBanner() {
               onClick={handleRefuseAll}
               className="text-xs"
             >
-              Refuser tout
+              {t.layout.cookie.rejectAll}
             </Button>
             <Button
               variant="outline"
@@ -253,10 +253,10 @@ export function CookieBanner() {
               onClick={() => setShowModal(true)}
               className="text-xs"
             >
-              Personnaliser
+              {t.layout.cookie.customize}
             </Button>
             <Button size="sm" onClick={handleAcceptAll} className="text-xs">
-              Accepter tout
+              {t.layout.cookie.acceptAll}
             </Button>
           </div>
         </div>

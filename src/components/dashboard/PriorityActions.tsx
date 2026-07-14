@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { useT } from '@/i18n/useT'
 import type { RoadmapStep, DashboardView } from './types'
 
 interface PriorityActionsProps {
@@ -12,10 +13,12 @@ export function PriorityActions({
   onNavigate,
   onScrollToStep,
 }: PriorityActionsProps) {
+  const t = useT()
+
   if (steps.length === 0) {
     return (
       <p className="text-text-soft">
-        Toutes les étapes prioritaires sont complètes !
+        {t.dashboardPage.allPriorityDone}
       </p>
     )
   }
@@ -48,7 +51,7 @@ export function PriorityActions({
                   : 'bg-warning/15 text-warning',
               )}
             >
-              {step.urgent ? 'Urgent' : 'Important'}
+              {step.urgent ? t.dashboardPage.urgentBadge : t.dashboardPage.importantBadge}
             </span>
           </div>
 

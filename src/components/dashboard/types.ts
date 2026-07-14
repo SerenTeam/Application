@@ -69,13 +69,13 @@ export type DashboardView = 'dashboard' | 'roadmap' | 'documents' | 'contacts'
 
 export interface NavItem {
   id: DashboardView
-  label: string
   icon: string
 }
 
+// Les libell\u00E9s vivent dans les dictionnaires i18n (t.layout.nav.<id>).
 export const NAV_ITEMS: NavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: '\uD83D\uDCCA' },
-  { id: 'roadmap', label: 'Roadmap', icon: '\uD83D\uDDFA\uFE0F' },
-  { id: 'documents', label: 'Documents', icon: '\uD83D\uDCC4' },
-  { id: 'contacts', label: 'Contacts', icon: '\uD83D\uDCDE' },
+  { id: 'dashboard', icon: '\uD83D\uDCCA' },
+  { id: 'roadmap', icon: '\uD83D\uDDFA\uFE0F' },
+  { id: 'documents', icon: '\uD83D\uDCC4' },
+  { id: 'contacts', icon: '\uD83D\uDCDE' },
 ]

@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label'
 import { Send } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/hooks/use-toast'
+import { useT } from '@/i18n/useT'
 
 interface MarkAsSentButtonProps {
   stepId: string
@@ -14,6 +15,7 @@ interface MarkAsSentButtonProps {
 }
 
 export function MarkAsSentButton({ stepId, userId, hasActions, onSent }: MarkAsSentButtonProps) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [note, setNote] = useState('')
@@ -34,12 +36,12 @@ export function MarkAsSentButton({ stepId, userId, hasActions, onSent }: MarkAsS
 
       if (error) throw error
 
-      toast({ title: 'Courrier marqué comme envoyé' })
+      toast({ title: t.lettersPage.markSentSuccess })
       setOpen(false)
       setNote('')
       onSent()
     } catch {
-      toast({ title: 'Erreur', description: 'Impossible d\'enregistrer. Veuillez réessayer.' })
+      toast({ title: t.lettersPage.markSentErrorTitle, description: t.lettersPage.markSentErrorDescription })
     } finally {
       setSaving(false)
     }
@@ -49,17 +51,17 @@ export function MarkAsSentButton({ stepId, userId, hasActions, onSent }: MarkAsS
     return (
       <Button variant="outline" onClick={() => setOpen(true)} className="gap-2">
         <Send className="h-4 w-4" />
-        Marquer comme envoyé
+        {t.lettersPage.markAsSent}
       </Button>
     )
   }
 
   return (
     <div className="rounded-lg border border-border bg-bg-card p-4 space-y-4">
-      <h4 className="text-sm font-medium text-text-primary">Confirmer l'envoi</h4>
+      <h4 className="text-sm font-medium text-text-primary">{t.lettersPage.confirmSending}</h4>
 
       <div className="space-y-1.5">
-        <Label htmlFor="sent-date" className="text-sm">Date d'envoi</Label>
+        <Label htmlFor="sent-date" className="text-sm">{t.lettersPage.sentDateLabel}</Label>
         <Input
           id="sent-date"
           type="date"
@@ -69,23 +71,23 @@ export function MarkAsSentButton({ stepId, userId, hasActions, onSent }: MarkAsS
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="sent-note" className="text-sm">Note (optionnel)</Label>
+        <Label htmlFor="sent-note" className="text-sm">{t.lettersPage.noteLabel}</Label>
         <Input
           id="sent-note"
           type="text"
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Ex : Envoyé en recommandé AR"
+          placeholder={t.lettersPage.notePlaceholder}
         />
       </div>
 
       <div className="flex gap-2">
         <Button onClick={handleSubmit} disabled={saving} className="gap-2">
           <Send className="h-4 w-4" />
-          {saving ? 'Enregistrement...' : 'Confirmer'}
+          {saving ? t.lettersPage.saving : t.lettersPage.confirm}
         </Button>
         <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
-          Annuler
+          {t.lettersPage.cancel}
         </Button>
       </div>
     </div>

@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/i18n/useT'
+import { fmt } from '@/i18n'
 import { useLetterGenerator } from '@/hooks/useLetterGenerator'
 import { LetterPreview } from '@/components/letter/LetterPreview'
 import { LetterVariablesForm } from '@/components/letter/LetterVariablesForm'
@@ -35,13 +37,14 @@ export function RoadmapView({
   userId,
   questionnaireData,
 }: RoadmapViewProps) {
+  const t = useT()
   return (
     <div className="animate-fade-in">
       <h1 className="font-display text-[2.25rem] font-medium mb-2 text-accent">
-        Roadmap Administrative
+        {t.roadmap.title}
       </h1>
       <p className="text-text-soft text-[1.05rem] mb-8">
-        Suivez étape par étape les démarches administratives après le décès
+        {t.roadmap.subtitle}
       </p>
 
       <div className="max-w-[900px]">
@@ -100,6 +103,7 @@ function StepItem({
   userId,
   questionnaireData,
 }: StepItemProps) {
+  const t = useT()
   const [detailsOpen, setDetailsOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const [highlight, setHighlight] = useState(false)
@@ -192,11 +196,11 @@ function StepItem({
 
           <div className="mt-4">
             <label className="block font-medium mb-2 text-sm">
-              Notes personnelles :
+              {t.roadmap.notesLabel}
             </label>
             <textarea
               defaultValue={note}
-              placeholder="Ajoutez vos notes, numéros de dossier, dates, etc."
+              placeholder={t.roadmap.notesPlaceholder}
               onBlur={(e) => onSaveNote(e.target.value)}
               className={cn(
                 'w-full p-3 border-2 border-border rounded-[8px] font-body text-[0.95rem]',
@@ -226,6 +230,7 @@ function StepLetterSection({
   userId,
   questionnaireData,
 }: StepLetterSectionProps) {
+  const t = useT()
   const [showLetter, setShowLetter] = useState(false)
   const [sentRefresh, setSentRefresh] = useState(0)
 
@@ -256,7 +261,7 @@ function StepLetterSection({
         className="flex items-center gap-2 bg-accent-soft text-accent border border-accent/20 py-2.5 px-4 rounded-radius-md text-sm font-medium cursor-pointer transition-all duration-200 hover:bg-accent hover:text-white mb-4"
       >
         <Mail className="h-4 w-4" />
-        Générer le courrier — {template.organisme}
+        {fmt(t.roadmap.generateLetter, { organisme: template.organisme })}
       </button>
     )
   }
@@ -265,13 +270,13 @@ function StepLetterSection({
     <div className="mb-4 rounded-lg border border-border bg-bg p-5 space-y-5">
       <div className="flex items-center justify-between">
         <h4 className="font-display text-lg font-medium text-accent">
-          Courrier — {template.organisme}
+          {fmt(t.roadmap.letterTitle, { organisme: template.organisme })}
         </h4>
         <button
           onClick={() => setShowLetter(false)}
           className="text-text-muted text-sm hover:text-text cursor-pointer bg-transparent border-none"
         >
-          Replier
+          {t.roadmap.collapse}
         </button>
       </div>
 

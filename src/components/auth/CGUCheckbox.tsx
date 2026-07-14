@@ -1,5 +1,6 @@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import { useT } from '@/i18n/useT'
 
 interface CGUCheckboxProps {
   checked: boolean
@@ -8,6 +9,7 @@ interface CGUCheckboxProps {
 }
 
 export function CGUCheckbox({ checked, onCheckedChange, error }: CGUCheckboxProps) {
+  const t = useT()
   return (
     <div className="space-y-2">
       <div className="flex items-start gap-3">
@@ -23,28 +25,28 @@ export function CGUCheckbox({ checked, onCheckedChange, error }: CGUCheckboxProp
           htmlFor="cgu"
           className="text-sm text-text-soft leading-relaxed cursor-pointer font-normal"
         >
-          J'accepte les{' '}
+          {t.auth.cgu.acceptPrefix}{' '}
           <a
             href="/legal"
             target="_blank"
             rel="noopener noreferrer"
             className="text-accent underline hover:text-accent-hover"
           >
-            conditions générales d'utilisation
+            {t.auth.cgu.termsOfService}
           </a>{' '}
-          et la{' '}
+          {t.auth.cgu.andThe}{' '}
           <a
             href="/security"
             target="_blank"
             rel="noopener noreferrer"
             className="text-accent underline hover:text-accent-hover"
           >
-            politique de confidentialité
+            {t.auth.cgu.privacyPolicy}
           </a>
         </Label>
       </div>
       <p id="cgu-description" className="text-xs text-text-muted pl-7">
-        Vos données sont protégées et ne seront jamais partagées sans votre consentement.
+        {t.auth.cgu.dataProtected}
       </p>
       {error && (
         <p className="text-sm text-error pl-7" role="alert">

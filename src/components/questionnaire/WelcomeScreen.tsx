@@ -1,8 +1,11 @@
+import { useT } from '@/i18n/useT'
+
 interface WelcomeScreenProps {
   onStart: () => void
 }
 
 export function WelcomeScreen({ onStart }: WelcomeScreenProps) {
+  const t = useT()
   return (
     <section className="text-center py-16 px-8 animate-[fadeIn_0.8s_ease-out]">
       {/* Icon */}
@@ -25,14 +28,12 @@ export function WelcomeScreen({ onStart }: WelcomeScreenProps) {
 
       {/* Title */}
       <h1 className="font-display text-[2.5rem] leading-tight font-medium text-text mb-4 max-sm:text-[2rem]">
-        Nous sommes là pour vous accompagner
+        {t.welcome.title}
       </h1>
 
       {/* Description */}
       <p className="text-lg text-text-soft max-w-[480px] mx-auto mb-10">
-        Ce questionnaire rapide (une quinzaine de questions) nous permet de comprendre votre
-        situation et de générer un parcours personnalisé avec les démarches
-        administratives à effectuer.
+        {t.welcome.description}
       </p>
 
       {/* Start button */}
@@ -40,7 +41,7 @@ export function WelcomeScreen({ onStart }: WelcomeScreenProps) {
         onClick={onStart}
         className="inline-flex items-center gap-3 bg-accent text-white border-none py-4 px-8 text-base font-body font-medium rounded-radius-md cursor-pointer transition-all duration-300 shadow-md hover:bg-accent-hover hover:-translate-y-0.5 hover:shadow-lg group"
       >
-        Commencer
+        {t.welcome.cta}
         <svg
           xmlns="http://www.w3.org/2000/svg"
           fill="none"

@@ -7,24 +7,17 @@ import { DocumentCard, type DocumentData } from '@/components/documents/Document
 import { LetterPreview } from '@/components/letter/LetterPreview'
 import { toast } from '@/hooks/use-toast'
 import { ArrowLeft, FileText, X } from 'lucide-react'
+import { useT } from '@/i18n/useT'
+import { fmt } from '@/i18n'
 
 type ThemeFilter = 'all' | 'banque' | 'assurance' | 'administratif' | 'logement' | 'succession' | 'numerique' | 'fiscal'
 type StatusFilter = 'all' | 'sent' | 'not_sent'
 type SortOrder = 'newest' | 'oldest'
 
-const THEME_LABELS: Record<ThemeFilter, string> = {
-  all: 'Tous',
-  banque: 'Banque',
-  assurance: 'Assurance',
-  administratif: 'Administratif',
-  logement: 'Logement',
-  succession: 'Succession',
-  numerique: 'Numérique',
-  fiscal: 'Fiscal',
-}
-
 export function DocumentsPage() {
   const { user } = useAuth()
+  const t = useT()
+  const THEME_LABELS: Record<ThemeFilter, string> = t.lettersPage.themeLabels
   const [documents, setDocuments] = useState<DocumentData[]>([])
   const [loading, setLoading] = useState(true)
   const [themeFilter, setThemeFilter] = useState<ThemeFilter>('all')
@@ -72,7 +65,7 @@ export function DocumentsPage() {
 
       setDocuments(docs)
     } catch {
-      toast({ title: 'Erreur de chargement', description: 'Impossible de charger vos courriers.' })
+      toast({ title: t.lettersPage.loadErrorTitle, description: t.lettersPage.loadErrorDescription })
     } finally {
       setLoading(false)
     }
@@ -87,9 +80,9 @@ export function DocumentsPage() {
       const { error } = await supabase.from('documents').delete().eq('id', id)
       if (error) throw error
       setDocuments((prev) => prev.filter((d) => d.id !== id))
-      toast({ title: 'Courrier supprimé' })
+      toast({ title: t.lettersPage.deletedTitle })
     } catch {
-      toast({ title: 'Erreur', description: 'Impossible de supprimer ce courrier.' })
+      toast({ title: t.lettersPage.deleteErrorTitle, description: t.lettersPage.deleteErrorDescription })
     }
   }
 
@@ -132,9 +125,9 @@ export function DocumentsPage() {
             </Link>
           </Button>
           <div>
-            <h1 className="font-display text-2xl font-medium text-accent">Mes courriers</h1>
+            <h1 className="font-display text-2xl font-medium text-accent">{t.lettersPage.title}</h1>
             <p className="text-sm text-text-muted">
-              {documents.length} courrier{documents.length !== 1 ? 's' : ''} généré{documents.length !== 1 ? 's' : ''}
+              {fmt(t.lettersPage.countLabel, { count: documents.length, s: documents.length !== 1 ? 's' : '' })}
             </p>
           </div>
         </div>
@@ -144,13 +137,13 @@ export function DocumentsPage() {
           <div className="rounded-lg border border-border bg-bg-card p-8 text-center">
             <FileText className="mx-auto mb-4 h-12 w-12 text-text-muted/40" />
             <h2 className="mb-2 font-display text-lg font-medium text-text-primary">
-              Vous n'avez pas encore généré de courrier
+              {t.lettersPage.emptyTitle}
             </h2>
             <p className="mb-6 text-sm text-text-muted">
-              Ouvrez une démarche depuis votre roadmap pour commencer.
+              {t.lettersPage.emptyHint}
             </p>
             <Button asChild>
-              <Link to="/dashboard">Voir ma roadmap</Link>
+              <Link to="/dashboard">{t.lettersPage.viewRoadmap}</Link>
             </Button>
           </div>
         ) : (
@@ -172,9 +165,9 @@ export function DocumentsPage() {
                 onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
                 className="rounded-md border border-border bg-bg-card px-3 py-1.5 text-sm text-text-primary"
               >
-                <option value="all">Tous les statuts</option>
-                <option value="sent">Envoyés</option>
-                <option value="not_sent">Non envoyés</option>
+                <option value="all">{t.lettersPage.statusAll}</option>
+                <option value="sent">{t.lettersPage.statusSent}</option>
+                <option value="not_sent">{t.lettersPage.statusNotSent}</option>
               </select>
 
               <select
@@ -182,8 +175,8 @@ export function DocumentsPage() {
                 onChange={(e) => setSortOrder(e.target.value as SortOrder)}
                 className="rounded-md border border-border bg-bg-card px-3 py-1.5 text-sm text-text-primary"
               >
-                <option value="newest">Plus récent</option>
-                <option value="oldest">Plus ancien</option>
+                <option value="newest">{t.lettersPage.sortNewest}</option>
+                <option value="oldest">{t.lettersPage.sortOldest}</option>
               </select>
             </div>
 
@@ -191,7 +184,7 @@ export function DocumentsPage() {
             <div className="space-y-3">
               {filtered.length === 0 ? (
                 <p className="text-sm text-text-muted italic py-4 text-center">
-                  Aucun courrier ne correspond à vos filtres.
+                  {t.lettersPage.noMatch}
                 </p>
               ) : (
                 filtered.map((doc) => (

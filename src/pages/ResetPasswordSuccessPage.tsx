@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { AuthLayout } from '@/components/auth/AuthLayout'
 import { Button } from '@/components/ui/button'
 import { CheckCircle, ArrowRight } from 'lucide-react'
+import { useT } from '@/i18n/useT'
 
 /**
  * SER-59 — Page affichée après une réinitialisation de mot de passe réussie.
@@ -11,6 +12,7 @@ import { CheckCircle, ArrowRight } from 'lucide-react'
  * effectué le reset (pas de referrer interne), on redirige vers /login.
  */
 export function ResetPasswordSuccessPage() {
+  const t = useT()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -34,18 +36,16 @@ export function ResetPasswordSuccessPage() {
           />
 
           <h1 className="font-display text-[2rem] font-medium text-accent">
-            Mot de passe modifié
+            {t.auth.resetSuccess.title}
           </h1>
 
           <p className="text-[1.05rem] text-text-soft">
-            Votre mot de passe a bien été modifié.
-            Vous pouvez maintenant vous connecter avec votre nouveau mot de
-            passe.
+            {t.auth.resetSuccess.description}
           </p>
 
           <Button asChild className="mt-4 w-full gap-2">
             <Link to="/login">
-              Se connecter
+              {t.auth.resetSuccess.signIn}
               <ArrowRight className="h-5 w-5" />
             </Link>
           </Button>

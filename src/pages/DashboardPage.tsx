@@ -1,9 +1,11 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { STEPS_CATALOG } from '@/data/steps-catalog'
 import { LanguageSwitch } from '@/components/layout/LanguageSwitch'
+import { useT } from '@/i18n/useT'
+import type { Strings } from '@/i18n/strings.fr'
 import {
   Sidebar,
   MobileNav,
@@ -35,19 +37,18 @@ interface DbStep {
   warning_badge: string | null
 }
 
-// Map urgency → phase label
-const URGENCY_PHASE: Record<string, string> = {
-  urgent: 'Actions urgentes (premières 48h)',
-  week: 'Dans la semaine',
-  month: 'Dans le mois',
-  later: 'À plus long terme',
-}
-
 const URGENCY_ORDER = ['urgent', 'week', 'month', 'later']
 
 // ─── Map DB steps to dashboard types ────────────────────────────
 
-function buildPhases(dbSteps: DbStep[]): RoadmapPhase[] {
+function buildPhases(dbSteps: DbStep[], t: Strings): RoadmapPhase[] {
+  // Map urgency → phase label (langue active)
+  const URGENCY_PHASE: Record<string, string> = {
+    urgent: t.dashboardPage.urgencyPhase.urgent,
+    week: t.dashboardPage.urgencyPhase.week,
+    month: t.dashboardPage.urgencyPhase.month,
+    later: t.dashboardPage.urgencyPhase.later,
+  }
   const grouped = new Map<string, RoadmapStep[]>()
 
   for (const urgency of URGENCY_ORDER) {
@@ -104,6 +105,12 @@ function buildProgress(dbSteps: DbStep[]): ProgressData {
 export function DashboardPage() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
+  const t = useT()
+  // Ref pour l'effet de chargement ci-dessous (deps [user, navigate] uniquement) :
+  // évite de refetch Supabase à chaque bascule de langue, tout en gardant le message
+  // d'erreur à jour si l'utilisateur bascule la langue avant qu'une erreur survienne.
+  const tRef = useRef(t)
+  tRef.current = t
 
   const [activeView, setActiveView] = useState<DashboardView>('dashboard')
   const [scrollToStepId, setScrollToStepId] = useState<number | null>(null)
@@ -168,7 +175,7 @@ export function DashboardPage() {
         .order('display_order', { ascending: true })
 
       if (sErr) {
-        setError('Impossible de charger vos démarches.')
+        setError(tRef.current.dashboardPage.loadError)
         setIsLoading(false)
         return
       }
@@ -182,7 +189,7 @@ export function DashboardPage() {
 
   // ─── Derived data ─────────────────────────────────────────────
 
-  const phases = useMemo(() => buildPhases(dbSteps), [dbSteps])
+  const phases = useMemo(() => buildPhases(dbSteps, t), [dbSteps, t])
   const progress = useMemo(() => buildProgress(dbSteps), [dbSteps])
 
   const totalSteps = dbSteps.length
@@ -249,8 +256,8 @@ export function DashboardPage() {
   if (isLoading) {
     return (
       <LoadingOverlay
-        message="Chargement de votre parcours..."
-        detail="Récupération des démarches"
+        message={t.dashboardPage.loadingRoadmap}
+        detail={t.dashboardPage.loadingDetail}
         isError={false}
       />
     )
@@ -259,7 +266,7 @@ export function DashboardPage() {
   if (error) {
     return (
       <LoadingOverlay
-        message="Erreur"
+        message={t.dashboardPage.errorTitle}
         detail={error}
         isError={true}
       />
@@ -286,13 +293,13 @@ export function DashboardPage() {
             to="/documents"
             className="text-text-soft text-sm hover:text-accent transition-colors no-underline"
           >
-            Courriers
+            {t.layout.letters}
           </Link>
           <button
             onClick={signOut}
             className="text-text-soft text-sm hover:text-accent transition-colors cursor-pointer bg-transparent border-none font-body"
           >
-            Déconnexion
+            {t.layout.signOut}
           </button>
           <LanguageSwitch />
         </nav>
@@ -336,13 +343,13 @@ export function DashboardPage() {
           {activeView === 'documents' && (
             <div className="animate-fade-in text-center py-16">
               <p className="text-text-soft mb-6">
-                Retrouvez vos courriers pré-remplis sur la page dédiée.
+                {t.dashboardPage.documentsHint}
               </p>
               <Link
                 to="/documents"
                 className="inline-flex items-center gap-2 bg-accent text-white py-3 px-6 rounded-radius-md no-underline font-medium hover:bg-accent-hover transition-colors"
               >
-                Voir mes courriers
+                {t.dashboardPage.viewLetters}
               </Link>
             </div>
           )}
@@ -350,7 +357,7 @@ export function DashboardPage() {
           {activeView === 'contacts' && (
             <div className="animate-fade-in text-center py-16">
               <p className="text-text-soft">
-                La gestion des contacts sera disponible prochainement.
+                {t.dashboardPage.contactsHint}
               </p>
             </div>
           )}
@@ -377,12 +384,13 @@ function DashboardOverview({
   onNavigate,
   onScrollToStep,
 }: DashboardOverviewProps) {
+  const t = useT()
   return (
     <div className="animate-fade-in">
       <ProgressHero completed={completedCount} total={totalSteps} />
 
       <h3 className="font-display text-2xl font-medium mb-5 mt-10 text-text">
-        Prochaines actions prioritaires
+        {t.dashboardPage.priorityActionsTitle}
       </h3>
       <PriorityActions
         steps={prioritySteps}
@@ -391,7 +399,7 @@ function DashboardOverview({
       />
 
       <h3 className="font-display text-2xl font-medium mb-5 mt-10 text-text">
-        Accès rapides
+        {t.dashboardPage.quickAccessTitle}
       </h3>
       <QuickAccess onNavigate={onNavigate} />
     </div>

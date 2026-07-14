@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Copy, Download, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/hooks/use-toast'
+import { useT } from '@/i18n/useT'
 import type { LetterTemplate } from '@/data/letter-templates'
 
 interface LetterActionsProps {
@@ -26,6 +27,7 @@ async function logAction(stepId: string, userId: string, actionType: 'copied' | 
 }
 
 export function LetterActions({ resolvedLetter, isComplete, template, stepId, userId }: LetterActionsProps) {
+  const t = useT()
   const [copied, setCopied] = useState(false)
   const [downloading, setDownloading] = useState(false)
 
@@ -36,7 +38,7 @@ export function LetterActions({ resolvedLetter, isComplete, template, stepId, us
       setTimeout(() => setCopied(false), 2000)
       await logAction(stepId, userId, 'copied')
     } catch {
-      toast({ title: 'Impossible de copier', description: 'Veuillez sélectionner le texte manuellement.' })
+      toast({ title: t.errors.copyFailedTitle, description: t.errors.copyFailedDescription })
     }
   }
 
@@ -66,11 +68,11 @@ export function LetterActions({ resolvedLetter, isComplete, template, stepId, us
 
       const date = new Date().toISOString().slice(0, 10)
       const orgName = template.organisme.replace(/\s+/g, '-')
-      doc.save(`Courrier-${orgName}-${date}.pdf`)
+      doc.save(`${t.lettersPage.pdfFilenamePrefix}-${orgName}-${date}.pdf`)
 
       await logAction(stepId, userId, 'downloaded')
     } catch {
-      toast({ title: 'Erreur lors de la génération', description: 'Veuillez réessayer.' })
+      toast({ title: t.lettersPage.downloadErrorTitle, description: t.lettersPage.downloadErrorDescription })
     } finally {
       setDownloading(false)
     }
@@ -87,12 +89,12 @@ export function LetterActions({ resolvedLetter, isComplete, template, stepId, us
         {copied ? (
           <>
             <Check className="h-4 w-4 text-success" />
-            Copié !
+            {t.lettersPage.copied}
           </>
         ) : (
           <>
             <Copy className="h-4 w-4" />
-            Copier le texte
+            {t.lettersPage.copyText}
           </>
         )}
       </Button>
@@ -104,7 +106,7 @@ export function LetterActions({ resolvedLetter, isComplete, template, stepId, us
         className="gap-2"
       >
         <Download className="h-4 w-4" />
-        {downloading ? 'Génération...' : 'Télécharger en PDF'}
+        {downloading ? t.lettersPage.downloading : t.lettersPage.downloadPdf}
       </Button>
     </div>
   )

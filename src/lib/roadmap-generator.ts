@@ -1,6 +1,14 @@
 import { STEPS_CATALOG, type StepTemplate } from '@/data/steps-catalog'
 import type { QuestionnaireAnswersV2 } from '@/types/questionnaire'
 import { supabase } from '@/lib/supabase'
+import type { Lang } from '@/i18n'
+import { STRINGS_FR } from '@/i18n/strings.fr'
+import { STRINGS_EN } from '@/i18n/strings.en'
+
+// Module non-composant : pas d'accès à useT() (hook React). On résout directement
+// dans le dictionnaire de la langue passée en paramètre — mêmes clés `errors.*` que
+// l'UI, cohérence garantie par l'invariant de parité des dictionnaires (tsc).
+const STRINGS = { fr: STRINGS_FR, en: STRINGS_EN }
 
 const URGENCY_ORDER: Record<StepTemplate['urgency'], number> = {
   urgent: 0,
@@ -46,8 +54,10 @@ export function generateRoadmap(answers: QuestionnaireAnswersV2): RoadmapStep[] 
 export async function saveRoadmapToDb(
   userId: string,
   questionnaireId: string,
-  steps: RoadmapStep[]
+  steps: RoadmapStep[],
+  lang: Lang = 'fr'
 ) {
+  const t = STRINGS[lang]
   const { data: roadmap, error: roadmapError } = await supabase
     .from('roadmaps')
     .insert({
@@ -59,7 +69,7 @@ export async function saveRoadmapToDb(
     .single()
 
   if (roadmapError || !roadmap) {
-    throw new Error('Impossible de sauvegarder votre roadmap. Veuillez réessayer.')
+    throw new Error(t.errors.saveRoadmapFailed)
   }
 
   const { error: stepsError } = await supabase.from('steps').insert(
@@ -79,7 +89,7 @@ export async function saveRoadmapToDb(
   )
 
   if (stepsError) {
-    throw new Error('Impossible de sauvegarder les étapes. Veuillez réessayer.')
+    throw new Error(t.errors.saveStepsFailed)
   }
 
   return roadmap.id as string

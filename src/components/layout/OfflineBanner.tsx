@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { WifiOff } from 'lucide-react'
+import { useT } from '@/i18n/useT'
 
 /**
  * SER-65 — Bannière hors-ligne.
@@ -7,6 +8,7 @@ import { WifiOff } from 'lucide-react'
  * Disparaît automatiquement à la reconnexion.
  */
 export function OfflineBanner() {
+  const t = useT()
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
 
   useEffect(() => {
@@ -31,10 +33,7 @@ export function OfflineBanner() {
       aria-live="assertive"
     >
       <WifiOff className="h-4 w-4 shrink-0" aria-hidden="true" />
-      <span>
-        Vous semblez être hors ligne. Certaines fonctionnalités peuvent être
-        indisponibles.
-      </span>
+      <span>{t.layout.offlineMessage}</span>
     </div>
   )
 }

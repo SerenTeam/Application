@@ -14,11 +14,14 @@ import { updatePassword } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { ArrowLeft, AlertCircle } from 'lucide-react'
 import {
-  resetPasswordConfirmSchema,
+  makeSchemas,
   type ResetPasswordConfirmValues,
 } from '@/utils/validation'
+import { useT } from '@/i18n/useT'
 
 export function ResetPasswordConfirmPage() {
+  const t = useT()
+  const { resetPasswordConfirmSchema } = makeSchemas(t)
   const navigate = useNavigate()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -90,9 +93,7 @@ export function ResetPasswordConfirmPage() {
 
       navigate('/reset-password/success', { replace: true })
     } catch {
-      setServerError(
-        'Un problème de connexion est survenu. Veuillez réessayer.',
-      )
+      setServerError(t.auth.resetConfirm.connectionError)
     } finally {
       setIsSubmitting(false)
     }
@@ -109,22 +110,21 @@ export function ResetPasswordConfirmPage() {
               aria-hidden="true"
             />
             <h1 className="font-display text-[1.75rem] font-medium text-text">
-              Lien expiré
+              {t.auth.resetConfirm.linkExpiredTitle}
             </h1>
             <p className="text-text-soft">
-              Ce lien de réinitialisation a expiré ou n'est plus valide.
-              Vous pouvez en demander un nouveau.
+              {t.auth.resetConfirm.linkExpiredDescription}
             </p>
             <div className="mt-4 flex flex-col gap-3 w-full">
               <Button asChild className="w-full">
-                <Link to="/reset-password">Demander un nouveau lien</Link>
+                <Link to="/reset-password">{t.auth.resetConfirm.requestNewLink}</Link>
               </Button>
               <Link
                 to="/login"
                 className="flex items-center justify-center gap-2 text-sm font-medium text-accent underline hover:text-accent-hover"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Retour à la connexion
+                {t.auth.resetConfirm.backToLogin}
               </Link>
             </div>
           </div>
@@ -137,10 +137,10 @@ export function ResetPasswordConfirmPage() {
     <AuthLayout>
       <div className="rounded-[20px] bg-bg-card p-8 shadow-md">
         <h1 className="mb-2 text-center font-display text-[2rem] font-medium text-accent">
-          Nouveau mot de passe
+          {t.auth.resetConfirm.title}
         </h1>
         <p className="mb-8 text-center text-[1.05rem] text-text-soft">
-          Choisissez un nouveau mot de passe pour votre compte.
+          {t.auth.resetConfirm.subtitle}
         </p>
 
         <form
@@ -150,7 +150,7 @@ export function ResetPasswordConfirmPage() {
         >
           {/* New password */}
           <div className="space-y-2">
-            <Label htmlFor="password">Nouveau mot de passe</Label>
+            <Label htmlFor="password">{t.auth.resetConfirm.newPasswordLabel}</Label>
             <PasswordInput
               id="password"
               placeholder="........"
@@ -193,8 +193,8 @@ export function ResetPasswordConfirmPage() {
             className="w-full"
           >
             {isSubmitting
-              ? 'Modification en cours...'
-              : 'Réinitialiser le mot de passe'}
+              ? t.auth.resetConfirm.submitting
+              : t.auth.resetConfirm.submit}
           </Button>
         </form>
 
@@ -204,7 +204,7 @@ export function ResetPasswordConfirmPage() {
             className="flex items-center justify-center gap-2 text-sm font-medium text-accent underline hover:text-accent-hover"
           >
             <ArrowLeft className="h-4 w-4" />
-            Retour à la connexion
+            {t.auth.resetConfirm.backToLogin}
           </Link>
         </p>
       </div>

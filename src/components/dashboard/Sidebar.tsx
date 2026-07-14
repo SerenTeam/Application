@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { useT } from '@/i18n/useT'
 import { NAV_ITEMS, type DashboardView } from './types'
 
 interface SidebarProps {
@@ -7,6 +8,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activeView, onNavigate }: SidebarProps) {
+  const t = useT()
   return (
     <aside
       className={cn(
@@ -28,7 +30,7 @@ export function Sidebar({ activeView, onNavigate }: SidebarProps) {
           )}
         >
           <span>{item.icon}</span>
-          <span>{item.label}</span>
+          <span>{t.layout.nav[item.id]}</span>
         </button>
       ))}
     </aside>
@@ -42,6 +44,7 @@ export function MobileNav({
   activeView,
   onNavigate,
 }: SidebarProps) {
+  const t = useT()
   return (
     <nav
       className={cn(
@@ -62,7 +65,7 @@ export function MobileNav({
           )}
         >
           <span>{item.icon}</span>
-          <span>{item.label}</span>
+          <span>{t.layout.nav[item.id]}</span>
         </button>
       ))}
     </nav>

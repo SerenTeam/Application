@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { apiFetch } from '@/lib/api'
 import { LanguageSwitch } from '@/components/layout/LanguageSwitch'
+import { useT } from '@/i18n/useT'
+import { useLang } from '@/i18n/LanguageContext'
+import { fmt } from '@/i18n'
 import { generateRoadmap, saveRoadmapToDb } from '@/lib/roadmap-generator'
 import { supabase } from '@/lib/supabase'
 import type { QuestionnaireAnswersV2 } from '@/types/questionnaire'
@@ -17,6 +20,8 @@ type ServerData = (QuestionData & { action: 'question' }) | { action: 'recap'; r
 
 export function QuestionnairePage() {
   const { user, signOut } = useAuth()
+  const t = useT()
+  const { lang } = useLang()
 
   const [phase, setPhase] = useState<Phase>('welcome')
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -95,14 +100,14 @@ export function QuestionnairePage() {
         sessionStorage.setItem('seren_questionnaire_session', result.session_id)
         showServerData(result.data)
       } else {
-        setError(result.error || 'Erreur lors du démarrage')
+        setError(result.error || t.questionnaire.startError)
         setPhase('welcome')
       }
     } catch (err: unknown) {
-      setError('Erreur de connexion : ' + (err instanceof Error ? err.message : 'inconnue'))
+      setError(fmt(t.questionnaire.connectionError, { detail: err instanceof Error ? err.message : t.questionnaire.unknownDetail }))
       setPhase('welcome')
     }
-  }, [showServerData])
+  }, [showServerData, t])
 
   // ─── Réponse (valeur canonique, jamais le label) ───────────────
 
@@ -128,15 +133,15 @@ export function QuestionnairePage() {
           setEditingFromRecap(false)
           showServerData(result.data)
         } else {
-          setError(result.error || 'Réponse invalide')
+          setError(result.error || t.questionnaire.invalidAnswer)
         }
       } catch (err: unknown) {
-        setError('Erreur de connexion : ' + (err instanceof Error ? err.message : 'inconnue'))
+        setError(fmt(t.questionnaire.connectionError, { detail: err instanceof Error ? err.message : t.questionnaire.unknownDetail }))
       } finally {
         setIsSubmitting(false)
       }
     },
-    [sessionId, showServerData]
+    [sessionId, showServerData, t]
   )
 
   // ─── Modifier depuis le récap ──────────────────────────────────
@@ -161,15 +166,15 @@ export function QuestionnairePage() {
           setEditingFromRecap(true)
           showServerData(result.data)
         } else {
-          setError(result.error || 'Modification impossible')
+          setError(result.error || t.questionnaire.editError)
           setPhase('recap')
         }
       } catch (err: unknown) {
-        setError('Erreur de connexion : ' + (err instanceof Error ? err.message : 'inconnue'))
+        setError(fmt(t.questionnaire.connectionError, { detail: err instanceof Error ? err.message : t.questionnaire.unknownDetail }))
         setPhase('recap')
       }
     },
-    [sessionId, showServerData]
+    [sessionId, showServerData, t]
   )
 
   // ─── Confirmation : answers typées → roadmap (aucune extraction IA) ──
@@ -193,7 +198,7 @@ export function QuestionnairePage() {
           return
         }
         const result = await response.json()
-        if (!result.success) throw new Error(result.error || 'Finalisation impossible')
+        if (!result.success) throw new Error(result.error || t.questionnaire.finalizeError)
         answers = result.answers as QuestionnaireAnswersV2
         setFinalAnswers(answers)
       }
@@ -207,7 +212,7 @@ export function QuestionnairePage() {
           .insert({ user_id: user.id, answers, status: 'completed' })
           .select()
           .single()
-        if (qError || !questionnaire) throw new Error('Impossible de sauvegarder vos réponses.')
+        if (qError || !questionnaire) throw new Error(t.questionnaire.saveAnswersError)
         qId = questionnaire.id as string
         setQuestionnaireId(qId)
       }
@@ -215,15 +220,15 @@ export function QuestionnairePage() {
       const steps = generateRoadmap(answers)
       setStepsCount(steps.length)
       setDoneCount(steps.filter((s) => s.initial_status === 'done').length)
-      await saveRoadmapToDb(user.id, qId, steps)
+      await saveRoadmapToDb(user.id, qId, steps, lang)
 
       sessionStorage.removeItem('seren_questionnaire_session')
       setPhase('done')
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erreur inattendue')
+      setError(err instanceof Error ? err.message : t.questionnaire.unexpectedError)
       setPhase('completing') // reste sur l'écran pour afficher le bouton Réessayer
     }
-  }, [user, sessionId, finalAnswers, questionnaireId])
+  }, [user, sessionId, finalAnswers, questionnaireId, t, lang])
 
   // ─── Render ───────────────────────────────────────────────────
 
@@ -239,13 +244,13 @@ export function QuestionnairePage() {
             to="/dashboard"
             className="text-text-soft no-underline text-sm font-medium uppercase tracking-widest border-b-2 border-text-soft pb-0.5 transition-all duration-200 hover:text-accent hover:border-accent"
           >
-            Tableau de bord
+            {t.layout.dashboard}
           </Link>
           <button
             onClick={signOut}
             className="bg-transparent border-none border-b-2 border-text-soft text-text-soft text-sm font-medium uppercase tracking-widest cursor-pointer p-0 pb-0.5 transition-all duration-200 hover:text-accent hover:border-accent"
           >
-            Déconnexion
+            {t.layout.signOut}
           </button>
           <LanguageSwitch />
         </nav>
@@ -255,7 +260,7 @@ export function QuestionnairePage() {
         {sessionExpired && (
           <div className="text-center py-16 px-8">
             <div className="bg-[#FEF2F0] border border-[#F5D5D0] text-error py-4 px-5 rounded-radius-sm mb-6 text-[0.95rem] max-w-md mx-auto">
-              Votre session a expiré après 24 heures d'inactivité. Nous sommes désolés — il faudra reprendre le questionnaire depuis le début. Vos réponses ne sont conservées que le temps de la session, par respect de votre vie privée.
+              {t.questionnaire.sessionExpiredMessage}
             </div>
             <button
               onClick={() => {
@@ -266,7 +271,7 @@ export function QuestionnairePage() {
               }}
               className="bg-accent text-white border-none py-3 px-6 rounded-radius-md cursor-pointer font-medium transition-all duration-200 hover:bg-accent-hover"
             >
-              Recommencer le questionnaire
+              {t.questionnaire.restart}
             </button>
           </div>
         )}
@@ -285,7 +290,7 @@ export function QuestionnairePage() {
         {!sessionExpired && phase === 'loading' && (
           <div className="text-center py-16 px-8">
             <div className="w-12 h-12 border-[3px] border-border border-t-accent rounded-full mx-auto mb-6 animate-spin" />
-            <p className="text-text-soft text-base">Préparation de votre questionnaire...</p>
+            <p className="text-text-soft text-base">{t.questionnaire.preparing}</p>
           </div>
         )}
 
@@ -313,7 +318,7 @@ export function QuestionnairePage() {
         {!sessionExpired && phase === 'completing' && !error && (
           <div className="text-center py-16 px-8">
             <div className="w-12 h-12 border-[3px] border-border border-t-accent rounded-full mx-auto mb-6 animate-spin" />
-            <p className="text-text-soft text-base">Génération de votre parcours personnalisé...</p>
+            <p className="text-text-soft text-base">{t.questionnaire.generatingRoadmap}</p>
           </div>
         )}
 
@@ -329,7 +334,7 @@ export function QuestionnairePage() {
               }}
               className="bg-accent text-white border-none py-3 px-6 rounded-radius-md cursor-pointer font-medium transition-all duration-200 hover:bg-accent-hover"
             >
-              Réessayer
+              {t.questionnaire.retry}
             </button>
           </div>
         )}

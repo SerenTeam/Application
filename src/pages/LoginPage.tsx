@@ -9,9 +9,12 @@ import { Button } from '@/components/ui/button'
 import { PasswordInput } from '@/components/auth/PasswordInput'
 import { signIn } from '@/lib/auth'
 import { ArrowRight } from 'lucide-react'
-import { loginSchema, type LoginFormValues } from '@/utils/validation'
+import { makeSchemas, type LoginFormValues } from '@/utils/validation'
+import { useT } from '@/i18n/useT'
 
 export function LoginPage() {
+  const t = useT()
+  const { loginSchema } = makeSchemas(t)
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
@@ -37,13 +40,13 @@ export function LoginPage() {
       const { error: authError } = await signIn(values.email, values.password)
 
       if (authError) {
-        setServerError('Email ou mot de passe incorrect')
+        setServerError(t.auth.login.incorrectCredentials)
         return
       }
 
       navigate(from, { replace: true })
     } catch {
-      setServerError('Erreur de connexion au serveur. Veuillez réessayer.')
+      setServerError(t.auth.login.connectionError)
     } finally {
       setIsSubmitting(false)
     }
@@ -53,10 +56,10 @@ export function LoginPage() {
     <AuthLayout>
       <div className="rounded-[20px] bg-bg-card p-8 shadow-md">
         <h1 className="mb-2 text-center font-display text-[2rem] font-medium text-accent">
-          Bienvenue
+          {t.auth.login.title}
         </h1>
         <p className="mb-8 text-center text-[1.05rem] text-text-soft">
-          Connectez-vous pour accéder à votre espace.
+          {t.auth.login.subtitle}
         </p>
 
         {successMessage && (
@@ -67,11 +70,11 @@ export function LoginPage() {
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t.auth.login.emailLabel}</Label>
             <Input
               id="email"
               type="email"
-              placeholder="votre@email.com"
+              placeholder={t.auth.emailPlaceholder}
               autoComplete="email"
               aria-invalid={!!form.formState.errors.email}
               aria-describedby={form.formState.errors.email ? 'login-email-error' : undefined}
@@ -85,7 +88,7 @@ export function LoginPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Mot de passe</Label>
+            <Label htmlFor="password">{t.auth.login.passwordLabel}</Label>
             <PasswordInput
               id="password"
               placeholder="........"
@@ -112,7 +115,7 @@ export function LoginPage() {
             disabled={isSubmitting}
             className="w-full gap-2"
           >
-            {isSubmitting ? 'Connexion...' : 'Se connecter'}
+            {isSubmitting ? t.auth.login.submitting : t.auth.login.submit}
             {!isSubmitting && <ArrowRight className="h-5 w-5" />}
           </Button>
         </form>
@@ -120,13 +123,13 @@ export function LoginPage() {
         <div className="mt-6 space-y-2 text-center text-sm text-text-soft">
           <p>
             <Link to="/reset-password" className="text-accent font-medium underline hover:text-accent-hover">
-              Mot de passe oublié ?
+              {t.auth.login.forgotPassword}
             </Link>
           </p>
           <p>
-            Pas encore de compte ?{' '}
+            {t.auth.login.noAccount}{' '}
             <Link to="/signup" className="text-accent font-medium underline hover:text-accent-hover">
-              Créer un compte
+              {t.auth.login.createAccount}
             </Link>
           </p>
         </div>

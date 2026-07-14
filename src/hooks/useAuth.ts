@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/hooks/use-toast'
+import { useT } from '@/i18n/useT'
 import type { User, Session } from '@supabase/supabase-js'
 import React from 'react'
 
@@ -21,6 +22,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const location = useLocation()
   const hadSessionRef = useRef(false)
+  // L'effet ci-dessous ne se réabonne jamais (deps []) : on lit la langue active via un
+  // ref tenu à jour à chaque rendu, pour que le toast utilise la langue au moment où la
+  // session expire réellement, pas celle du montage initial.
+  const t = useT()
+  const tRef = useRef(t)
+  tRef.current = t
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -44,8 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ) {
           const returnUrl = location.pathname + location.search
           toast({
-            title: 'Votre session a été fermée',
-            description: 'Reconnectez-vous pour continuer.',
+            title: tRef.current.auth.sessionExpiredTitle,
+            description: tRef.current.auth.sessionExpiredDescription,
           })
           navigate(`/login?returnUrl=${encodeURIComponent(returnUrl)}`, { replace: true })
         }

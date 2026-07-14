@@ -1,4 +1,5 @@
 import { Pencil } from 'lucide-react'
+import { useT } from '@/i18n/useT'
 
 export interface RecapEntry {
   question_id: string
@@ -15,15 +16,15 @@ interface RecapScreenProps {
 }
 
 export function RecapScreen({ entries, onEdit, onConfirm, isSubmitting, error }: RecapScreenProps) {
+  const t = useT()
   return (
     <section className="animate-[slideUp_0.5s_ease-out]">
       <div className="bg-bg-card rounded-radius-lg p-10 shadow-md border border-border-soft max-sm:p-7">
         <h2 className="font-display text-[1.75rem] font-medium leading-[1.35] mb-3 text-text max-sm:text-2xl">
-          Vérifions ensemble vos réponses
+          {t.recap.title}
         </h2>
         <p className="text-[0.95rem] text-text-soft mb-8">
-          Votre parcours personnalisé sera construit à partir de ces informations.
-          Vous pouvez modifier chaque réponse avant de confirmer.
+          {t.recap.description}
         </p>
 
         {error && (
@@ -45,7 +46,7 @@ export function RecapScreen({ entries, onEdit, onConfirm, isSubmitting, error }:
                 className="shrink-0 inline-flex items-center gap-1.5 bg-transparent border border-border text-text-soft text-[0.85rem] py-1.5 px-3 rounded-radius-sm cursor-pointer transition-all duration-200 hover:border-accent hover:text-accent disabled:opacity-50"
               >
                 <Pencil className="w-3.5 h-3.5" />
-                Modifier
+                {t.recap.edit}
               </button>
             </li>
           ))}
@@ -57,7 +58,7 @@ export function RecapScreen({ entries, onEdit, onConfirm, isSubmitting, error }:
             disabled={isSubmitting}
             className="inline-flex items-center gap-2 bg-accent text-white border-none py-3.5 px-7 text-base font-body font-medium rounded-radius-md cursor-pointer transition-all duration-200 hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Génération...' : 'Confirmer et générer mon parcours'}
+            {isSubmitting ? t.recap.generating : t.recap.confirm}
           </button>
         </div>
       </div>

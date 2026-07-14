@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/i18n/useT'
 import { QuestionnaireProgress } from './QuestionnaireProgress'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -35,6 +36,7 @@ interface QuestionCardProps {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function QuestionCard({ question, onAnswer, onSkip, onCancel, isSubmitting, error }: QuestionCardProps) {
+  const t = useT()
   const [selectedValue, setSelectedValue] = useState<unknown>(null)
   const [selectedValues, setSelectedValues] = useState<string[]>([])
 
@@ -65,7 +67,7 @@ export function QuestionCard({ question, onAnswer, onSkip, onCancel, isSubmittin
 
   return (
     <section className="animate-[slideUp_0.5s_ease-out]">
-      <QuestionnaireProgress categoryName={question.categorie || 'Question'} percent={percent} />
+      <QuestionnaireProgress categoryName={question.categorie || t.questionnaire.categoryFallback} percent={percent} />
 
       <div className="bg-bg-card rounded-radius-lg p-10 shadow-md border border-border-soft max-sm:p-7">
         <h2 className="font-display text-[1.75rem] font-medium leading-[1.35] mb-3 text-text max-sm:text-2xl">
@@ -101,7 +103,7 @@ export function QuestionCard({ question, onAnswer, onSkip, onCancel, isSubmittin
               disabled={isSubmitting}
               className="bg-transparent border-none text-text-muted text-[0.95rem] font-body cursor-pointer py-2 px-4 transition-colors duration-200 hover:text-text-soft disabled:opacity-50"
             >
-              ← Retour au récapitulatif
+              {t.questionnaire.backToRecap}
             </button>
           ) : !question.obligatoire && onSkip ? (
             <button
@@ -109,7 +111,7 @@ export function QuestionCard({ question, onAnswer, onSkip, onCancel, isSubmittin
               disabled={isSubmitting}
               className="bg-transparent border-none text-text-muted text-[0.95rem] font-body cursor-pointer py-2 px-4 transition-colors duration-200 hover:text-text-soft disabled:opacity-50"
             >
-              Passer cette question
+              {t.questionnaire.skip}
             </button>
           ) : (
             <div />
@@ -120,7 +122,7 @@ export function QuestionCard({ question, onAnswer, onSkip, onCancel, isSubmittin
             disabled={isNextDisabled}
             className="inline-flex items-center gap-2 bg-accent text-white border-none py-3.5 px-7 text-base font-body font-medium rounded-radius-md cursor-pointer transition-all duration-200 hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Envoi...' : 'Continuer'}
+            {isSubmitting ? t.questionnaire.sending : t.questionnaire.continueBtn}
             {!isSubmitting && (
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-[18px] h-[18px]">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
@@ -144,6 +146,7 @@ interface FormElementProps {
 }
 
 function FormElement({ question, selectedValue, selectedValues, onValueChange, onValuesChange }: FormElementProps) {
+  const t = useT()
   switch (question.type) {
     case 'select':
       return (
@@ -174,8 +177,8 @@ function FormElement({ question, selectedValue, selectedValues, onValueChange, o
         <ChoiceRow
           name={question.question_id}
           items={[
-            { label: 'Oui', value: true },
-            { label: 'Non', value: false },
+            { label: t.questionnaire.yes, value: true },
+            { label: t.questionnaire.no, value: false },
           ]}
           selectedValue={selectedValue}
           onValueChange={onValueChange}
@@ -186,9 +189,9 @@ function FormElement({ question, selectedValue, selectedValues, onValueChange, o
         <ChoiceRow
           name={question.question_id}
           items={[
-            { label: 'Oui', value: 'oui' },
-            { label: 'Non', value: 'non' },
-            { label: 'Je ne sais pas', value: 'ne_sait_pas' },
+            { label: t.questionnaire.yes, value: 'oui' },
+            { label: t.questionnaire.no, value: 'non' },
+            { label: t.questionnaire.dontKnow, value: 'ne_sait_pas' },
           ]}
           selectedValue={selectedValue}
           onValueChange={onValueChange}
@@ -328,6 +331,7 @@ function ChoiceRow({ name, items, selectedValue, onValueChange }: ChoiceRowProps
 // ─── Text input ──────────────────────────────────────────────────────────────
 
 function TextInput({ value, onValueChange }: { value: string; onValueChange: (value: unknown) => void }) {
+  const t = useT()
   const [localValue, setLocalValue] = useState(value)
 
   useEffect(() => {
@@ -345,7 +349,7 @@ function TextInput({ value, onValueChange }: { value: string; onValueChange: (va
       type="text"
       value={localValue}
       onChange={handleChange}
-      placeholder="Votre réponse..."
+      placeholder={t.questionnaire.answerPlaceholder}
       className="w-full py-4 px-5 text-base font-body border-2 border-border rounded-radius-md bg-bg text-text transition-all duration-200 focus:outline-none focus:border-accent focus:bg-white placeholder:text-text-muted"
     />
   )

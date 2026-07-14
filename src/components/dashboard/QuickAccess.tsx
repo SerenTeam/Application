@@ -1,16 +1,24 @@
+import { useT } from '@/i18n/useT'
 import type { DashboardView } from './types'
 
 interface QuickAccessProps {
   onNavigate: (view: DashboardView) => void
 }
 
-const BUTTONS: { view: DashboardView; icon: string; label: string }[] = [
-  { view: 'documents', icon: '\uD83D\uDCC4', label: 'Documents transmis' },
-  { view: 'roadmap', icon: '\uD83D\uDDFA\uFE0F', label: 'Roadmap compl\u00E8te' },
-  { view: 'contacts', icon: '\uD83D\uDCDE', label: 'Contacts' },
-]
+const ICONS: Record<DashboardView, string> = {
+  dashboard: '\uD83D\uDCCA',
+  documents: '\uD83D\uDCC4',
+  roadmap: '\uD83D\uDDFA\uFE0F',
+  contacts: '\uD83D\uDCDE',
+}
 
 export function QuickAccess({ onNavigate }: QuickAccessProps) {
+  const t = useT()
+  const BUTTONS: { view: DashboardView; icon: string; label: string }[] = [
+    { view: 'documents', icon: ICONS.documents, label: t.dashboardPage.quickAccessButtons.documents },
+    { view: 'roadmap', icon: ICONS.roadmap, label: t.dashboardPage.quickAccessButtons.roadmap },
+    { view: 'contacts', icon: ICONS.contacts, label: t.dashboardPage.quickAccessButtons.contacts },
+  ]
   return (
     <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 mb-8">
       {BUTTONS.map((btn) => (

@@ -1,6 +1,7 @@
 import { PasswordInput } from '@/components/auth/PasswordInput'
 import { Label } from '@/components/ui/label'
 import { Check, X } from 'lucide-react'
+import { useT } from '@/i18n/useT'
 
 interface PasswordConfirmFieldProps {
   password: string
@@ -15,6 +16,7 @@ export function PasswordConfirmField({
   onChange,
   error,
 }: PasswordConfirmFieldProps) {
+  const t = useT()
   const hasTyped = confirmPassword.length > 0
   const matches = hasTyped && password === confirmPassword
   const showMismatch = hasTyped && password !== confirmPassword
@@ -22,7 +24,7 @@ export function PasswordConfirmField({
   return (
     <div className="space-y-2">
       <Label htmlFor="confirmPassword" className="font-medium text-text">
-        Confirmer le mot de passe
+        {t.auth.passwordConfirm.label}
       </Label>
       <PasswordInput
         id="confirmPassword"
@@ -37,13 +39,13 @@ export function PasswordConfirmField({
       {showMismatch && (
         <p id="confirm-error" className="flex items-center gap-1.5 text-sm text-error" role="alert">
           <X className="h-4 w-4" aria-hidden="true" />
-          Les mots de passe ne correspondent pas
+          {t.auth.passwordConfirm.mismatch}
         </p>
       )}
       {matches && (
         <p id="confirm-success" className="flex items-center gap-1.5 text-sm text-success">
           <Check className="h-4 w-4" aria-hidden="true" />
-          Les mots de passe correspondent
+          {t.auth.passwordConfirm.match}
         </p>
       )}
       {error && !showMismatch && (

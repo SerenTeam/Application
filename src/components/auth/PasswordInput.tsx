@@ -2,6 +2,7 @@ import * as React from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePasswordVisibility } from '@/hooks/usePasswordVisibility'
+import { useT } from '@/i18n/useT'
 
 interface PasswordInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
@@ -16,6 +17,7 @@ interface PasswordInputProps
 const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
   ({ className, id, ...props }, ref) => {
     const { isVisible, inputType, toggle } = usePasswordVisibility()
+    const t = useT()
 
     return (
       <div className="relative">
@@ -33,7 +35,7 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
           type="button"
           onClick={toggle}
           className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1 text-text-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          aria-label={isVisible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+          aria-label={isVisible ? t.auth.passwordInput.hide : t.auth.passwordInput.show}
           tabIndex={0}
         >
           {isVisible ? (
