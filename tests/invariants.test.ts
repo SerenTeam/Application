@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { STEPS_CATALOG } from '@/data/steps-catalog'
+import { STEPS_CATALOG_FR } from '@/data/steps-catalog.fr'
+import { STEPS_CATALOG_EN } from '@/data/steps-catalog.en'
 import { isApplicable } from '@/lib/roadmap-generator'
 import type { StepTemplate } from '@/data/steps-catalog'
 import type { QuestionnaireAnswersV2 } from '@/types/questionnaire'
@@ -103,6 +105,21 @@ describe('invariant : pas de question morte, pas d’étape orpheline', () => {
     }
   })
 
+})
+
+describe('catalogues d\'étapes FR/EN', () => {
+  it('catalogues FR/EN : parité structurelle totale (seuls les textes diffèrent)', () => {
+    expect(STEPS_CATALOG_EN.length).toBe(STEPS_CATALOG_FR.length)
+    STEPS_CATALOG_FR.forEach((fr, i) => {
+      const en = STEPS_CATALOG_EN[i]
+      expect(en.id, `ordre/id divergent à l'index ${i}`).toBe(fr.id)
+      for (const field of ['theme', 'urgency', 'responsable', 'requires_notary', 'organisme_key', 'source_url', 'letter_template_id', 'display_order'] as const) {
+        expect(en[field], `${fr.id}.${field}`).toEqual(fr[field])
+      }
+      expect(en.applicable_when, `${fr.id}.applicable_when`).toEqual(fr.applicable_when)
+      expect(en.what_you_do.length, `${fr.id}: nombre d'actions`).toBe(fr.what_you_do.length)
+    })
+  })
 })
 
 describe('parité des matchers isApplicable (TS) ↔ matchesWhen (JS)', () => {

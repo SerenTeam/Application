@@ -1,4 +1,4 @@
-import { STEPS_CATALOG, type StepTemplate } from '@/data/steps-catalog'
+import { getStepsCatalog, type StepTemplate } from '@/data/steps-catalog'
 import type { QuestionnaireAnswersV2 } from '@/types/questionnaire'
 import { supabase } from '@/lib/supabase'
 import type { Lang } from '@/i18n'
@@ -35,8 +35,8 @@ export function isApplicable(step: StepTemplate, answers: QuestionnaireAnswersV2
   return true
 }
 
-export function generateRoadmap(answers: QuestionnaireAnswersV2): RoadmapStep[] {
-  return STEPS_CATALOG
+export function generateRoadmap(answers: QuestionnaireAnswersV2, lang: Lang = 'fr'): RoadmapStep[] {
+  return getStepsCatalog(lang)
     .filter((step) => isApplicable(step, answers))
     .sort(
       (a, b) =>

@@ -2,10 +2,12 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
-import { STEPS_CATALOG } from '@/data/steps-catalog'
+import { getStepsCatalog } from '@/data/steps-catalog'
 import { LanguageSwitch } from '@/components/layout/LanguageSwitch'
 import { useT } from '@/i18n/useT'
+import { useLang } from '@/i18n/LanguageContext'
 import type { Strings } from '@/i18n/strings.fr'
+import type { Lang } from '@/i18n'
 import {
   Sidebar,
   MobileNav,
@@ -41,7 +43,7 @@ const URGENCY_ORDER = ['urgent', 'week', 'month', 'later']
 
 // ─── Map DB steps to dashboard types ────────────────────────────
 
-function buildPhases(dbSteps: DbStep[], t: Strings): RoadmapPhase[] {
+function buildPhases(dbSteps: DbStep[], t: Strings, lang: Lang): RoadmapPhase[] {
   // Map urgency → phase label (langue active)
   const URGENCY_PHASE: Record<string, string> = {
     urgent: t.dashboardPage.urgencyPhase.urgent,
@@ -55,8 +57,13 @@ function buildPhases(dbSteps: DbStep[], t: Strings): RoadmapPhase[] {
     grouped.set(urgency, [])
   }
 
+  // Résolution par template_id dans le catalogue de la langue active : une roadmap
+  // générée en FR bascule intégralement en EN au toggle, sans régénération (les valeurs
+  // BDD `title`/`urgency_label` ne servent que de fallback si le template_id est inconnu).
+  const catalogById = new Map(getStepsCatalog(lang).map((s) => [s.id, s]))
+
   for (const step of dbSteps) {
-    const template = STEPS_CATALOG.find((t) => t.id === step.template_id)
+    const template = catalogById.get(step.template_id)
     const description = template
       ? template.description +
         '\n\n' +
@@ -65,7 +72,7 @@ function buildPhases(dbSteps: DbStep[], t: Strings): RoadmapPhase[] {
 
     const roadmapStep: RoadmapStep = {
       id: step.display_order,
-      title: step.title,
+      title: template?.title ?? step.title,
       timeline: template?.when_to_do ?? step.urgency_label,
       description,
       urgent: step.urgency === 'urgent',
@@ -106,6 +113,7 @@ export function DashboardPage() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const t = useT()
+  const { lang } = useLang()
   // Ref pour l'effet de chargement ci-dessous (deps [user, navigate] uniquement) :
   // évite de refetch Supabase à chaque bascule de langue, tout en gardant le message
   // d'erreur à jour si l'utilisateur bascule la langue avant qu'une erreur survienne.
@@ -189,7 +197,7 @@ export function DashboardPage() {
 
   // ─── Derived data ─────────────────────────────────────────────
 
-  const phases = useMemo(() => buildPhases(dbSteps, t), [dbSteps, t])
+  const phases = useMemo(() => buildPhases(dbSteps, t, lang), [dbSteps, t, lang])
   const progress = useMemo(() => buildProgress(dbSteps), [dbSteps])
 
   const totalSteps = dbSteps.length

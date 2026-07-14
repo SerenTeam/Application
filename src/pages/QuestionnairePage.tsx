@@ -217,7 +217,7 @@ export function QuestionnairePage() {
         setQuestionnaireId(qId)
       }
 
-      const steps = generateRoadmap(answers)
+      const steps = generateRoadmap(answers, lang)
       setStepsCount(steps.length)
       setDoneCount(steps.filter((s) => s.initial_status === 'done').length)
       await saveRoadmapToDb(user.id, qId, steps, lang)
