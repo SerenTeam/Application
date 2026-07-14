@@ -16,7 +16,7 @@
 
 ### Task 0 : Branche
 
-- [ ] **Step 1**
+- [x] **Step 1**
 ```bash
 cd /Users/arnaudgay/Documents/git/Seren/Application
 git checkout main && git checkout -b feat/i18n
@@ -32,7 +32,7 @@ npm test   # 72 passed attendus
 - Modify: `src/App.tsx` (Provider), le header commun (localiser le composant header réel — voir Step 4)
 - Test: `tests/i18n.test.ts`
 
-- [ ] **Step 1 : Tests rouges** — `tests/i18n.test.ts` :
+- [x] **Step 1 : Tests rouges** — `tests/i18n.test.ts` :
 ```typescript
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { detectLang, fmt } from '../src/i18n'
@@ -74,7 +74,7 @@ describe('fmt', () => {
 ```
 Run : `npx vitest run tests/i18n.test.ts` → FAIL (module absent).
 
-- [ ] **Step 2 : Implémenter `src/i18n/index.ts`**
+- [x] **Step 2 : Implémenter `src/i18n/index.ts`**
 ```typescript
 export type Lang = 'fr' | 'en'
 
@@ -101,7 +101,7 @@ export function fmt(template: string, vars: Record<string, string | number>): st
 }
 ```
 
-- [ ] **Step 3 : Contexte + toggle** — `src/i18n/LanguageContext.tsx` :
+- [x] **Step 3 : Contexte + toggle** — `src/i18n/LanguageContext.tsx` :
 ```tsx
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { detectLang, persistLang, type Lang } from './index'
@@ -141,11 +141,11 @@ export function LanguageSwitch() {
 }
 ```
 
-- [ ] **Step 4 : Brancher** — envelopper l'app dans `<LanguageProvider>` (dans `src/App.tsx`, autour du router, sous les providers existants) ; repérer le header commun (chercher le composant qui rend « Tableau de bord »/« Déconnexion » — probablement un layout partagé ou dupliqué par page) et y insérer `<LanguageSwitch />` à côté du bouton Déconnexion. Si le header est dupliqué par page, l'insérer dans chaque occurrence (noter le constat dans le rapport).
+- [x] **Step 4 : Brancher** — envelopper l'app dans `<LanguageProvider>` (dans `src/App.tsx`, autour du router, sous les providers existants) ; repérer le header commun (chercher le composant qui rend « Tableau de bord »/« Déconnexion » — probablement un layout partagé ou dupliqué par page) et y insérer `<LanguageSwitch />` à côté du bouton Déconnexion. Si le header est dupliqué par page, l'insérer dans chaque occurrence (noter le constat dans le rapport).
 
-- [ ] **Step 5 : Vérifier** — `npx vitest run tests/i18n.test.ts` → 6 passed ; `npm test` (rien de cassé) ; `npx tsc --noEmit` ; `npx vite build`.
+- [x] **Step 5 : Vérifier** — `npx vitest run tests/i18n.test.ts` → 6 passed ; `npm test` (rien de cassé) ; `npx tsc --noEmit` ; `npx vite build`.
 
-- [ ] **Step 6 : Commit**
+- [x] **Step 6 : Commit**
 ```bash
 git add src/i18n tests/i18n.test.ts src/components/layout/LanguageSwitch.tsx src/App.tsx <fichiers header>
 git commit -m "feat(i18n): détection de langue, contexte, toggle FR/EN persistant"
@@ -171,7 +171,7 @@ git commit -m "feat(i18n): détection de langue, contexte, toggle FR/EN persista
 
 **EXCLUSIONS (restent français, ne pas toucher)** : `src/data/letter-templates*` (courriers), `src/pages/DemoPage.tsx`, `src/pages/AccessPage.tsx` (+ composants du produit transmission), commentaires de code.
 
-- [ ] **Step 1 : Squelette typé** — `src/i18n/strings.fr.ts` définit la forme, organisée par domaine :
+- [x] **Step 1 : Squelette typé** — `src/i18n/strings.fr.ts` définit la forme, organisée par domaine :
 ```typescript
 export const STRINGS_FR = {
   layout: { dashboard: 'Tableau de bord', signOut: 'Déconnexion', letters: 'Courriers' /* … */ },
@@ -194,18 +194,18 @@ const ALL: Record<'fr' | 'en', Strings> = { fr: STRINGS_FR, en: STRINGS_EN }
 export function useT(): Strings { return ALL[useLang().lang] }
 ```
 
-- [ ] **Step 2 : Extraction, domaine par domaine** — pour chaque fichier : les chaînes FR viennent du fichier actuel sur `main`, les EN de `git show demo-en:<même chemin>`. Remplacer chaque chaîne en dur par `t.domaine.clé` (via `const t = useT()`), les interpolations par `fmt(t.x.y, { … })`. Ordre conseillé (un commit par lot) : (a) layout + auth + validation + pages simples ; (b) questionnaire (WelcomeScreen, QuestionCard, RecapScreen, CompletionScreen, QuestionnaireProgress, QuestionnairePage — y compris message de session expirée et placeholders) ; (c) dashboard (Sidebar, ProgressHero, QuickAccess, RoadmapView, DashboardPage) + habillage courriers (boutons Copier/Télécharger/Marquer envoyé — le CONTENU des lettres et les labels de variables restent FR).
+- [x] **Step 2 : Extraction, domaine par domaine** — pour chaque fichier : les chaînes FR viennent du fichier actuel sur `main`, les EN de `git show demo-en:<même chemin>`. Remplacer chaque chaîne en dur par `t.domaine.clé` (via `const t = useT()`), les interpolations par `fmt(t.x.y, { … })`. Ordre conseillé (un commit par lot) : (a) layout + auth + validation + pages simples ; (b) questionnaire (WelcomeScreen, QuestionCard, RecapScreen, CompletionScreen, QuestionnaireProgress, QuestionnairePage — y compris message de session expirée et placeholders) ; (c) dashboard (Sidebar, ProgressHero, QuickAccess, RoadmapView, DashboardPage) + habillage courriers (boutons Copier/Télécharger/Marquer envoyé — le CONTENU des lettres et les labels de variables restent FR).
   ⚠️ Balayer AUSSI les échappements unicode : `grep -rn '\\u00' src/` (leçon `QuickAccess.tsx`). ⚠️ `src/utils/validation.ts` : transformer les schémas zod en fonctions `makeSchemas(t)` (les messages ne peuvent pas être figés à l'import).
 
-- [ ] **Step 3 : Balayage final**
+- [x] **Step 3 : Balayage final**
 ```bash
 grep -rnE '["'\''`][^"'\''`]*[éèêàçÉÈ]' src/components src/pages --include='*.tsx' | grep -v -iE 'demo|access|letter-templates' | grep -v '//'
 ```
 Résultat attendu : uniquement des faux positifs documentés (commentaires, données courriers). Lister les restes délibérés dans le rapport.
 
-- [ ] **Step 4 : Vérifier** — `npx tsc --noEmit` (la parité des clés se joue ici) ; `npm test` → 78 (72 + 6 de Task 1) ; `npx vite build`.
+- [x] **Step 4 : Vérifier** — `npx tsc --noEmit` (la parité des clés se joue ici) ; `npm test` → 78 (72 + 6 de Task 1) ; `npx vite build`.
 
-- [ ] **Step 5 : Commit(s)**
+- [x] **Step 5 : Commit(s)**
 ```bash
 git add -A -- src
 git commit -m "feat(i18n): dictionnaires FR/EN typés et extraction des chaînes UI"
@@ -219,7 +219,7 @@ git commit -m "feat(i18n): dictionnaires FR/EN typés et extraction des chaînes
 - Create: `src/data/steps-catalog.fr.ts`, `src/data/steps-catalog.en.ts`
 - Modify: `src/data/steps-catalog.ts` (devient interface + getter), `src/lib/roadmap-generator.ts`, le composant d'affichage roadmap/dashboard (résolution des titres), `tests/invariants.test.ts`
 
-- [ ] **Step 1 : Scinder les données** — `steps-catalog.fr.ts` reçoit le tableau actuel (`export const STEPS_CATALOG_FR: StepTemplate[] = [ …contenu actuel de main… ]`) ; `steps-catalog.en.ts` reçoit le tableau de `git show demo-en:src/data/steps-catalog.ts` (`STEPS_CATALOG_EN`). `steps-catalog.ts` conserve l'interface `StepTemplate` et devient :
+- [x] **Step 1 : Scinder les données** — `steps-catalog.fr.ts` reçoit le tableau actuel (`export const STEPS_CATALOG_FR: StepTemplate[] = [ …contenu actuel de main… ]`) ; `steps-catalog.en.ts` reçoit le tableau de `git show demo-en:src/data/steps-catalog.ts` (`STEPS_CATALOG_EN`). `steps-catalog.ts` conserve l'interface `StepTemplate` et devient :
 ```typescript
 import type { Lang } from '@/i18n'
 import { STEPS_CATALOG_FR } from './steps-catalog.fr'
@@ -235,7 +235,7 @@ export function getStepsCatalog(lang: Lang): StepTemplate[] {
 export const STEPS_CATALOG = STEPS_CATALOG_FR
 ```
 
-- [ ] **Step 2 : Invariant de parité (test rouge d'abord)** — dans `tests/invariants.test.ts` :
+- [x] **Step 2 : Invariant de parité (test rouge d'abord)** — dans `tests/invariants.test.ts` :
 ```typescript
 it('catalogues FR/EN : parité structurelle totale (seuls les textes diffèrent)', () => {
   expect(STEPS_CATALOG_EN.length).toBe(STEPS_CATALOG_FR.length)
@@ -252,13 +252,13 @@ it('catalogues FR/EN : parité structurelle totale (seuls les textes diffèrent)
 ```
 (Importer `STEPS_CATALOG_FR`/`STEPS_CATALOG_EN`.) Ce test doit passer dès que le Step 1 est correct — s'il échoue, c'est une divergence RÉELLE à corriger dans le catalogue EN, jamais en affaiblissant le test.
 
-- [ ] **Step 3 : Génération dans la langue active** — `generateRoadmap()` (`src/lib/roadmap-generator.ts`) prend un paramètre `lang: Lang = 'fr'` et lit `getStepsCatalog(lang)` au lieu de la constante. L'appelant (flux de complétion dans `QuestionnairePage.tsx`) passe la langue active de `useLang()`.
+- [x] **Step 3 : Génération dans la langue active** — `generateRoadmap()` (`src/lib/roadmap-generator.ts`) prend un paramètre `lang: Lang = 'fr'` et lit `getStepsCatalog(lang)` au lieu de la constante. L'appelant (flux de complétion dans `QuestionnairePage.tsx`) passe la langue active de `useLang()`.
 
-- [ ] **Step 4 : Résolution à l'affichage** — dans le composant dashboard/roadmap qui affiche les étapes stockées : construire `const catalogById = new Map(getStepsCatalog(lang).map((s) => [s.id, s]))` et afficher `catalogById.get(step.template_id)?.title ?? step.title` (idem `urgency_label` ; description/what_you_do étaient déjà résolus — vérifier qu'ils utilisent bien le catalogue de la langue active). Effet attendu : une roadmap générée en FR s'affiche en EN quand le toggle passe à EN, sans régénération.
+- [x] **Step 4 : Résolution à l'affichage** — dans le composant dashboard/roadmap qui affiche les étapes stockées : construire `const catalogById = new Map(getStepsCatalog(lang).map((s) => [s.id, s]))` et afficher `catalogById.get(step.template_id)?.title ?? step.title` (idem `urgency_label` ; description/what_you_do étaient déjà résolus — vérifier qu'ils utilisent bien le catalogue de la langue active). Effet attendu : une roadmap générée en FR s'affiche en EN quand le toggle passe à EN, sans régénération.
 
-- [ ] **Step 5 : Vérifier** — `npm test` → 79 ; `npx tsc --noEmit` ; `npx vite build`.
+- [x] **Step 5 : Vérifier** — `npm test` → 79 ; `npx tsc --noEmit` ; `npx vite build`.
 
-- [ ] **Step 6 : Commit**
+- [x] **Step 6 : Commit**
 ```bash
 git add src/data src/lib/roadmap-generator.ts src/pages src/components tests/invariants.test.ts
 git commit -m "feat(i18n): catalogue d'étapes FR/EN, invariant de parité, roadmap résolue par template_id"
@@ -273,7 +273,7 @@ git commit -m "feat(i18n): catalogue d'étapes FR/EN, invariant de parité, road
 - Create: `server/lib/messages.js`, `supabase/migrations/20260713120000_sessions_lang.sql`
 - Test: `tests/questionnaire-routes.test.ts` (+2), `tests/question-writer.test.ts` (+1), `tests/questionnaire-engine.test.ts` (adaptations)
 
-- [ ] **Step 1 : Migration**
+- [x] **Step 1 : Migration**
 ```sql
 -- Langue du questionnaire, figée au /start : le rédacteur Mistral écrit dans cette langue
 -- pour toute la session (y compris /resume et /reask).
@@ -282,7 +282,7 @@ alter table questionnaire_sessions
 ```
 ⚠️ USER STEP (fin de plan) : appliquer dans le SQL Editor Supabase.
 
-- [ ] **Step 2 : Catalogue de questions bilingue** — dans `server/lib/questions-catalog.js`, chaque champ textuel devient `{ fr, en }` : `fallback_text`, `aide`, `writer_hints`, `label` de chaque option (les `value`, `id`, `applicable_when`, `type` sont INTACTS — le moteur ne lit pas les textes). FR = contenu actuel de `main` ; EN = `git show demo-en:server/lib/questions-catalog.js` (commit `84281de`). Introduire un helper exporté :
+- [x] **Step 2 : Catalogue de questions bilingue** — dans `server/lib/questions-catalog.js`, chaque champ textuel devient `{ fr, en }` : `fallback_text`, `aide`, `writer_hints`, `label` de chaque option (les `value`, `id`, `applicable_when`, `type` sont INTACTS — le moteur ne lit pas les textes). FR = contenu actuel de `main` ; EN = `git show demo-en:server/lib/questions-catalog.js` (commit `84281de`). Introduire un helper exporté :
 ```javascript
 // Résout un champ textuel bilingue { fr, en } (chaîne brute acceptée par tolérance).
 export function textIn(field, lang) {
@@ -292,7 +292,7 @@ export function textIn(field, lang) {
 ```
 Adapter TOUS les lecteurs de textes (writer-prompt, question-writer fallback, routes : labels d'options renvoyés au client, récap) pour passer par `textIn(x, lang)`. Les tests existants qui lisent des textes FR passent `lang: 'fr'`.
 
-- [ ] **Step 3 : Test rouge writer EN** — `tests/question-writer.test.ts` :
+- [x] **Step 3 : Test rouge writer EN** — `tests/question-writer.test.ts` :
 ```typescript
 it('buildWriterMessages en anglais : instructions EN et libellés EN', () => {
   const spec = { ...SPEC, type: 'select', options: [{ value: 'a', label: { fr: 'Premier choix', en: 'First choice' } }] }
@@ -304,7 +304,7 @@ it('buildWriterMessages en anglais : instructions EN et libellés EN', () => {
 ```
 Puis implémenter : `buildWriterMessages(spec, context, lang = 'fr')` — deux jeux d'instructions (FR actuelles ; EN récoltées de `git show demo-en:server/lib/writer-prompt.js`), textes du spec résolus via `textIn(…, lang)`. Mêmes contraintes dans les deux langues (formulation ouverte, jamais de placeholder prénom : « your loved one »).
 
-- [ ] **Step 4 : Sessions + routes (tests rouges d'abord)** — `tests/questionnaire-routes.test.ts` :
+- [x] **Step 4 : Sessions + routes (tests rouges d'abord)** — `tests/questionnaire-routes.test.ts` :
 ```typescript
 it('start avec lang:en → session en anglais, textes EN, resume conserve la langue', async () => {
   const { app } = makeApp()
@@ -323,7 +323,7 @@ it('start avec lang invalide → 400', async () => {
 ```
 Implémenter : `createSession(client, userId, lang)` persiste la colonne ; `/start` valide `lang ∈ {fr,en}` (défaut `'fr'`, 400 sinon) ; `renderNext`/`/reask`/récap lisent `session.lang` et résolvent tous les textes via `textIn`. Adapter le fake `store` de `makeApp()` pour porter `lang`.
 
-- [ ] **Step 5 : Messages d'erreur** — créer `server/lib/messages.js` :
+- [x] **Step 5 : Messages d'erreur** — créer `server/lib/messages.js` :
 ```javascript
 // Messages utilisateur bilingues. Clés stables ; le moteur renvoie des clés, les routes traduisent.
 export const MESSAGES = {
@@ -334,11 +334,11 @@ export function msg(lang, key) { return MESSAGES[lang]?.[key] ?? MESSAGES.fr[key
 ```
 Le moteur (`questionnaire-engine.js`) : `fail('Option inconnue')` → `fail('unknown_option')` (etc. pour les 7 chaînes) ; les routes traduisent `check.error` via `msg(session.lang, check.error)`. Adapter `tests/questionnaire-engine.test.ts` (asserte les clés) et le test route « Option inconnue » (asserte le FR traduit). `rate-limit.js` : `message` accepte une fonction `(req) => string` ; `/start` passe `(req) => msg(req.body?.lang === 'en' ? 'en' : 'fr', 'too_many_requests')`.
 
-- [ ] **Step 6 : Frontend envoie la langue** — dans `QuestionnairePage.tsx`, le `/start` envoie `{ lang }` (de `useLang()`).
+- [x] **Step 6 : Frontend envoie la langue** — dans `QuestionnairePage.tsx`, le `/start` envoie `{ lang }` (de `useLang()`).
 
-- [ ] **Step 7 : Vérifier** — `npm test` → 82 (79 + 2 routes + 1 writer) ; `npx tsc --noEmit` ; `node --check` sur les 6 fichiers serveur ; `npx vite build`. Spot-check Mistral réel (3 générations `statut_professionnel`, `lang: 'en'`, contexte `{ prenom: 'Pierre', relation: 'conjoint_marie' }`) : questions en anglais, ouvertes.
+- [x] **Step 7 : Vérifier** — `npm test` → 82 (79 + 2 routes + 1 writer) ; `npx tsc --noEmit` ; `node --check` sur les 6 fichiers serveur ; `npx vite build`. Spot-check Mistral réel (3 générations `statut_professionnel`, `lang: 'en'`, contexte `{ prenom: 'Pierre', relation: 'conjoint_marie' }`) : questions en anglais, ouvertes.
 
-- [ ] **Step 8 : Commit**
+- [x] **Step 8 : Commit**
 ```bash
 git add server supabase/migrations tests src/pages/QuestionnairePage.tsx
 git commit -m "feat(i18n): serveur bilingue — catalogue questions {fr,en}, rédacteur EN, langue de session, messages traduits"
@@ -348,7 +348,7 @@ git commit -m "feat(i18n): serveur bilingue — catalogue questions {fr,en}, ré
 
 ### Task 5 : Vérification finale, E2E, docs
 
-- [ ] **Step 1 : Suite complète**
+- [x] **Step 1 : Suite complète**
 ```bash
 npx tsc --noEmit && npm test && npx vite build && node --check server/server.js && node --check server/routes/questionnaire.js
 ```
@@ -362,7 +362,7 @@ npx tsc --noEmit && npm test && npx vite build && node --check server/server.js 
 
 - [ ] **Step 3 : ⚠️ USER STEP** — appliquer `supabase/migrations/20260713120000_sessions_lang.sql` dans le SQL Editor Supabase (vérif : `select column_name from information_schema.columns where table_name = 'questionnaire_sessions';` liste `lang`).
 
-- [ ] **Step 4 : Docs** — CLAUDE.md : ajouter la convention i18n (dictionnaires `src/i18n/`, catalogues jumeaux, langue de session, courriers toujours FR) dans « Conventions » et mettre à jour « Workflow & état du projet ». La branche `demo-en` devient obsolète après merge — noter qu'elle peut être supprimée une fois la présentation passée.
+- [x] **Step 4 : Docs** — CLAUDE.md : ajouter la convention i18n (dictionnaires `src/i18n/`, catalogues jumeaux, langue de session, courriers toujours FR) dans « Conventions » et mettre à jour « Workflow & état du projet ». La branche `demo-en` devient obsolète après merge — noter qu'elle peut être supprimée une fois la présentation passée.
 
 - [ ] **Step 5 : Revue globale de branche** (contrôleur) puis `superpowers:finishing-a-development-branch` (merge local dans `main` — Arnaud pushe).
 
