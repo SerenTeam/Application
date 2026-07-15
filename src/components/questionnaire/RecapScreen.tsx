@@ -1,5 +1,7 @@
 import { Pencil } from 'lucide-react'
 import { useT } from '@/i18n/useT'
+import { Button } from '@/components/ui/button'
+import { SectionHeading } from '@/components/ui/section-heading'
 
 export interface RecapEntry {
   question_id: string
@@ -19,47 +21,44 @@ export function RecapScreen({ entries, onEdit, onConfirm, isSubmitting, error }:
   const t = useT()
   return (
     <section className="animate-[slideUp_0.5s_ease-out]">
-      <div className="bg-bg-card rounded-radius-lg p-10 shadow-md border border-border-soft max-sm:p-7">
-        <h2 className="font-display text-[1.75rem] font-medium leading-[1.35] mb-3 text-text max-sm:text-2xl">
-          {t.recap.title}
-        </h2>
-        <p className="text-[0.95rem] text-text-soft mb-8">
-          {t.recap.description}
-        </p>
+      <div className="rounded-card border border-border-card bg-white p-10 shadow-card-border max-sm:p-7">
+        <SectionHeading
+          className="mb-8 max-w-none"
+          title={t.recap.title}
+          lead={t.recap.description}
+        />
 
         {error && (
-          <div className="bg-[#FEF2F0] border border-[#F5D5D0] text-error py-4 px-5 rounded-radius-sm mb-6 text-[0.95rem]">
+          <div className="mb-6 rounded-2xl border border-error/20 bg-error-light px-5 py-4 text-[14px] text-error">
             {error}
           </div>
         )}
 
-        <ul className="divide-y divide-border-soft mb-8">
+        <ul className="mb-8 divide-y divide-border-soft">
           {entries.map((entry) => (
-            <li key={entry.question_id} className="py-4 flex items-start justify-between gap-4">
+            <li key={entry.question_id} className="flex items-start justify-between gap-4 py-5">
               <div>
-                <div className="text-[0.9rem] text-text-soft">{entry.question}</div>
-                <div className="text-base font-medium text-text mt-1">{entry.display}</div>
+                <div className="font-body text-[13px] text-text-muted">{entry.question}</div>
+                <div className="mt-1 font-body text-[16px] font-medium text-text">{entry.display}</div>
               </div>
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => onEdit(entry.question_id)}
                 disabled={isSubmitting}
-                className="shrink-0 inline-flex items-center gap-1.5 bg-transparent border border-border text-text-soft text-[0.85rem] py-1.5 px-3 rounded-radius-sm cursor-pointer transition-all duration-200 hover:border-accent hover:text-accent disabled:opacity-50"
+                className="shrink-0 gap-1.5"
               >
-                <Pencil className="w-3.5 h-3.5" />
+                <Pencil className="h-3.5 w-3.5" />
                 {t.recap.edit}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
 
-        <div className="flex justify-end pt-6 border-t border-border-soft">
-          <button
-            onClick={onConfirm}
-            disabled={isSubmitting}
-            className="inline-flex items-center gap-2 bg-accent text-white border-none py-3.5 px-7 text-base font-body font-medium rounded-radius-md cursor-pointer transition-all duration-200 hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+        <div className="flex justify-end border-t border-border-soft pt-6">
+          <Button onClick={onConfirm} disabled={isSubmitting}>
             {isSubmitting ? t.recap.generating : t.recap.confirm}
-          </button>
+          </Button>
         </div>
       </div>
     </section>

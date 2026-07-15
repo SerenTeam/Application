@@ -79,11 +79,11 @@ export function SignupPage() {
 
   return (
     <AuthLayout>
-      <div className="rounded-[20px] bg-bg-card p-8 shadow-md">
-        <h1 className="mb-2 text-center font-display text-[2rem] font-medium text-accent">
+      <div className="rounded-card border border-border-card bg-white p-10 shadow-card-border max-sm:p-7">
+        <h1 className="mb-2 text-center font-display text-[28px] font-normal leading-[1.3] text-text">
           {t.auth.signup.title}
         </h1>
-        <p className="mb-8 text-center text-[1.05rem] text-text-soft">
+        <p className="mb-8 text-center font-body text-[16px] text-text-secondary">
           {t.auth.signup.subtitle}
         </p>
 
@@ -146,10 +146,10 @@ export function SignupPage() {
 
           {/* SER-8: Email already used error */}
           {isEmailUsed && (
-            <div className="rounded-[12px] border-2 border-error/30 bg-error/5 p-4 text-center" role="alert">
-              <p className="text-error text-[0.95rem]">
+            <div className="rounded-2xl border border-error/20 bg-error-light p-4 text-center" role="alert">
+              <p className="text-[14px] text-error">
                 {t.auth.signup.emailUsedMessage}{' '}
-                <Link to="/login" className="font-medium underline hover:text-accent-hover">
+                <Link to="/login" className="font-medium text-primary underline hover:text-primary-hover">
                   {t.auth.signup.signIn}
                 </Link>
               </p>
@@ -158,8 +158,8 @@ export function SignupPage() {
 
           {/* Generic server error */}
           {serverError && (
-            <div className="rounded-[12px] border-2 border-error/30 bg-error/5 p-4 text-center" role="alert">
-              <p className="text-error text-[0.95rem]">{serverError}</p>
+            <div className="rounded-2xl border border-error/20 bg-error-light p-4 text-center" role="alert">
+              <p className="text-[14px] text-error">{serverError}</p>
             </div>
           )}
 
@@ -174,9 +174,9 @@ export function SignupPage() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-text-soft">
+        <p className="mt-6 text-center text-sm text-text-secondary">
           {t.auth.signup.alreadyHaveAccount}{' '}
-          <Link to="/login" className="text-accent font-medium underline hover:text-accent-hover">
+          <Link to="/login" className="font-medium text-primary underline hover:text-primary-hover">
             {t.auth.signup.signIn}
           </Link>
         </p>

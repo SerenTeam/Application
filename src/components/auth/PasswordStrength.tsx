@@ -27,7 +27,7 @@ export function PasswordStrengthIndicator({ strength, score, show }: PasswordStr
   return (
     <div className="mt-3" role="status" aria-live="polite">
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-sm text-text-soft">{t.auth.passwordStrengthTitle}</span>
+        <span className="text-sm text-text-secondary">{t.auth.passwordStrengthTitle}</span>
         <span className={`text-sm font-medium ${style.textClass}`}>
           {label}
         </span>

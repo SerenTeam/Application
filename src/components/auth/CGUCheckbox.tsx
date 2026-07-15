@@ -23,14 +23,14 @@ export function CGUCheckbox({ checked, onCheckedChange, error }: CGUCheckboxProp
         />
         <Label
           htmlFor="cgu"
-          className="text-sm text-text-soft leading-relaxed cursor-pointer font-normal"
+          className="text-sm text-text-secondary leading-relaxed cursor-pointer font-normal"
         >
           {t.auth.cgu.acceptPrefix}{' '}
           <a
             href="/legal"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-accent underline hover:text-accent-hover"
+            className="text-primary underline hover:text-primary-hover"
           >
             {t.auth.cgu.termsOfService}
           </a>{' '}
@@ -39,7 +39,7 @@ export function CGUCheckbox({ checked, onCheckedChange, error }: CGUCheckboxProp
             href="/security"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-accent underline hover:text-accent-hover"
+            className="text-primary underline hover:text-primary-hover"
           >
             {t.auth.cgu.privacyPolicy}
           </a>

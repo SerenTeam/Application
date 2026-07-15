@@ -32,7 +32,7 @@ export function PasswordRules({ validation, show }: PasswordRulesProps) {
             ) : (
               <X className="h-4 w-4 text-error" aria-hidden="true" />
             )}
-            <span className={passed ? 'text-text-soft' : 'text-error'}>
+            <span className={passed ? 'text-text-secondary' : 'text-error'}>
               {label}
             </span>
           </li>

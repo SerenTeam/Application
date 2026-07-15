@@ -6,18 +6,15 @@ interface QuestionnaireProgressProps {
 export function QuestionnaireProgress({ categoryName, percent }: QuestionnaireProgressProps) {
   return (
     <div className="mb-8">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className="w-2.5 h-2.5 bg-accent rounded-full animate-pulse" />
-          <span className="text-sm font-medium text-accent uppercase tracking-widest">
-            {categoryName}
-          </span>
-        </div>
-        <span className="text-sm text-text-muted">{percent} %</span>
+      <div className="mb-3 flex items-center justify-between">
+        <span className="font-body text-[11px] font-medium uppercase tracking-[1.5px] text-primary">
+          {categoryName}
+        </span>
+        <span className="font-body text-[13px] text-text-muted">{percent} %</span>
       </div>
-      <div className="h-[3px] bg-border rounded-sm overflow-hidden">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-primary-light">
         <div
-          className="h-full bg-accent rounded-sm transition-all duration-500 ease-in-out"
+          className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
           style={{ width: `${percent}%` }}
         />
       </div>

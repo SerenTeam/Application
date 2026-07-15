@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
+import { ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useT } from '@/i18n/useT'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { QuestionnaireProgress } from './QuestionnaireProgress'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -69,19 +72,19 @@ export function QuestionCard({ question, onAnswer, onSkip, onCancel, isSubmittin
     <section className="animate-[slideUp_0.5s_ease-out]">
       <QuestionnaireProgress categoryName={question.categorie || t.questionnaire.categoryFallback} percent={percent} />
 
-      <div className="bg-bg-card rounded-radius-lg p-10 shadow-md border border-border-soft max-sm:p-7">
-        <h2 className="font-display text-[1.75rem] font-medium leading-[1.35] mb-3 text-text max-sm:text-2xl">
+      <div className="rounded-card border border-border-card bg-white p-10 shadow-card-border max-sm:p-7">
+        <h2 className="mb-3 font-display text-[26px] font-normal leading-[1.35] text-text max-sm:text-[22px]">
           {question.question}
         </h2>
 
         {question.aide && (
-          <p className="text-[0.95rem] text-text-soft mb-8 pl-4 border-l-2 border-accent-soft">
+          <p className="mb-8 border-l-2 border-primary-light pl-4 text-[15px] text-text-muted">
             {question.aide}
           </p>
         )}
 
         {error && (
-          <div className="bg-[#FEF2F0] border border-[#F5D5D0] text-error py-4 px-5 rounded-radius-sm mb-6 text-[0.95rem]">
+          <div className="mb-6 rounded-2xl border border-error/20 bg-error-light px-5 py-4 text-[14px] text-error">
             {error}
           </div>
         )}
@@ -96,39 +99,23 @@ export function QuestionCard({ question, onAnswer, onSkip, onCancel, isSubmittin
           />
         </div>
 
-        <div className="flex justify-between items-center mt-8 pt-6 border-t border-border-soft">
+        <div className="mt-8 flex items-center justify-between border-t border-border-soft pt-6">
           {onCancel ? (
-            <button
-              onClick={onCancel}
-              disabled={isSubmitting}
-              className="bg-transparent border-none text-text-muted text-[0.95rem] font-body cursor-pointer py-2 px-4 transition-colors duration-200 hover:text-text-soft disabled:opacity-50"
-            >
+            <Button variant="ghost" size="sm" onClick={onCancel} disabled={isSubmitting}>
               {t.questionnaire.backToRecap}
-            </button>
+            </Button>
           ) : !question.obligatoire && onSkip ? (
-            <button
-              onClick={() => onSkip(question.question_id)}
-              disabled={isSubmitting}
-              className="bg-transparent border-none text-text-muted text-[0.95rem] font-body cursor-pointer py-2 px-4 transition-colors duration-200 hover:text-text-soft disabled:opacity-50"
-            >
+            <Button variant="ghost" size="sm" onClick={() => onSkip(question.question_id)} disabled={isSubmitting}>
               {t.questionnaire.skip}
-            </button>
+            </Button>
           ) : (
             <div />
           )}
 
-          <button
-            onClick={handleSubmit}
-            disabled={isNextDisabled}
-            className="inline-flex items-center gap-2 bg-accent text-white border-none py-3.5 px-7 text-base font-body font-medium rounded-radius-md cursor-pointer transition-all duration-200 hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <Button onClick={handleSubmit} disabled={isNextDisabled} className="gap-2">
             {isSubmitting ? t.questionnaire.sending : t.questionnaire.continueBtn}
-            {!isSubmitting && (
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-[18px] h-[18px]">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-              </svg>
-            )}
-          </button>
+            {!isSubmitting && <ArrowRight className="h-[18px] w-[18px]" />}
+          </Button>
         </div>
       </div>
     </section>
@@ -199,11 +186,10 @@ function FormElement({ question, selectedValue, selectedValues, onValueChange, o
       )
     case 'date':
       return (
-        <input
+        <Input
           type="date"
           value={(selectedValue as string) ?? ''}
           onChange={(e) => onValueChange(e.target.value || null)}
-          className="w-full py-4 px-5 text-base font-body border-2 border-border rounded-radius-md bg-bg text-text transition-all duration-200 focus:outline-none focus:border-accent focus:bg-white"
         />
       )
     default:
@@ -243,10 +229,10 @@ function OptionList({ name, options, isMulti, selectedValue, selectedValues, onV
         <label
           key={value}
           className={cn(
-            'flex items-center py-4 px-5 bg-bg border-2 border-border rounded-radius-md cursor-pointer transition-all duration-200',
-            'hover:border-accent hover:bg-accent-soft',
+            'flex items-center rounded-2xl border border-border bg-white px-5 py-4 cursor-pointer transition-colors',
+            'hover:border-primary',
             'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/40 has-[:focus-visible]:ring-offset-2',
-            isSelected(value) && 'border-accent bg-accent-soft'
+            isSelected(value) && 'border-primary bg-primary-light/50'
           )}
         >
           <input
@@ -261,7 +247,7 @@ function OptionList({ name, options, isMulti, selectedValue, selectedValues, onV
             <span
               className={cn(
                 'w-5 h-5 border-2 border-border rounded mr-4 flex items-center justify-center transition-all duration-200 shrink-0',
-                isSelected(value) && 'border-accent bg-accent'
+                isSelected(value) && 'border-primary bg-primary'
               )}
             >
               {isSelected(value) && <span className="text-white text-xs font-bold">&#10003;</span>}
@@ -270,10 +256,10 @@ function OptionList({ name, options, isMulti, selectedValue, selectedValues, onV
             <span
               className={cn(
                 'w-5 h-5 border-2 border-border rounded-full mr-4 flex items-center justify-center transition-all duration-200 shrink-0',
-                isSelected(value) && 'border-accent'
+                isSelected(value) && 'border-primary'
               )}
             >
-              {isSelected(value) && <span className="w-2.5 h-2.5 bg-accent rounded-full" />}
+              {isSelected(value) && <span className="w-2.5 h-2.5 bg-primary rounded-full" />}
             </span>
           )}
           <span className="text-base text-text">{label}</span>
@@ -299,10 +285,10 @@ function ChoiceRow({ name, items, selectedValue, onValueChange }: ChoiceRowProps
         <label
           key={label}
           className={cn(
-            'flex-1 flex items-center justify-center py-4 px-5 bg-bg border-2 border-border rounded-radius-md cursor-pointer transition-all duration-200',
-            'hover:border-accent hover:bg-accent-soft',
+            'flex-1 flex items-center justify-center rounded-2xl border border-border bg-white px-5 py-4 cursor-pointer transition-colors',
+            'hover:border-primary',
             'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/40 has-[:focus-visible]:ring-offset-2',
-            selectedValue === value && 'border-accent bg-accent-soft'
+            selectedValue === value && 'border-primary bg-primary-light/50'
           )}
         >
           <input
@@ -316,10 +302,10 @@ function ChoiceRow({ name, items, selectedValue, onValueChange }: ChoiceRowProps
           <span
             className={cn(
               'w-5 h-5 border-2 border-border rounded-full mr-4 flex items-center justify-center transition-all duration-200 shrink-0',
-              selectedValue === value && 'border-accent'
+              selectedValue === value && 'border-primary'
             )}
           >
-            {selectedValue === value && <span className="w-2.5 h-2.5 bg-accent rounded-full" />}
+            {selectedValue === value && <span className="w-2.5 h-2.5 bg-primary rounded-full" />}
           </span>
           <span className="text-base text-text">{label}</span>
         </label>
@@ -345,12 +331,11 @@ function TextInput({ value, onValueChange }: { value: string; onValueChange: (va
   }
 
   return (
-    <input
+    <Input
       type="text"
       value={localValue}
       onChange={handleChange}
       placeholder={t.questionnaire.answerPlaceholder}
-      className="w-full py-4 px-5 text-base font-body border-2 border-border rounded-radius-md bg-bg text-text transition-all duration-200 focus:outline-none focus:border-accent focus:bg-white placeholder:text-text-muted"
     />
   )
 }

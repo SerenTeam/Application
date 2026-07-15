@@ -12,6 +12,7 @@ import { WelcomeScreen } from '@/components/questionnaire/WelcomeScreen'
 import { QuestionCard, type QuestionData } from '@/components/questionnaire/QuestionCard'
 import { RecapScreen, type RecapEntry } from '@/components/questionnaire/RecapScreen'
 import { CompletionScreen } from '@/components/questionnaire/CompletionScreen'
+import { Button } from '@/components/ui/button'
 
 type Phase = 'welcome' | 'loading' | 'question' | 'recap' | 'completing' | 'done'
 
@@ -243,27 +244,26 @@ export function QuestionnairePage() {
       <main className="max-w-[720px] mx-auto py-12 px-6 pb-24 max-sm:py-8 max-sm:px-4 max-sm:pb-16">
         {sessionExpired && (
           <div className="text-center py-16 px-8">
-            <div className="bg-[#FEF2F0] border border-[#F5D5D0] text-error py-4 px-5 rounded-radius-sm mb-6 text-[0.95rem] max-w-md mx-auto">
+            <div className="mx-auto mb-6 max-w-md rounded-2xl border border-error/20 bg-error-light px-5 py-4 text-[14px] text-error">
               {t.questionnaire.sessionExpiredMessage}
             </div>
-            <button
+            <Button
               onClick={() => {
                 sessionStorage.removeItem('seren_questionnaire_session')
                 setSessionExpired(false); setSessionId(null); setCurrentQuestion(null)
                 setRecap([]); setFinalAnswers(null); setQuestionnaireId(null)
                 setError(null); setEditingFromRecap(false); setPhase('welcome')
               }}
-              className="bg-accent text-white border-none py-3 px-6 rounded-radius-md cursor-pointer font-medium transition-all duration-200 hover:bg-accent-hover"
             >
               {t.questionnaire.restart}
-            </button>
+            </Button>
           </div>
         )}
 
         {!sessionExpired && phase === 'welcome' && (
           <>
             {error && (
-              <div className="bg-[#FEF2F0] border border-[#F5D5D0] text-error py-4 px-5 rounded-radius-sm mb-6 text-[0.95rem] text-center">
+              <div className="mb-6 rounded-2xl border border-error/20 bg-error-light px-5 py-4 text-center text-[14px] text-error">
                 {error}
               </div>
             )}
@@ -273,8 +273,8 @@ export function QuestionnairePage() {
 
         {!sessionExpired && phase === 'loading' && (
           <div className="text-center py-16 px-8">
-            <div className="w-12 h-12 border-[3px] border-border border-t-accent rounded-full mx-auto mb-6 animate-spin" />
-            <p className="text-text-soft text-base">{t.questionnaire.preparing}</p>
+            <div className="w-12 h-12 border-[3px] border-border border-t-primary rounded-full mx-auto mb-6 animate-spin" />
+            <p className="text-text-secondary text-base">{t.questionnaire.preparing}</p>
           </div>
         )}
 
@@ -301,25 +301,24 @@ export function QuestionnairePage() {
 
         {!sessionExpired && phase === 'completing' && !error && (
           <div className="text-center py-16 px-8">
-            <div className="w-12 h-12 border-[3px] border-border border-t-accent rounded-full mx-auto mb-6 animate-spin" />
-            <p className="text-text-soft text-base">{t.questionnaire.generatingRoadmap}</p>
+            <div className="w-12 h-12 border-[3px] border-border border-t-primary rounded-full mx-auto mb-6 animate-spin" />
+            <p className="text-text-secondary text-base">{t.questionnaire.generatingRoadmap}</p>
           </div>
         )}
 
         {!sessionExpired && phase === 'completing' && error && (
           <div className="text-center py-16 px-8">
-            <div className="bg-[#FEF2F0] border border-[#F5D5D0] text-error py-4 px-5 rounded-radius-sm mb-6 text-[0.95rem] max-w-md mx-auto">
+            <div className="mx-auto mb-6 max-w-md rounded-2xl border border-error/20 bg-error-light px-5 py-4 text-[14px] text-error">
               {error}
             </div>
-            <button
+            <Button
               onClick={() => {
                 setError(null)
                 confirmAndGenerate()
               }}
-              className="bg-accent text-white border-none py-3 px-6 rounded-radius-md cursor-pointer font-medium transition-all duration-200 hover:bg-accent-hover"
             >
               {t.questionnaire.retry}
-            </button>
+            </Button>
           </div>
         )}
 

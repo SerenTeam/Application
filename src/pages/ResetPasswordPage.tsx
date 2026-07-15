@@ -52,24 +52,24 @@ export function ResetPasswordPage() {
 
   return (
     <AuthLayout>
-      <div className="rounded-[20px] bg-bg-card p-8 shadow-md">
-        <h1 className="mb-2 text-center font-display text-[2rem] font-medium text-accent">
+      <div className="rounded-card border border-border-card bg-white p-10 shadow-card-border max-sm:p-7">
+        <h1 className="mb-2 text-center font-display text-[28px] font-normal leading-[1.3] text-text">
           {t.auth.resetRequest.title}
         </h1>
-        <p className="mb-8 text-center text-[1.05rem] text-text-soft">
+        <p className="mb-8 text-center font-body text-[16px] text-text-secondary">
           {t.auth.resetRequest.subtitle}
         </p>
 
         {isSent ? (
           /* ── Confirmation envoi ── */
           <div className="space-y-6">
-            <div className="flex flex-col items-center gap-4 rounded-[12px] border-2 border-accent/30 bg-accent-soft p-6 text-center">
-              <Mail className="h-10 w-10 text-accent" aria-hidden="true" />
+            <div className="flex flex-col items-center gap-4 rounded-2xl border border-primary-border bg-primary-light p-6 text-center">
+              <Mail className="h-10 w-10 text-primary" aria-hidden="true" />
               <div>
                 <p className="font-medium text-text">
                   {t.auth.resetRequest.sentTitle}
                 </p>
-                <p className="mt-1 text-sm text-text-soft">
+                <p className="mt-1 text-sm text-text-secondary">
                   {t.auth.resetRequest.sentDescription}
                 </p>
               </div>
@@ -77,7 +77,7 @@ export function ResetPasswordPage() {
 
             <Link
               to="/login"
-              className="flex items-center justify-center gap-2 text-sm font-medium text-accent underline hover:text-accent-hover"
+              className="flex items-center justify-center gap-2 text-sm font-medium text-primary underline hover:text-primary-hover"
             >
               <ArrowLeft className="h-4 w-4" />
               {t.auth.resetRequest.backToLogin}
@@ -119,10 +119,10 @@ export function ResetPasswordPage() {
 
               {serverError && (
                 <div
-                  className="rounded-[12px] border-2 border-error/30 bg-error/5 p-4 text-center"
+                  className="rounded-2xl border border-error/20 bg-error-light p-4 text-center"
                   role="alert"
                 >
-                  <p className="text-error text-[0.95rem]">{serverError}</p>
+                  <p className="text-[14px] text-error">{serverError}</p>
                 </div>
               )}
 
@@ -138,7 +138,7 @@ export function ResetPasswordPage() {
             <p className="mt-6 text-center">
               <Link
                 to="/login"
-                className="flex items-center justify-center gap-2 text-sm font-medium text-accent underline hover:text-accent-hover"
+                className="flex items-center justify-center gap-2 text-sm font-medium text-primary underline hover:text-primary-hover"
               >
                 <ArrowLeft className="h-4 w-4" />
                 {t.auth.resetRequest.backToLogin}

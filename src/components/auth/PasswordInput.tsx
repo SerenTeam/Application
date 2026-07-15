@@ -26,7 +26,7 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
           id={id}
           type={inputType}
           className={cn(
-            'flex h-10 w-full rounded-[var(--radius-sm)] border border-border bg-bg-card px-3 py-2 pr-10 text-sm text-text ring-offset-bg-card file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+            'flex h-[52px] w-full rounded-2xl border border-border bg-white px-4 pr-12 text-[16px] text-text outline-none transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-text-muted focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
             className,
           )}
           {...props}
@@ -34,14 +34,14 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
         <button
           type="button"
           onClick={toggle}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1 text-text-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-text-muted transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           aria-label={isVisible ? t.auth.passwordInput.hide : t.auth.passwordInput.show}
           tabIndex={0}
         >
           {isVisible ? (
-            <EyeOff className="h-4 w-4" aria-hidden="true" />
+            <EyeOff className="h-[18px] w-[18px]" aria-hidden="true" />
           ) : (
-            <Eye className="h-4 w-4" aria-hidden="true" />
+            <Eye className="h-[18px] w-[18px]" aria-hidden="true" />
           )}
         </button>
       </div>

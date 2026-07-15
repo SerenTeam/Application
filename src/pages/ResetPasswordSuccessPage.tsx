@@ -2,7 +2,8 @@ import { useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { AuthLayout } from '@/components/auth/AuthLayout'
 import { Button } from '@/components/ui/button'
-import { CheckCircle, ArrowRight } from 'lucide-react'
+import { IconBadge } from '@/components/ui/icon-badge'
+import { Check, ArrowRight } from 'lucide-react'
 import { useT } from '@/i18n/useT'
 
 /**
@@ -28,18 +29,17 @@ export function ResetPasswordSuccessPage() {
 
   return (
     <AuthLayout>
-      <div className="rounded-[20px] bg-bg-card p-8 shadow-md">
+      <div className="rounded-card border border-border-card bg-white p-10 shadow-card-border max-sm:p-7">
         <div className="flex flex-col items-center gap-5 text-center">
-          <CheckCircle
-            className="h-14 w-14 text-accent"
-            aria-hidden="true"
-          />
+          <IconBadge size="md" tone="primary">
+            <Check strokeWidth={2} />
+          </IconBadge>
 
-          <h1 className="font-display text-[2rem] font-medium text-accent">
+          <h1 className="font-display text-[28px] font-normal leading-[1.3] text-text">
             {t.auth.resetSuccess.title}
           </h1>
 
-          <p className="text-[1.05rem] text-text-soft">
+          <p className="font-body text-[16px] text-text-secondary">
             {t.auth.resetSuccess.description}
           </p>
 

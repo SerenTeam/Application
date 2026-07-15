@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, RefreshCw } from 'lucide-react'
+import { ArrowRight, RefreshCw, AlertTriangle } from 'lucide-react'
 import { useT } from '@/i18n/useT'
 
 /**
@@ -11,20 +11,20 @@ import { useT } from '@/i18n/useT'
 export function ErrorPage() {
   const t = useT()
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-bg px-6">
-      <div className="w-full max-w-md rounded-[20px] bg-bg-card p-8 text-center shadow-md">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-page-bg px-6">
+      <div className="w-full max-w-md rounded-card bg-white p-10 text-center shadow-card max-sm:p-7">
         <div
-          className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-warning/10"
+          className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-warning-light"
           aria-hidden="true"
         >
-          <span className="text-3xl">⚙️</span>
+          <AlertTriangle className="h-7 w-7 text-warning" />
         </div>
 
-        <h1 className="mb-3 font-display text-[2rem] font-medium text-text">
+        <h1 className="mb-3 font-display text-[28px] font-normal leading-[1.3] text-text">
           {t.errors.somethingWrongTitle}
         </h1>
 
-        <p className="mb-8 text-[1.05rem] text-text-soft">
+        <p className="mb-8 font-body text-[16px] text-text-secondary">
           {t.errors.somethingWrongDescription}
         </p>
 
