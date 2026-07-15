@@ -1,30 +1,59 @@
 @import "tailwindcss";
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/inter-tight';
 
 @theme {
-  --color-bg: #FAF9F7;
-  --color-bg-card: #FFFFFF;
-  --color-text: #2C2C2C;
-  --color-text-soft: #6B6B6B;
-  --color-text-muted: #9A9A9A;
-  --color-accent: #3B5998;
-  --color-accent-soft: #E7EEF7;
-  --color-accent-hover: #2E4876;
-  --color-border: #E8E6E3;
-  --color-border-soft: #F0EEEB;
-  --color-error: #C45D4A;
-  --color-success: #3B5998;
-  --color-warning: #D97706;
+  /* ── Tokens landing (DESIGN.md §3) ── */
+  --color-primary:        #006BFA;
+  --color-primary-hover:  #0057D0;
+  --color-primary-light:  #EAF3FE;
+  --color-primary-border: #B5D4F4;
+  --color-violet:       #6B5CE7;
+  --color-violet-light: #F2F0FF;
+  --color-page-bg: #F8F8F8;
+  --color-surface: #FAFAFA;
+  --color-ink:     #1D1D1D;
+  --color-text:           #1D1D1D;
+  --color-text-heading:   #333333;
+  --color-text-secondary: #42424A;
+  /* Résolution collision (spec §1 note a) : text-muted/border portent directement
+     les valeurs landing — pas de duplication -l, les usages existants (text-text-muted,
+     border-border) héritent simplement de la nouvelle valeur, sans renommage de classes. */
+  --color-text-muted: #666676;
+  --color-border:     #D9DBE0;
+  --color-border-card: #F2F0FF;
 
-  --font-display: 'Cormorant Garamond', Georgia, serif;
-  --font-body: 'DM Sans', -apple-system, sans-serif;
+  /* ── Sémantiques (DESIGN.md §2 ➕) ── */
+  --color-success: #16A34A;  --color-success-light: #E9F7EF;
+  --color-warning: #D97706;  --color-warning-light: #FDF3E7;
+  --color-error:   #DC2626;  --color-error-light:   #FDECEC;
 
+  /* ── Polices (familles/rôles landing ; l'app garde ses noms --font-display/--font-body) ── */
+  --font-display: 'Inter Variable', -apple-system, sans-serif;        /* TITRES, graisse normale */
+  --font-body:    'Inter Tight Variable', -apple-system, sans-serif;  /* corps/UI, medium */
+
+  /* ── Rayons (DESIGN.md §5 + ➕) ── */
   --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-card: 2rem;
 
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.08);
+  /* ── Ombres (DESIGN.md §3, copiées verbatim) ── */
+  --shadow-card:        0px 0.6px 0.6px -1.25px rgba(181,181,181,0.07), 0px 2.3px 2.3px -2.5px rgba(181,181,181,0.06), 0px 10px 10px -3.75px rgba(181,181,181,0.03), 0px 2px 4px 0px rgba(79,79,79,0.08);
+  --shadow-card-border: 0px 0.36px 0.36px -1.25px rgba(135,126,135,0.18), 0px 1.37px 1.37px -2.5px rgba(135,126,135,0.16), 0px 6px 6px -3.75px rgba(135,126,135,0.06);
+  --shadow-pill:        0px 0.6px 0.6px -1.25px rgba(0,0,0,0.18), 0px 2.3px 2.3px -2.5px rgba(0,0,0,0.16), 0px 10px 10px -3.75px rgba(0,0,0,0.06);
+
+  /* ── Alias de transition (noms historiques de l'app → nouvelles valeurs landing) ── */
+  --color-bg: #FFFFFF;                       /* fond principal : blanc (pages denses : page-bg) */
+  --color-bg-card: #FFFFFF;
+  --color-accent: var(--color-primary);
+  --color-accent-soft: var(--color-primary-light);
+  --color-accent-hover: var(--color-primary-hover);
+  --color-text-soft: var(--color-text-secondary);
+  --color-border-soft: #EDEEF2;
+  --shadow-sm: var(--shadow-card-border);
+  --shadow-md: var(--shadow-card);
+  --shadow-lg: var(--shadow-card);
 
   --animate-fade-in: fade-in 0.3s ease-out;
 }
@@ -56,28 +85,28 @@
   }
 }
 
-/* Shadcn/ui CSS variables */
+/* Shadcn/ui CSS variables (remap landing — DESIGN.md, plan-refonte-ui.md Task 1 Step 3) */
 :root {
-  --background: 40 33% 97%;
-  --foreground: 0 0% 17%;
+  --background: 0 0% 100%;
+  --foreground: 0 0% 11%;
   --card: 0 0% 100%;
-  --card-foreground: 0 0% 17%;
+  --card-foreground: 0 0% 11%;
   --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 17%;
-  --primary: 220 44% 41%;
+  --popover-foreground: 0 0% 11%;
+  --primary: 213 100% 49%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 220 50% 94%;
-  --secondary-foreground: 220 44% 41%;
-  --muted: 30 10% 94%;
-  --muted-foreground: 0 0% 42%;
-  --accent: 220 50% 94%;
-  --accent-foreground: 220 44% 41%;
-  --destructive: 10 55% 47%;
+  --secondary: 211 89% 96%;
+  --secondary-foreground: 213 100% 49%;
+  --muted: 0 0% 98%;
+  --muted-foreground: 240 7% 43%;
+  --accent: 211 89% 96%;
+  --accent-foreground: 213 100% 49%;
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  --border: 30 8% 91%;
-  --input: 30 8% 91%;
-  --ring: 220 44% 41%;
-  --radius: 0.75rem;
+  --border: 220 8% 86%;
+  --input: 220 8% 86%;
+  --ring: 213 100% 49%;
+  --radius: 1rem;
 }
 
 body {
@@ -90,8 +119,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Focus visible for accessibility */
-*:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+/* Anneau de focus clavier visible et accessible (plan-refonte-ui.md Task 1 Step 4).
+   Placé dans la layer "base" : les composants qui définissent déjà leurs propres
+   classes focus-visible:* (button, input, checkbox, QuestionCard...) restent
+   prioritaires puisque les utilitaires Tailwind vivent dans la layer "utilities",
+   au-dessus de "base" — pas de double anneau. */
+@layer base {
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary/40 ring-offset-2;
+  }
 }

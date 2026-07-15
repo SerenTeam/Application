@@ -245,7 +245,7 @@ function OptionList({ name, options, isMulti, selectedValue, selectedValues, onV
           className={cn(
             'flex items-center py-4 px-5 bg-bg border-2 border-border rounded-radius-md cursor-pointer transition-all duration-200',
             'hover:border-accent hover:bg-accent-soft',
-            'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent has-[:focus-visible]:ring-offset-2',
+            'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/40 has-[:focus-visible]:ring-offset-2',
             isSelected(value) && 'border-accent bg-accent-soft'
           )}
         >
@@ -301,7 +301,7 @@ function ChoiceRow({ name, items, selectedValue, onValueChange }: ChoiceRowProps
           className={cn(
             'flex-1 flex items-center justify-center py-4 px-5 bg-bg border-2 border-border rounded-radius-md cursor-pointer transition-all duration-200',
             'hover:border-accent hover:bg-accent-soft',
-            'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent has-[:focus-visible]:ring-offset-2',
+            'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/40 has-[:focus-visible]:ring-offset-2',
             selectedValue === value && 'border-accent bg-accent-soft'
           )}
         >
