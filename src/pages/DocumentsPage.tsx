@@ -120,7 +120,7 @@ export function DocumentsPage() {
       <div className="mx-auto max-w-3xl px-4 py-8">
         {/* Header */}
         <div className="mb-6 flex items-center gap-3">
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="icon" asChild>
             <Link to="/dashboard">
               <ArrowLeft className="h-4 w-4" />
             </Link>
@@ -210,7 +210,7 @@ export function DocumentsPage() {
             <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-bg-card p-6 shadow-xl">
               <Button
                 variant="outline"
-                size="sm"
+                size="icon"
                 className="absolute right-4 top-4"
                 onClick={() => setViewingDoc(null)}
               >

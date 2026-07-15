@@ -148,9 +148,9 @@ export function DocumentCard({ document: doc, onView, onDelete }: DocumentCardPr
         ) : (
           <Button
             variant="outline"
-            size="sm"
+            size="icon"
             onClick={() => setConfirmDelete(true)}
-            className="gap-1.5 text-xs ml-auto text-text-muted"
+            className="ml-auto text-text-muted"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
