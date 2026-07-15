@@ -12,27 +12,32 @@ export function Sidebar({ activeView, onNavigate }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'bg-bg-card border-border-soft',
+        'border-border bg-white',
         // Desktop: vertical sidebar
         'hidden md:block md:w-[260px] md:border-r md:py-8',
       )}
     >
-      {NAV_ITEMS.map((item) => (
-        <button
-          key={item.id}
-          onClick={() => onNavigate(item.id)}
-          className={cn(
-            'flex w-full items-center gap-3 border-l-[3px] border-transparent px-6 py-3.5',
-            'text-text-soft transition-all duration-200 cursor-pointer',
-            'hover:bg-accent-soft hover:text-text',
-            activeView === item.id &&
-              'bg-accent-soft text-accent border-l-accent font-medium',
-          )}
-        >
-          <span>{item.icon}</span>
-          <span>{t.layout.nav[item.id]}</span>
-        </button>
-      ))}
+      <nav className="flex flex-col gap-1 px-3">
+        {NAV_ITEMS.map((item) => {
+          const Icon = item.icon
+          const isActive = activeView === item.id
+          return (
+            <button
+              key={item.id}
+              onClick={() => onNavigate(item.id)}
+              className={cn(
+                'flex items-center gap-3 rounded-lg px-4 py-3 text-left font-body text-[15px] font-medium',
+                'text-text-secondary transition-colors duration-200 cursor-pointer',
+                'hover:bg-primary-light/60 hover:text-primary',
+                isActive && 'bg-primary-light text-primary',
+              )}
+            >
+              <Icon className="h-5 w-5 shrink-0" />
+              <span>{t.layout.nav[item.id]}</span>
+            </button>
+          )
+        })}
+      </nav>
     </aside>
   )
 }
@@ -48,26 +53,29 @@ export function MobileNav({
   return (
     <nav
       className={cn(
-        'flex md:hidden overflow-x-auto border-b border-border-soft bg-bg-card',
-        'py-2',
+        'flex md:hidden overflow-x-auto border-b border-border bg-white',
+        'gap-1 px-2 py-2',
       )}
     >
-      {NAV_ITEMS.map((item) => (
-        <button
-          key={item.id}
-          onClick={() => onNavigate(item.id)}
-          className={cn(
-            'flex items-center gap-2 whitespace-nowrap px-5 py-2.5',
-            'border-b-[3px] border-transparent text-text-soft transition-all duration-200 cursor-pointer',
-            'hover:bg-accent-soft hover:text-text',
-            activeView === item.id &&
-              'border-b-accent text-accent font-medium',
-          )}
-        >
-          <span>{item.icon}</span>
-          <span>{t.layout.nav[item.id]}</span>
-        </button>
-      ))}
+      {NAV_ITEMS.map((item) => {
+        const Icon = item.icon
+        const isActive = activeView === item.id
+        return (
+          <button
+            key={item.id}
+            onClick={() => onNavigate(item.id)}
+            className={cn(
+              'flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 font-body text-[14px] font-medium',
+              'text-text-secondary transition-colors duration-200 cursor-pointer',
+              'hover:bg-primary-light/60 hover:text-primary',
+              isActive && 'bg-primary-light text-primary',
+            )}
+          >
+            <Icon className="h-[18px] w-[18px] shrink-0" />
+            <span>{t.layout.nav[item.id]}</span>
+          </button>
+        )
+      })}
     </nav>
   )
 }

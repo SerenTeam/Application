@@ -49,7 +49,7 @@ export function MarkAsSentButton({ stepId, userId, hasActions, onSent }: MarkAsS
 
   if (!open) {
     return (
-      <Button variant="outline" onClick={() => setOpen(true)} className="gap-2">
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="gap-2">
         <Send className="h-4 w-4" />
         {t.lettersPage.markAsSent}
       </Button>
@@ -57,8 +57,8 @@ export function MarkAsSentButton({ stepId, userId, hasActions, onSent }: MarkAsS
   }
 
   return (
-    <div className="rounded-lg border border-border bg-bg-card p-4 space-y-4">
-      <h4 className="text-sm font-medium text-text-primary">{t.lettersPage.confirmSending}</h4>
+    <div className="space-y-4 rounded-lg border border-border-card bg-surface p-5">
+      <h4 className="font-body text-sm font-medium text-text">{t.lettersPage.confirmSending}</h4>
 
       <div className="space-y-1.5">
         <Label htmlFor="sent-date" className="text-sm">{t.lettersPage.sentDateLabel}</Label>
@@ -82,11 +82,11 @@ export function MarkAsSentButton({ stepId, userId, hasActions, onSent }: MarkAsS
       </div>
 
       <div className="flex gap-2">
-        <Button onClick={handleSubmit} disabled={saving} className="gap-2">
+        <Button size="sm" onClick={handleSubmit} disabled={saving} className="gap-2">
           <Send className="h-4 w-4" />
           {saving ? t.lettersPage.saving : t.lettersPage.confirm}
         </Button>
-        <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
+        <Button variant="outline" size="sm" onClick={() => setOpen(false)} disabled={saving}>
           {t.lettersPage.cancel}
         </Button>
       </div>

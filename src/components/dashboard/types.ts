@@ -1,3 +1,5 @@
+import { LayoutDashboard, Map, FileText, Phone, type LucideIcon } from 'lucide-react'
+
 // ─── Roadmap types ───
 
 export interface RoadmapStep {
@@ -69,13 +71,13 @@ export type DashboardView = 'dashboard' | 'roadmap' | 'documents' | 'contacts'
 
 export interface NavItem {
   id: DashboardView
-  icon: string
+  icon: LucideIcon
 }
 
 // Les libellés vivent dans les dictionnaires i18n (t.layout.nav.<id>).
 export const NAV_ITEMS: NavItem[] = [
-  { id: 'dashboard', icon: '\uD83D\uDCCA' },
-  { id: 'roadmap', icon: '\uD83D\uDDFA\uFE0F' },
-  { id: 'documents', icon: '\uD83D\uDCC4' },
-  { id: 'contacts', icon: '\uD83D\uDCDE' },
+  { id: 'dashboard', icon: LayoutDashboard },
+  { id: 'roadmap', icon: Map },
+  { id: 'documents', icon: FileText },
+  { id: 'contacts', icon: Phone },
 ]

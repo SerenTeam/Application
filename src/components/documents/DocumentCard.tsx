@@ -1,20 +1,37 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Copy, Download, Eye, Trash2, Check, Send } from 'lucide-react'
+import { IconBadge } from '@/components/ui/icon-badge'
+import { PillBadge } from '@/components/ui/pill-badge'
+import {
+  Copy,
+  Download,
+  Eye,
+  Trash2,
+  Check,
+  Send,
+  Landmark,
+  ShieldCheck,
+  ClipboardList,
+  Home,
+  Scale,
+  Laptop,
+  Receipt,
+  FileText,
+  type LucideIcon,
+} from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { useT } from '@/i18n/useT'
 import { useLang } from '@/i18n/LanguageContext'
 import { fmt } from '@/i18n'
 
-const THEME_ICONS: Record<string, string> = {
-  banque: '\uD83C\uDFE6',
-  assurance: '\uD83D\uDEE1\uFE0F',
-  administratif: '\uD83D\uDCCB',
-  logement: '\uD83C\uDFE0',
-  succession: '\u2696\uFE0F',
-  numerique: '\uD83D\uDCBB',
-  fiscal: '\uD83D\uDCB0',
-  obseques: '\uD83D\uDD4A\uFE0F',
+const THEME_ICONS: Record<string, LucideIcon> = {
+  banque: Landmark,
+  assurance: ShieldCheck,
+  administratif: ClipboardList,
+  logement: Home,
+  succession: Scale,
+  numerique: Laptop,
+  fiscal: Receipt,
 }
 
 export interface DocumentData {
@@ -52,7 +69,7 @@ export function DocumentCard({ document: doc, onView, onDelete }: DocumentCardPr
   const [copied, setCopied] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const themeIcon = THEME_ICONS[doc.step_theme ?? ''] ?? '\uD83D\uDCC4'
+  const ThemeIcon = THEME_ICONS[doc.step_theme ?? ''] ?? FileText
 
   const handleCopy = async () => {
     try {
@@ -94,26 +111,28 @@ export function DocumentCard({ document: doc, onView, onDelete }: DocumentCardPr
   }
 
   return (
-    <div className="rounded-lg border border-border bg-bg-card p-4 space-y-3">
+    <div className="space-y-3 rounded-lg border border-border-card bg-white p-5 shadow-card-border">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3 min-w-0">
-          <span className="text-xl mt-0.5">{themeIcon}</span>
+        <div className="flex min-w-0 items-start gap-3">
+          <IconBadge size="sm" tone="primary" className="shrink-0">
+            <ThemeIcon />
+          </IconBadge>
           <div className="min-w-0">
-            <h3 className="text-sm font-medium text-text-primary truncate">{doc.title}</h3>
+            <h3 className="truncate font-body text-sm font-medium text-text">{doc.title}</h3>
             {doc.step_title && (
-              <p className="text-xs text-text-muted truncate">{doc.step_title}</p>
+              <p className="truncate text-xs text-text-muted">{doc.step_title}</p>
             )}
-            <p className="text-xs text-text-muted mt-0.5">
+            <p className="mt-0.5 text-xs text-text-muted">
               {fmt(t.lettersPage.generatedOn, { date: formatDate(doc.created_at, lang) })}
             </p>
           </div>
         </div>
 
         {doc.is_sent && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success shrink-0">
+          <PillBadge tone="success" className="shrink-0 gap-1">
             <Send className="h-3 w-3" />
             {t.lettersPage.sentBadge}
-          </span>
+          </PillBadge>
         )}
       </div>
 
@@ -132,7 +151,7 @@ export function DocumentCard({ document: doc, onView, onDelete }: DocumentCardPr
         </Button>
 
         {confirmDelete ? (
-          <div className="flex gap-1.5 ml-auto">
+          <div className="ml-auto flex gap-1.5">
             <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} className="text-xs">
               {t.lettersPage.cancel}
             </Button>

@@ -114,7 +114,7 @@ export function DocumentsPage() {
           <HeaderNavLink to="/dashboard">{t.layout.dashboard}</HeaderNavLink>
         </AppHeader>
         <div className="flex min-h-[calc(100vh-82px)] items-center justify-center">
-          <div className="h-12 w-12 animate-spin rounded-full border-[3px] border-border border-t-accent" />
+          <div className="h-12 w-12 animate-spin rounded-full border-[3px] border-border border-t-primary" />
         </div>
       </div>
     )
@@ -135,7 +135,7 @@ export function DocumentsPage() {
             </Link>
           </Button>
           <div>
-            <h1 className="font-display text-2xl font-medium text-accent">{t.lettersPage.title}</h1>
+            <h1 className="font-display text-2xl font-normal text-primary">{t.lettersPage.title}</h1>
             <p className="text-sm text-text-muted">
               {fmt(t.lettersPage.countLabel, { count: documents.length, s: documents.length !== 1 ? 's' : '' })}
             </p>
@@ -144,9 +144,9 @@ export function DocumentsPage() {
 
         {documents.length === 0 ? (
           /* Empty state */
-          <div className="rounded-lg border border-border bg-bg-card p-8 text-center">
+          <div className="rounded-card border border-border-card bg-white p-10 text-center shadow-card-border">
             <FileText className="mx-auto mb-4 h-12 w-12 text-text-muted/40" />
-            <h2 className="mb-2 font-display text-lg font-medium text-text-primary">
+            <h2 className="mb-2 font-display text-lg font-normal text-text">
               {t.lettersPage.emptyTitle}
             </h2>
             <p className="mb-6 text-sm text-text-muted">
@@ -163,7 +163,7 @@ export function DocumentsPage() {
               <select
                 value={themeFilter}
                 onChange={(e) => setThemeFilter(e.target.value as ThemeFilter)}
-                className="rounded-md border border-border bg-bg-card px-3 py-1.5 text-sm text-text-primary"
+                className="h-[42px] rounded-2xl border border-border bg-white px-4 text-[14px] text-text outline-none transition-colors focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
                 {Object.entries(THEME_LABELS).map(([key, label]) => (
                   <option key={key} value={key}>{label}</option>
@@ -173,7 +173,7 @@ export function DocumentsPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                className="rounded-md border border-border bg-bg-card px-3 py-1.5 text-sm text-text-primary"
+                className="h-[42px] rounded-2xl border border-border bg-white px-4 text-[14px] text-text outline-none transition-colors focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
                 <option value="all">{t.lettersPage.statusAll}</option>
                 <option value="sent">{t.lettersPage.statusSent}</option>
@@ -183,7 +183,7 @@ export function DocumentsPage() {
               <select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-                className="rounded-md border border-border bg-bg-card px-3 py-1.5 text-sm text-text-primary"
+                className="h-[42px] rounded-2xl border border-border bg-white px-4 text-[14px] text-text outline-none transition-colors focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
               >
                 <option value="newest">{t.lettersPage.sortNewest}</option>
                 <option value="oldest">{t.lettersPage.sortOldest}</option>
@@ -213,7 +213,7 @@ export function DocumentsPage() {
         {/* Preview modal */}
         {viewingDoc && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-bg-card p-6 shadow-xl">
+            <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-card bg-white p-8 shadow-card">
               <Button
                 variant="outline"
                 size="icon"
@@ -222,7 +222,7 @@ export function DocumentsPage() {
               >
                 <X className="h-4 w-4" />
               </Button>
-              <h2 className="mb-4 font-display text-lg font-medium text-accent">
+              <h2 className="mb-4 font-display text-lg font-normal text-primary">
                 {viewingDoc.title}
               </h2>
               <LetterPreview content={viewingDoc.content} />

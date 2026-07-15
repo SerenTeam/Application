@@ -3,11 +3,14 @@ import { cn } from '@/lib/utils'
 import { useT } from '@/i18n/useT'
 import { fmt } from '@/i18n'
 import { useLetterGenerator } from '@/hooks/useLetterGenerator'
+import { Button } from '@/components/ui/button'
+import { SectionHeading } from '@/components/ui/section-heading'
+import { PillBadge } from '@/components/ui/pill-badge'
 import { LetterPreview } from '@/components/letter/LetterPreview'
 import { LetterVariablesForm } from '@/components/letter/LetterVariablesForm'
 import { LetterActions } from '@/components/letter/LetterActions'
 import { MarkAsSentButton } from '@/components/letter/MarkAsSentButton'
-import { Mail } from 'lucide-react'
+import { Mail, Circle, CircleCheck } from 'lucide-react'
 import type { RoadmapPhase, RoadmapStep, ProgressData } from './types'
 
 interface QuestionnaireData {
@@ -40,17 +43,12 @@ export function RoadmapView({
   const t = useT()
   return (
     <div className="animate-fade-in">
-      <h1 className="font-display text-[2.25rem] font-medium mb-2 text-accent">
-        {t.roadmap.title}
-      </h1>
-      <p className="text-text-soft text-[1.05rem] mb-8">
-        {t.roadmap.subtitle}
-      </p>
+      <SectionHeading className="mb-8 max-w-none" title={t.roadmap.title} lead={t.roadmap.subtitle} />
 
       <div className="max-w-[900px]">
         {phases.map((phase) => (
           <div key={phase.phase} className="mb-10">
-            <h3 className="font-display text-[1.35rem] text-accent mb-4 pb-2 border-b-2 border-border">
+            <h3 className="mb-4 border-b border-border pb-2 font-body text-[11px] font-medium uppercase tracking-[1.5px] text-primary">
               {phase.phase}
             </h3>
 
@@ -141,10 +139,10 @@ function StepItem({
     <div
       ref={ref}
       className={cn(
-        'bg-bg-card border-2 border-border rounded-[12px] p-5 mb-4 transition-all duration-200',
-        isCompleted && 'border-success bg-success/[0.03] opacity-70',
-        isInProgress && 'border-[#3B82F6] bg-[#3B82F6]/[0.03]',
-        highlight && 'ring-[3px] ring-accent-soft',
+        'mb-4 rounded-lg border border-border-card bg-white p-5 shadow-card-border transition-all duration-200',
+        isCompleted && 'opacity-80',
+        isInProgress && 'border-violet bg-violet-light/50',
+        highlight && 'ring-2 ring-primary/40 ring-offset-2',
       )}
     >
       {/* Header */}
@@ -152,25 +150,30 @@ function StepItem({
         className="flex items-start gap-4 cursor-pointer"
         onClick={() => setDetailsOpen((o) => !o)}
       >
-        {/* Checkbox */}
+        {/* Status toggle */}
         <div
           onClick={handleCheckboxClick}
           className={cn(
-            'w-6 h-6 min-w-[24px] border-2 border-border rounded-md cursor-pointer',
-            'flex items-center justify-center transition-all duration-200 mt-0.5',
-            'hover:border-accent',
-            isCompleted && 'bg-success border-success text-white',
+            'mt-0.5 shrink-0 cursor-pointer text-border transition-colors duration-200',
+            'hover:text-primary',
+            isCompleted && 'text-success',
           )}
         >
-          {isCompleted && '\u2713'}
+          {isCompleted ? <CircleCheck className="h-6 w-6" /> : <Circle className="h-6 w-6" />}
         </div>
 
         {/* Title + timeline */}
         <div className="flex-1">
-          <div className="font-semibold text-[1.05rem] mb-1 text-text flex items-center gap-2">
+          <div
+            className={cn(
+              'mb-1 flex flex-wrap items-center gap-2 font-body text-[1.05rem] font-medium',
+              isCompleted ? 'text-text-muted' : 'text-text',
+            )}
+          >
             {step.title}
-            {hasLetter && (
-              <Mail className="h-4 w-4 text-accent shrink-0" />
+            {hasLetter && <Mail className="h-4 w-4 shrink-0 text-primary" />}
+            {step.urgent && !isCompleted && (
+              <PillBadge tone="warning">{t.dashboardPage.urgentBadge}</PillBadge>
             )}
           </div>
           <div className="text-sm text-text-muted">{step.timeline}</div>
@@ -179,8 +182,8 @@ function StepItem({
 
       {/* Expandable details */}
       {detailsOpen && (
-        <div className="mt-4 pt-4 border-t border-border-soft">
-          <p className="text-text-soft leading-relaxed mb-4 whitespace-pre-line">
+        <div className="mt-4 border-t border-border-soft pt-4">
+          <p className="mb-4 whitespace-pre-line leading-relaxed text-text-secondary">
             {step.description}
           </p>
 
@@ -195,7 +198,7 @@ function StepItem({
           )}
 
           <div className="mt-4">
-            <label className="block font-medium mb-2 text-sm">
+            <label className="mb-2 block font-body text-[14px] font-medium text-text-secondary">
               {t.roadmap.notesLabel}
             </label>
             <textarea
@@ -203,9 +206,9 @@ function StepItem({
               placeholder={t.roadmap.notesPlaceholder}
               onBlur={(e) => onSaveNote(e.target.value)}
               className={cn(
-                'w-full p-3 border-2 border-border rounded-[8px] font-body text-[0.95rem]',
-                'resize-y min-h-[80px]',
-                'focus:outline-none focus:border-accent',
+                'w-full min-h-[80px] resize-y rounded-2xl border border-border bg-white p-3 font-body text-[15px] text-text transition-colors',
+                'placeholder:text-text-muted focus:border-primary focus:outline-none',
+                'focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2',
               )}
             />
           </div>
@@ -256,28 +259,27 @@ function StepLetterSection({
 
   if (!showLetter) {
     return (
-      <button
+      <Button
+        variant="outline"
+        size="sm"
         onClick={() => setShowLetter(true)}
-        className="flex items-center gap-2 bg-accent-soft text-accent border border-accent/20 py-2.5 px-4 rounded-radius-md text-sm font-medium cursor-pointer transition-all duration-200 hover:bg-accent hover:text-white mb-4"
+        className="mb-4 gap-2"
       >
         <Mail className="h-4 w-4" />
         {fmt(t.roadmap.generateLetter, { organisme: template.organisme })}
-      </button>
+      </Button>
     )
   }
 
   return (
-    <div className="mb-4 rounded-lg border border-border bg-bg p-5 space-y-5">
-      <div className="flex items-center justify-between">
-        <h4 className="font-display text-lg font-medium text-accent">
+    <div className="mb-4 space-y-5 rounded-lg border border-border-card bg-surface p-5">
+      <div className="flex items-center justify-between gap-3">
+        <h4 className="font-display text-lg font-normal text-primary">
           {fmt(t.roadmap.letterTitle, { organisme: template.organisme })}
         </h4>
-        <button
-          onClick={() => setShowLetter(false)}
-          className="text-text-muted text-sm hover:text-text cursor-pointer bg-transparent border-none"
-        >
+        <Button variant="ghost" size="sm" onClick={() => setShowLetter(false)}>
           {t.roadmap.collapse}
-        </button>
+        </Button>
       </div>
 
       {/* Variables form */}

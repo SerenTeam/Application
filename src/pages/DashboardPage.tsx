@@ -8,6 +8,7 @@ import { useT } from '@/i18n/useT'
 import { useLang } from '@/i18n/LanguageContext'
 import type { Strings } from '@/i18n/strings.fr'
 import type { Lang } from '@/i18n'
+import { Button } from '@/components/ui/button'
 import {
   Sidebar,
   MobileNav,
@@ -325,22 +326,19 @@ export function DashboardPage() {
           )}
 
           {activeView === 'documents' && (
-            <div className="animate-fade-in text-center py-16">
-              <p className="text-text-soft mb-6">
+            <div className="animate-fade-in py-16 text-center">
+              <p className="mb-6 text-text-secondary">
                 {t.dashboardPage.documentsHint}
               </p>
-              <Link
-                to="/documents"
-                className="inline-flex items-center gap-2 bg-accent text-white py-3 px-6 rounded-radius-md no-underline font-medium hover:bg-accent-hover transition-colors"
-              >
-                {t.dashboardPage.viewLetters}
-              </Link>
+              <Button asChild>
+                <Link to="/documents">{t.dashboardPage.viewLetters}</Link>
+              </Button>
             </div>
           )}
 
           {activeView === 'contacts' && (
-            <div className="animate-fade-in text-center py-16">
-              <p className="text-text-soft">
+            <div className="animate-fade-in py-16 text-center">
+              <p className="text-text-secondary">
                 {t.dashboardPage.contactsHint}
               </p>
             </div>
@@ -373,7 +371,7 @@ function DashboardOverview({
     <div className="animate-fade-in">
       <ProgressHero completed={completedCount} total={totalSteps} />
 
-      <h3 className="font-display text-2xl font-medium mb-5 mt-10 text-text">
+      <h3 className="mb-5 mt-10 font-display text-2xl font-normal text-text">
         {t.dashboardPage.priorityActionsTitle}
       </h3>
       <PriorityActions
@@ -382,7 +380,7 @@ function DashboardOverview({
         onScrollToStep={onScrollToStep}
       />
 
-      <h3 className="font-display text-2xl font-medium mb-5 mt-10 text-text">
+      <h3 className="mb-5 mt-10 font-display text-2xl font-normal text-text">
         {t.dashboardPage.quickAccessTitle}
       </h3>
       <QuickAccess onNavigate={onNavigate} />

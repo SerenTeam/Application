@@ -79,9 +79,10 @@ export function LetterActions({ resolvedLetter, isComplete, template, stepId, us
   }
 
   return (
-    <div className="flex gap-3">
+    <div className="flex flex-wrap gap-3">
       <Button
         variant="outline"
+        size="sm"
         disabled={!isComplete}
         onClick={handleCopy}
         className="gap-2"
@@ -101,6 +102,7 @@ export function LetterActions({ resolvedLetter, isComplete, template, stepId, us
 
       <Button
         variant="outline"
+        size="sm"
         disabled={!isComplete || downloading}
         onClick={handleDownloadPdf}
         className="gap-2"

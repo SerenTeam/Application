@@ -17,11 +17,11 @@ export function LetterPreview({ content, notes }: LetterPreviewProps) {
   return (
     <div className="space-y-3">
       <div
-        className="max-h-[600px] overflow-y-auto rounded-lg border border-border bg-white p-8 font-serif text-[0.95rem] leading-relaxed text-text-primary shadow-sm"
+        className="max-h-[600px] overflow-y-auto rounded-2xl border border-border bg-white p-8 font-serif text-[0.95rem] leading-relaxed text-text shadow-card-border"
         dangerouslySetInnerHTML={{ __html: formatLetterHtml(highlightedContent) }}
       />
       {notes && (
-        <p className="text-xs text-text-muted italic">
+        <p className="text-xs italic text-text-muted">
           {notes}
         </p>
       )}

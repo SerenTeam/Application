@@ -18,7 +18,7 @@ export function LetterVariablesForm({ variables, values, onVariableChange }: Let
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-medium text-text-primary">
+      <h3 className="font-body text-sm font-medium text-text">
         {t.lettersPage.completeInfo}
       </h3>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -26,7 +26,7 @@ export function LetterVariablesForm({ variables, values, onVariableChange }: Let
           <div key={variable.key} className="space-y-1.5">
             <Label htmlFor={`var-${variable.key}`} className="text-sm">
               {variable.label}
-              {variable.required && <span className="text-error ml-0.5">*</span>}
+              {variable.required && <span className="text-primary ml-0.5">*</span>}
             </Label>
             <Input
               id={`var-${variable.key}`}

@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils'
 import { useT } from '@/i18n/useT'
+import { PillBadge } from '@/components/ui/pill-badge'
 import type { RoadmapStep, DashboardView } from './types'
 
 interface PriorityActionsProps {
@@ -17,14 +18,14 @@ export function PriorityActions({
 
   if (steps.length === 0) {
     return (
-      <p className="text-text-soft">
+      <p className="text-text-muted">
         {t.dashboardPage.allPriorityDone}
       </p>
     )
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-5 mb-8">
+    <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">
       {steps.map((step) => (
         <button
           key={step.id}
@@ -33,29 +34,22 @@ export function PriorityActions({
             onScrollToStep(step.id)
           }}
           className={cn(
-            'bg-bg-card border-2 border-border rounded-[12px] p-6 text-left',
+            'rounded-lg border border-border-card bg-white p-5 text-left shadow-card-border',
             'transition-all duration-200 cursor-pointer',
-            'hover:border-accent hover:shadow-md',
-            step.urgent && 'border-error bg-error/[0.03]',
+            'hover:border-primary-border hover:shadow-card',
+            step.urgent && 'border-warning/40 bg-warning-light/30',
           )}
         >
-          <div className="flex justify-between items-start mb-4">
-            <div className="font-semibold text-[1.1rem] text-text">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="font-body text-[1.05rem] font-medium text-text">
               {step.title}
             </div>
-            <span
-              className={cn(
-                'text-xs px-3 py-1 rounded-full font-semibold uppercase tracking-wide',
-                step.urgent
-                  ? 'bg-error/15 text-error'
-                  : 'bg-warning/15 text-warning',
-              )}
-            >
+            <PillBadge tone={step.urgent ? 'warning' : 'neutral'} className="shrink-0">
               {step.urgent ? t.dashboardPage.urgentBadge : t.dashboardPage.importantBadge}
-            </span>
+            </PillBadge>
           </div>
 
-          <p className="text-text-soft text-[0.95rem] mb-4 whitespace-pre-line">
+          <p className="mb-3 whitespace-pre-line text-[0.95rem] text-text-secondary">
             {step.description}
           </p>
 
