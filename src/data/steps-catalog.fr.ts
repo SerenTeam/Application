@@ -1074,4 +1074,26 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
     source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F2278',
     display_order: 50,
   },
+  // ── FAMILLE / ENFANTS (backlog v3 : soutien aux enfants du défunt) ──────
+  {
+    id: 'famille-aides-enfants-orphelins',
+    title: 'Demander l\'allocation de soutien familial pour l\'enfant orphelin',
+    description: 'Le parent qui élève désormais seul un enfant du défunt peut bénéficier de l\'allocation de soutien familial (ASF), versée par la CAF sans aucune condition de ressources. C\'est une aide qui reconnaît la charge d\'un enfant à élever seul.',
+    theme: 'administratif',
+    urgency: 'month',
+    urgency_label: 'Dans le mois',
+    when_to_do: 'Dans les semaines suivant le décès : la demande se fait auprès de la CAF (ou de la MSA pour le régime agricole).',
+    why_to_do: 'L\'allocation de soutien familial aide le parent qui élève seul un enfant dont l\'autre parent est décédé. Elle est versée sans condition de ressources, par enfant à charge, et son montant est revalorisé chaque année. Elle est due tant que ce parent vit seul : elle cesse en cas de mise en couple.',
+    what_you_do: [
+      'Vérifier auprès de la CAF que les conditions sont remplies : le parent élève seul l\'enfant (il ne vit pas en couple) et réside en France',
+      'Faire la demande auprès de la CAF (ou de la MSA pour le régime agricole) — l\'ASF n\'est soumise à aucune condition de ressources',
+      'Signaler ensuite à la CAF tout changement de situation (mise en couple), qui met fin au droit',
+      'Si l\'enfant a perdu ses deux parents, se renseigner en plus sur la pension d\'orphelin auprès des caisses de retraite (de base et complémentaire)',
+    ],
+    responsable: 'vous',
+    requires_notary: false,
+    applicable_when: { enfants: ['mineurs'] },
+    source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F33646',
+    display_order: 51,
+  },
 ]

@@ -1074,4 +1074,26 @@ export const STEPS_CATALOG_EN: StepTemplate[] = [
     source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F2278',
     display_order: 50,
   },
+  // ── FAMILLE / ENFANTS (backlog v3 : soutien aux enfants du défunt) ──────
+  {
+    id: 'famille-aides-enfants-orphelins',
+    title: 'Apply for the family support allowance for the orphaned child',
+    description: 'The parent now raising a child of the deceased alone may be entitled to the family support allowance (allocation de soutien familial, ASF), paid by the CAF with no income condition whatsoever. It is a benefit that recognises the burden of raising a child alone.',
+    theme: 'administratif',
+    urgency: 'month',
+    urgency_label: 'Within the month',
+    when_to_do: 'In the weeks following the death: the application is made to the CAF (or the MSA for the agricultural scheme).',
+    why_to_do: 'The family support allowance helps the parent who raises alone a child whose other parent has died. It is paid with no income condition, per dependent child, and its amount is revalued each year. It is due as long as that parent lives alone: it stops if they start living as a couple.',
+    what_you_do: [
+      'Check with the CAF that the conditions are met: the parent is raising the child alone (not living as a couple) and resides in France',
+      'Apply to the CAF (or the MSA for the agricultural scheme) — the ASF is subject to no income condition',
+      'Then report to the CAF any change in situation (starting to live as a couple), which ends the entitlement',
+      'If the child has lost both parents, also ask about the orphan\'s pension from the pension funds (basic and supplementary)',
+    ],
+    responsable: 'vous',
+    requires_notary: false,
+    applicable_when: { enfants: ['mineurs'] },
+    source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F33646',
+    display_order: 51,
+  },
 ]

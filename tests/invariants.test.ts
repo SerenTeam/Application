@@ -61,7 +61,7 @@ describe('invariant : pas de question morte, pas d’étape orpheline', () => {
       relation: ['parent', 'enfant', 'frere_soeur', 'autre'], // pacse/concubin pilotent le transfert de contrats (étape logement-transfert-contrats) ; les autres relations sont neutres par nature
       statut_professionnel: ['retraite', 'sans_activite'], // CARSAT/impôts déjà inconditionnels
       logement: ['heberge_ou_autre'],
-      enfants: ['aucun', 'majeurs'], // pension d'orphelin = backlog éditorial futur
+      enfants: ['aucun', 'majeurs'], // 'mineurs' pilote l'ASF (famille-aides-enfants-orphelins) et le juge des tutelles ; 'majeurs' reste neutre : l'ASF exige un enfant à charge et la pension d'orphelin exige la perte des deux parents (trop conditionnel pour un profil tout-majeurs)
       has_life_insurance: ['non'],
       contrat_obseques: ['non'],
     }
