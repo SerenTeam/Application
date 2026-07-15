@@ -9,7 +9,7 @@ import { toast } from '@/hooks/use-toast'
 import { ArrowLeft, FileText, X } from 'lucide-react'
 import { useT } from '@/i18n/useT'
 import { fmt } from '@/i18n'
-import { LanguageSwitch } from '@/components/layout/LanguageSwitch'
+import { AppHeader, HeaderNavLink } from '@/components/layout/AppHeader'
 
 type ThemeFilter = 'all' | 'banque' | 'assurance' | 'administratif' | 'logement' | 'succession' | 'numerique' | 'fiscal'
 type StatusFilter = 'all' | 'sent' | 'not_sent'
@@ -109,16 +109,25 @@ export function DocumentsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg">
-        <div className="h-12 w-12 animate-spin rounded-full border-[3px] border-border border-t-accent" />
+      <div className="min-h-screen bg-bg">
+        <AppHeader>
+          <HeaderNavLink to="/dashboard">{t.layout.dashboard}</HeaderNavLink>
+        </AppHeader>
+        <div className="flex min-h-[calc(100vh-82px)] items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-[3px] border-border border-t-accent" />
+        </div>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-bg">
+      <AppHeader>
+        <HeaderNavLink to="/dashboard">{t.layout.dashboard}</HeaderNavLink>
+      </AppHeader>
+
       <div className="mx-auto max-w-3xl px-4 py-8">
-        {/* Header */}
+        {/* Back button + titre (chrome de compte désormais géré par AppHeader) */}
         <div className="mb-6 flex items-center gap-3">
           <Button variant="outline" size="icon" asChild>
             <Link to="/dashboard">
@@ -130,9 +139,6 @@ export function DocumentsPage() {
             <p className="text-sm text-text-muted">
               {fmt(t.lettersPage.countLabel, { count: documents.length, s: documents.length !== 1 ? 's' : '' })}
             </p>
-          </div>
-          <div className="ml-auto">
-            <LanguageSwitch />
           </div>
         </div>
 

@@ -1,8 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { apiFetch } from '@/lib/api'
-import { LanguageSwitch } from '@/components/layout/LanguageSwitch'
+import { AppHeader, HeaderNavLink } from '@/components/layout/AppHeader'
 import { useT } from '@/i18n/useT'
 import { useLang } from '@/i18n/LanguageContext'
 import { fmt } from '@/i18n'
@@ -19,7 +18,7 @@ type Phase = 'welcome' | 'loading' | 'question' | 'recap' | 'completing' | 'done
 type ServerData = (QuestionData & { action: 'question' }) | { action: 'recap'; recap: RecapEntry[] }
 
 export function QuestionnairePage() {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const t = useT()
   const { lang } = useLang()
 
@@ -237,27 +236,9 @@ export function QuestionnairePage() {
 
   return (
     <div className="min-h-screen bg-bg">
-      <header className="p-8 text-center border-b border-border-soft bg-bg-card">
-        <div className="font-display text-[1.75rem] font-medium text-accent tracking-[0.02em]">
-          Seren<span className="italic font-normal">.</span>
-        </div>
-        <nav className="mt-4 flex items-center justify-center gap-8 flex-wrap">
-          <span className="text-text-soft text-sm font-medium">{user?.email}</span>
-          <Link
-            to="/dashboard"
-            className="text-text-soft no-underline text-sm font-medium uppercase tracking-widest border-b-2 border-text-soft pb-0.5 transition-all duration-200 hover:text-accent hover:border-accent"
-          >
-            {t.layout.dashboard}
-          </Link>
-          <button
-            onClick={signOut}
-            className="bg-transparent border-none border-b-2 border-text-soft text-text-soft text-sm font-medium uppercase tracking-widest cursor-pointer p-0 pb-0.5 transition-all duration-200 hover:text-accent hover:border-accent"
-          >
-            {t.layout.signOut}
-          </button>
-          <LanguageSwitch />
-        </nav>
-      </header>
+      <AppHeader>
+        <HeaderNavLink to="/dashboard">{t.layout.dashboard}</HeaderNavLink>
+      </AppHeader>
 
       <main className="max-w-[720px] mx-auto py-12 px-6 pb-24 max-sm:py-8 max-sm:px-4 max-sm:pb-16">
         {sessionExpired && (

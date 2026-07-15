@@ -1,31 +1,21 @@
 import { useAuth } from '@/hooks/useAuth'
 import { ChangePasswordForm } from '@/components/profile/ChangePasswordForm'
 import { ArrowLeft } from 'lucide-react'
-import { useNavigate, Link } from 'react-router-dom'
-import { LanguageSwitch } from '@/components/layout/LanguageSwitch'
+import { useNavigate } from 'react-router-dom'
+import { AppHeader, HeaderNavLink } from '@/components/layout/AppHeader'
 import { useT } from '@/i18n/useT'
 
 export function ProfilePage() {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const t = useT()
 
   return (
     <div className="min-h-screen bg-bg">
-      <header className="flex items-center justify-between border-b border-border-soft bg-bg-card px-6 py-5 sm:px-8 sm:py-6">
-        <Link to="/" className="font-display text-[1.5rem] font-medium text-accent">
-          Seren<span className="italic font-normal">.</span>
-        </Link>
-        <nav className="flex items-center gap-4 sm:gap-6">
-          <button onClick={() => navigate('/')} className="text-text-soft text-sm hover:text-accent transition-colors">
-            {t.profile.backToQuestionnaire}
-          </button>
-          <button onClick={signOut} className="text-text-soft text-sm hover:text-accent transition-colors">
-            {t.layout.signOut}
-          </button>
-          <LanguageSwitch />
-        </nav>
-      </header>
+      {/* showEmail=false : l'email est déjà affiché plus bas dans la carte "Informations du compte" */}
+      <AppHeader showEmail={false}>
+        <HeaderNavLink onClick={() => navigate('/')}>{t.profile.backToQuestionnaire}</HeaderNavLink>
+      </AppHeader>
 
       <main className="mx-auto max-w-[600px] px-6 py-8 sm:py-12">
         <button

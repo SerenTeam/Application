@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { getStepsCatalog } from '@/data/steps-catalog'
-import { LanguageSwitch } from '@/components/layout/LanguageSwitch'
+import { AppHeader, HeaderNavLink } from '@/components/layout/AppHeader'
 import { useT } from '@/i18n/useT'
 import { useLang } from '@/i18n/LanguageContext'
 import type { Strings } from '@/i18n/strings.fr'
@@ -110,7 +110,7 @@ function buildProgress(dbSteps: DbStep[]): ProgressData {
 // ─── Page component ─────────────────────────────────────────────
 
 export function DashboardPage() {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const t = useT()
   const { lang } = useLang()
@@ -285,39 +285,15 @@ export function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-bg">
-      {/* Header */}
-      <header className="px-4 md:px-8 py-4 border-b border-border-soft bg-bg-card flex justify-between items-center">
-        <div className="font-display text-2xl font-medium text-accent tracking-wide">
-          Seren<span className="italic font-normal">.</span>
-        </div>
-
-        <nav className="flex items-center gap-4 md:gap-6">
-          {user?.email && (
-            <span className="text-text-soft text-sm hidden sm:inline">
-              {user.email}
-            </span>
-          )}
-          <Link
-            to="/documents"
-            className="text-text-soft text-sm hover:text-accent transition-colors no-underline"
-          >
-            {t.layout.letters}
-          </Link>
-          <button
-            onClick={signOut}
-            className="text-text-soft text-sm hover:text-accent transition-colors cursor-pointer bg-transparent border-none font-body"
-          >
-            {t.layout.signOut}
-          </button>
-          <LanguageSwitch />
-        </nav>
-      </header>
+      <AppHeader>
+        <HeaderNavLink to="/documents">{t.layout.letters}</HeaderNavLink>
+      </AppHeader>
 
       {/* Mobile nav */}
       <MobileNav activeView={activeView} onNavigate={handleNavigate} />
 
       {/* Dashboard body */}
-      <div className="flex min-h-[calc(100vh-80px)]">
+      <div className="flex min-h-[calc(100vh-82px)]">
         <Sidebar activeView={activeView} onNavigate={handleNavigate} />
 
         <main className="flex-1 p-4 md:p-10 overflow-y-auto max-w-[1200px]">
