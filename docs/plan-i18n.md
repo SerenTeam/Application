@@ -353,18 +353,18 @@ git commit -m "feat(i18n): serveur bilingue — catalogue questions {fr,en}, ré
 npx tsc --noEmit && npm test && npx vite build && node --check server/server.js && node --check server/routes/questionnaire.js
 ```
 
-- [ ] **Step 2 : E2E navigateur** (compte de test CLAUDE.md) —
+- [x] **Step 2 : E2E navigateur** (compte de test CLAUDE.md) —
   (a) localStorage vidé + device FR → app en français ;
   (b) toggle → EN : dashboard + **roadmap existante bascule en anglais sans régénération** (vérifier titres d'étapes) ;
   (c) questionnaire complet en EN (questions Mistral en anglais, récap EN, roadmap EN) ;
   (d) un courrier : habillage EN, corps de lettre FRANÇAIS ;
   (e) retour toggle FR : tout rebascule.
 
-- [ ] **Step 3 : ⚠️ USER STEP** — appliquer `supabase/migrations/20260713120000_sessions_lang.sql` dans le SQL Editor Supabase (vérif : `select column_name from information_schema.columns where table_name = 'questionnaire_sessions';` liste `lang`).
+- [x] **Step 3 : ⚠️ USER STEP** — appliquer `supabase/migrations/20260713120000_sessions_lang.sql` dans le SQL Editor Supabase (vérif : `select column_name from information_schema.columns where table_name = 'questionnaire_sessions';` liste `lang`).
 
 - [x] **Step 4 : Docs** — CLAUDE.md : ajouter la convention i18n (dictionnaires `src/i18n/`, catalogues jumeaux, langue de session, courriers toujours FR) dans « Conventions » et mettre à jour « Workflow & état du projet ». La branche `demo-en` devient obsolète après merge — noter qu'elle peut être supprimée une fois la présentation passée.
 
-- [ ] **Step 5 : Revue globale de branche** (contrôleur) puis `superpowers:finishing-a-development-branch` (merge local dans `main` — Arnaud pushe).
+- [x] **Step 5 : Revue globale de branche** (contrôleur) puis `superpowers:finishing-a-development-branch` (merge local dans `main` — Arnaud pushe).
 
 > **Note post-revue Task 5 (revue globale, exécution)** : correctifs appliqués suite à la revue —
 > (a) le toggle manquait sur les pages auth et Courriers (déviation de la spec « visible sur toutes
