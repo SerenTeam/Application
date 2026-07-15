@@ -43,7 +43,7 @@ export function RoadmapView({
   const t = useT()
   return (
     <div className="animate-fade-in">
-      <SectionHeading className="mb-8 max-w-none" title={t.roadmap.title} lead={t.roadmap.subtitle} />
+      <SectionHeading as="h1" className="mb-8 max-w-none" title={t.roadmap.title} lead={t.roadmap.subtitle} />
 
       <div className="max-w-[900px]">
         {phases.map((phase) => (

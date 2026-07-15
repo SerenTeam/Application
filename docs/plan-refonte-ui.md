@@ -103,6 +103,8 @@ Retirer tout chargement Cormorant Garamond / DM Sans (chercher dans `index.html`
 - [x] **Step 4 : Vérifier** — tests/tsc/build ; navigateur : dashboard avec roadmap réelle (compte de test), toggle FR/EN, un courrier ouvert (corps français intact), mobile. Screenshots.
 - [x] **Step 5 : Commit** — `feat(design): dashboard, roadmap et courriers au design landing`
 
+> **Note post-revue Task 5 (exécution)** : trois déviations assumées par rapport à la spec §4, toutes visant la cohérence visuelle plutôt que le respect littéral de la lettre. (a) Sidebar/MobileNav utilisent des icônes lucide nues 20/18px plutôt qu'un `IconBadge sm` (cercle 40px) prescrit par la spec — un badge à cette densité de nav (5-6 items serrés) alourdissait visuellement l'ensemble ; nu, c'est plus calme et lisible. (b) QuickAccess utilise `rounded-lg` plutôt que `rounded-card` (32px) — sur des tuiles d'environ 200px de large, un rayon aussi prononcé donnait un effet « pastille » disproportionné. (c) Le mapping d'urgence `urgent` → ton `warning` (ambre) plutôt qu'un rouge dédié — le système de tokens ne définit pas de ton pilule rouge/error, `warning` est le plus proche sémantiquement pour signaler l'urgence sans introduire une nouvelle couleur hors palette.
+
 ---
 
 ### Task 6 : Nettoyage, E2E visuel, revue globale, merge
@@ -112,3 +114,5 @@ Retirer tout chargement Cormorant Garamond / DM Sans (chercher dans `index.html`
 - [x] **Step 3 : E2E visuel navigateur** — parcours complet FR puis toggle EN : auth → questionnaire (2-3 questions) → dashboard → roadmap → courrier. Desktop + 375px. Vérifier : aucun texte illisible, focus clavier visibles, transmission (AccessPage) fonctionnelle avec sa nouvelle peau.
 - [x] **Step 4 : Docs** — CLAUDE.md : ligne « Styling » des Conventions mise à jour (palette #006BFA, Inter/Inter Tight, renvoi à `DESIGN.md` et `docs/design-refonte-ui.md`) + état du projet.
 - [ ] **Step 5 : Revue globale de branche** (contrôleur) puis `superpowers:finishing-a-development-branch` (merge local dans `main` — Arnaud pushe).
+
+> **Note post-revue Task 6 (revue globale)** : `ProfilePage`/`ChangePasswordForm` avaient été oubliées par la Task 4 (écrans questionnaire + auth) — trou de spec, repassées au design landing après la revue globale (carte `rounded-card border-border-card shadow-card-border p-10`, titre via `SectionHeading`). Par ailleurs, deux points identifiés lors de la revue sont laissés en backlog plutôt que corrigés dans cette branche : `PillBadge` en 12px sur les tons `warning`/`success` tombe sous le seuil de contraste AA (recette `DESIGN.md` §6 reprise verbatim) — à remonter au design system de la landing, hors périmètre d'une correction locale à l'app ; et le code mort `DocumentsView`/`ContactsView` (`src/components/dashboard/`, vestiges du produit transmission, non montés dans `DashboardPage` qui a sa propre JSX inline pour ces vues) est laissé en l'état — préexistant à cette branche, sans rapport avec la refonte visuelle.

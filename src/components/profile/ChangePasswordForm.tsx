@@ -79,8 +79,8 @@ export function ChangePasswordForm() {
   }
 
   return (
-    <div className="rounded-[20px] bg-bg-card p-6 sm:p-8 shadow-md">
-      <h2 className="mb-4 font-display text-[1.5rem] font-medium text-text">
+    <div className="rounded-card border border-border-card bg-white p-10 shadow-card-border max-sm:p-7">
+      <h2 className="mb-4 font-display text-[1.5rem] font-normal text-text">
         {t.profile.changePasswordTitle}
       </h2>
 
@@ -129,8 +129,8 @@ export function ChangePasswordForm() {
 
         {/* Error */}
         {error && (
-          <div className="rounded-[12px] border-2 border-error/30 bg-error/5 p-4 text-center" role="alert">
-            <p className="text-error text-[0.95rem]">{error}</p>
+          <div className="rounded-2xl border border-error/20 bg-error-light p-4 text-center" role="alert">
+            <p className="text-[14px] text-error">{error}</p>
           </div>
         )}
 
