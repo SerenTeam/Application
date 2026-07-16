@@ -350,13 +350,33 @@ function scene4() {
   return tl;
 }
 
+// S5 (posée à 23,7 s ; visible 24 → 30) : cercle bleu depuis le centre, logo, tagline, fondu blanc
+function scene5() {
+  const tl = gsap.timeline();
+  tl.set("#s5", { visibility: "visible" }, 0);
+  tl.set("#s5-bg", { scale: 0, transformOrigin: "50% 50%" }, 0);
+  tl.set("#s5-logo", { opacity: 0, scale: 0.82 }, 0);
+  tl.set("#s5-tag", { opacity: 0, y: 22 }, 0);
+
+  // le cercle part du point de repli du courrier (centre) — 24 → 25,1 s master
+  tl.to("#s5-bg", { scale: 1, duration: 1.1, ease: "power3.inOut" }, 0.3);
+  tl.to("#s5-logo", { opacity: 1, scale: 1, duration: 0.8, ease: "power2.out" }, 1.1);
+  tl.to("#s5-tag", { opacity: 1, y: 0, duration: 0.7, ease: "power2.out" }, 2.1);
+  // hold ~3 s puis fondu blanc de rebouclage 28,8 → 30 (master)
+  tl.to("#white-overlay", { opacity: 1, duration: 1.2, ease: "power1.inOut" }, 5.1);
+  tl.set("#s5", { visibility: "hidden" }, 6.3);
+  return tl;
+}
+
 // ---------- master ----------
 const tl = gsap.timeline({ repeat: -1 });
 tl.add(scene1(), 0);
 tl.add(scene2(), 5.2);
 tl.add(scene3(), 10.7);
 tl.add(scene4(), 17.2);
-// scene5 ajoutée dans la task suivante
+tl.add(scene5(), 23.7);
+// La master doit durer exactement 30 s (le fondu blanc se termine à 30,0)
+console.assert(Math.abs(tl.duration() - 30) < 0.15, "durée master ≈ 30 s, obtenu : " + tl.duration());
 window.SEREN_MOTION = { tl, applyLang }; // API debug/vérification
 
 // ---------- mode debug : ?scene=s3 fige une scène (contrôle des styles/composition) ----------
