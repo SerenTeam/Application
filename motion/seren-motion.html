@@ -358,8 +358,10 @@ function scene5() {
   tl.set("#s5-logo", { opacity: 0, scale: 0.82 }, 0);
   tl.set("#s5-tag", { opacity: 0, y: 22 }, 0);
 
-  // le cercle part du point de repli du courrier (centre) — 24 → 25,1 s master
-  tl.to("#s5-bg", { scale: 1, duration: 1.1, ease: "power3.inOut" }, 0.3);
+  // le cercle naît du point de repli du courrier (24,0 → 24,2 master)…
+  tl.to("#s5-bg", { scale: 0.12, duration: 0.2, ease: "power1.out" }, 0.3);
+  // …puis envahit l'écran (24,2 → 25,15) — plein cadre (~2210 px ≥ diagonale 2203) quand le logo arrive
+  tl.to("#s5-bg", { scale: 1, duration: 0.95, ease: "power2.inOut" }, 0.5);
   tl.to("#s5-logo", { opacity: 1, scale: 1, duration: 0.8, ease: "power2.out" }, 1.1);
   tl.to("#s5-tag", { opacity: 1, y: 0, duration: 0.7, ease: "power2.out" }, 2.1);
   // hold ~3 s puis fondu blanc de rebouclage 28,8 → 30 (master)
