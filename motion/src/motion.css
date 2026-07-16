@@ -1,0 +1,12 @@
+/* Composition fixe 1920×1080, letterbox blanc (jamais de rognage) */
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; overflow: hidden; background: #fff; }
+body.idle { cursor: none; }
+#stage {
+  position: absolute; left: 50%; top: 50%;
+  width: 1920px; height: 1080px;
+  transform-origin: 0 0; /* le scale est posé par fit() dans motion.js */
+  background: #fff; overflow: hidden;
+  font-family: "Inter Tight", system-ui, sans-serif;
+}
+#white-overlay { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 90; }
