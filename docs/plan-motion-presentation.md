@@ -21,6 +21,7 @@
 ## Notes post-revue
 
 - **Task 1 (implémentation)** : le check n° 5 de `verify.mjs` tel que planifié flaggait le `<title>` du template (« Seren — Motion de présentation »). Décision : le `<title>` est du chrome navigateur, invisible pendant la lecture — il est **exempté** du check (dont l'objet est qu'aucun texte de *scène* ne contourne l'i18n). Le code du Step 6 ci-dessous intègre le correctif (`.replace(/<title>…/`). Le title reste en dur, non i18n (YAGNI).
+- **Task 1 (revue qualité)** : ajout de `.sort()` sur la liste des woff2 dans `fontsCss()` (`build.mjs`) — `readdirSync` ne garantit pas l'ordre selon le filesystem, ce qui aurait cassé le déterminisme byte-identique du livrable dès la Task 2. Corrigé dans le code du Step 2. Reportés en Task 2 (mineurs de revue) : garde sur l'absence du bloc strings dans verify (message lisible au lieu d'un TypeError), durcissement du check réseau (`//`, `import(`, `WebSocket`) avec exclusion du bloc GSAP vendored si faux positif, suppression du filtre mort `startsWith("{{")`, validation du slug de police dans `fontsCss()` (throw explicite), remplacement `{{FONTS_CSS}}` par fonction.
 
 ---
 
@@ -89,7 +90,7 @@ const FAMILY = { inter: "Inter", intertight: "Inter Tight" };
 
 function fontsCss() {
   let dir;
-  try { dir = readdirSync(join(SRC, "fonts")).filter(f => f.endsWith(".woff2")); }
+  try { dir = readdirSync(join(SRC, "fonts")).filter(f => f.endsWith(".woff2")).sort(); } // sort : déterminisme inter-plateformes
   catch { return "/* pas de polices embarquées (Task 2) */"; }
   return dir.map(f => {
     const [slug, weight] = f.replace(".woff2", "").split("-");
