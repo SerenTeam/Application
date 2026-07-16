@@ -13,7 +13,7 @@ const FAMILY = { inter: "Inter", intertight: "Inter Tight" };
 
 function fontsCss() {
   let dir;
-  try { dir = readdirSync(join(SRC, "fonts")).filter(f => f.endsWith(".woff2")); }
+  try { dir = readdirSync(join(SRC, "fonts")).filter(f => f.endsWith(".woff2")).sort(); }
   catch { return "/* pas de polices embarquées (Task 2) */"; }
   return dir.map(f => {
     const [slug, weight] = f.replace(".woff2", "").split("-");
