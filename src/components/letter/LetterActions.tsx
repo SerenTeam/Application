@@ -2,41 +2,48 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Copy, Download, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { logStepAction, saveLetterDocument } from '@/lib/documents'
 import { toast } from '@/hooks/use-toast'
 import { useT } from '@/i18n/useT'
 import type { LetterTemplate } from '@/data/letter-templates'
 
 interface LetterActionsProps {
   resolvedLetter: string
+  resolvedSubject: string
   isComplete: boolean
   template: LetterTemplate
   stepId: string
   userId: string
 }
 
-async function logAction(stepId: string, userId: string, actionType: 'copied' | 'downloaded') {
-  try {
-    await supabase.from('step_actions').insert({
-      step_id: stepId,
-      user_id: userId,
-      action_type: actionType,
-    })
-  } catch {
-    // Silent fail — non-blocking
-  }
-}
-
-export function LetterActions({ resolvedLetter, isComplete, template, stepId, userId }: LetterActionsProps) {
+export function LetterActions({ resolvedLetter, resolvedSubject, isComplete, template, stepId, userId }: LetterActionsProps) {
   const t = useT()
   const [copied, setCopied] = useState(false)
   const [downloading, setDownloading] = useState(false)
+
+  // Journalise l'action et sauvegarde le courrier dans « Mes courriers ».
+  // Non bloquant : un échec ne doit pas empêcher la copie / le téléchargement.
+  const persistLetter = async (type: 'copied' | 'downloaded') => {
+    try {
+      await logStepAction(supabase, stepId, userId, type)
+      await saveLetterDocument(supabase, {
+        userId,
+        stepId,
+        letterTemplateId: template.id,
+        title: resolvedSubject,
+        content: resolvedLetter,
+      })
+    } catch {
+      // Silent fail — non-blocking
+    }
+  }
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(resolvedLetter)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-      await logAction(stepId, userId, 'copied')
+      await persistLetter('copied')
     } catch {
       toast({ title: t.errors.copyFailedTitle, description: t.errors.copyFailedDescription })
     }
@@ -70,7 +77,7 @@ export function LetterActions({ resolvedLetter, isComplete, template, stepId, us
       const orgName = template.organisme.replace(/\s+/g, '-')
       doc.save(`${t.lettersPage.pdfFilenamePrefix}-${orgName}-${date}.pdf`)
 
-      await logAction(stepId, userId, 'downloaded')
+      await persistLetter('downloaded')
     } catch {
       toast({ title: t.lettersPage.downloadErrorTitle, description: t.lettersPage.downloadErrorDescription })
     } finally {

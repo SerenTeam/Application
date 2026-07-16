@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
+import { fetchUserDocuments, fetchSentStepIds, deleteDocument } from '@/lib/documents'
 import { Button } from '@/components/ui/button'
 import { DocumentCard, type DocumentData } from '@/components/documents/DocumentCard'
 import { LetterPreview } from '@/components/letter/LetterPreview'
@@ -30,38 +31,20 @@ export function DocumentsPage() {
     if (!user) return
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('documents')
-        .select('*, steps(title, theme)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+      const data = await fetchUserDocuments(supabase, user.id)
 
-      if (error) throw error
+      // Statut « envoyé » via step_actions
+      const stepIds = data.map((d) => d.step_id).filter((id): id is string => !!id)
+      const sentStepIds = await fetchSentStepIds(supabase, user.id, stepIds)
 
-      // Check for sent status by querying step_actions
-      const stepIds = (data ?? []).map((d: { step_id?: string }) => d.step_id).filter(Boolean)
-      let sentStepIds = new Set<string>()
-
-      if (stepIds.length > 0) {
-        const { data: sentActions } = await supabase
-          .from('step_actions')
-          .select('step_id')
-          .eq('user_id', user.id)
-          .eq('action_type', 'sent')
-          .in('step_id', stepIds)
-
-        sentStepIds = new Set((sentActions ?? []).map((a: { step_id: string }) => a.step_id))
-      }
-
-      const docs: DocumentData[] = (data ?? []).map((d: Record<string, unknown>) => ({
-        id: d.id as string,
-        title: d.title as string,
-        content: d.content as string,
-        document_type: d.document_type as string,
-        created_at: d.created_at as string,
-        step_title: (d.steps as { title?: string } | null)?.title,
-        step_theme: (d.steps as { theme?: string } | null)?.theme,
-        is_sent: sentStepIds.has(d.step_id as string),
+      const docs: DocumentData[] = data.map((d) => ({
+        id: d.id,
+        title: d.title,
+        content: d.content,
+        created_at: d.created_at,
+        step_title: d.steps?.title,
+        step_theme: d.steps?.theme,
+        is_sent: d.step_id != null && sentStepIds.has(d.step_id),
       }))
 
       setDocuments(docs)
@@ -78,8 +61,7 @@ export function DocumentsPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase.from('documents').delete().eq('id', id)
-      if (error) throw error
+      await deleteDocument(supabase, id)
       setDocuments((prev) => prev.filter((d) => d.id !== id))
       toast({ title: t.lettersPage.deletedTitle })
     } catch {

@@ -85,18 +85,27 @@ export function useLetterGenerator(options: LetterGeneratorOptions) {
     setValues((prev) => ({ ...prev, [key]: val }))
   }, [])
 
+  // Objet résolu exposé séparément : sert aussi de titre au courrier sauvegardé
+  const resolvedSubject = useMemo(() => {
+    if (!template) return ''
+    let subject = template.subject
+    for (const v of template.variables) {
+      const val = values[v.key] || `[${v.label.toUpperCase()}]`
+      subject = subject.replaceAll(`{{${v.key}}}`, val)
+    }
+    return subject
+  }, [template, values])
+
   const resolvedLetter = useMemo(() => {
     if (!template) return ''
 
     let result = template.body
 
-    // Resolve recipient_label and subject first
+    // Resolve recipient_label first
     let resolvedRecipient = template.recipient_label
-    let resolvedSubject = template.subject
     for (const v of template.variables) {
       const val = values[v.key] || `[${v.label.toUpperCase()}]`
       resolvedRecipient = resolvedRecipient.replaceAll(`{{${v.key}}}`, val)
-      resolvedSubject = resolvedSubject.replaceAll(`{{${v.key}}}`, val)
     }
 
     // Replace placeholders in body
@@ -109,7 +118,7 @@ export function useLetterGenerator(options: LetterGeneratorOptions) {
     }
 
     return result
-  }, [template, values])
+  }, [template, values, resolvedSubject])
 
   const isComplete = useMemo(() => {
     if (!template) return false
@@ -127,6 +136,7 @@ export function useLetterGenerator(options: LetterGeneratorOptions) {
     template,
     values,
     resolvedLetter,
+    resolvedSubject,
     isComplete,
     missingVariables,
     setVariable,

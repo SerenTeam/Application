@@ -38,7 +38,6 @@ export interface DocumentData {
   id: string
   title: string
   content: string
-  document_type: string
   created_at: string
   step_title?: string
   step_theme?: string

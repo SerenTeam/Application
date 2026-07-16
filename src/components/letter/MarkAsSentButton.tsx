@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Send } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { markStepSent } from '@/lib/documents'
 import { toast } from '@/hooks/use-toast'
 import { useT } from '@/i18n/useT'
 
@@ -26,11 +27,10 @@ export function MarkAsSentButton({ stepId, userId, hasActions, onSent }: MarkAsS
   const handleSubmit = async () => {
     setSaving(true)
     try {
-      const { error } = await supabase.from('step_actions').insert({
-        step_id: stepId,
-        user_id: userId,
-        action_type: 'sent',
-        action_date: date,
+      const { error } = await markStepSent(supabase, {
+        stepId,
+        userId,
+        sentDate: date,
         note: note.trim() || null,
       })
 

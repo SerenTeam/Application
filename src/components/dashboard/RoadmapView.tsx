@@ -241,6 +241,7 @@ function StepLetterSection({
     template,
     values,
     resolvedLetter,
+    resolvedSubject,
     isComplete,
     missingVariables,
     setVariable,
@@ -298,6 +299,7 @@ function StepLetterSection({
       <div className="flex flex-wrap gap-3 items-start">
         <LetterActions
           resolvedLetter={resolvedLetter}
+          resolvedSubject={resolvedSubject}
           isComplete={isComplete}
           template={template}
           stepId={stepDbId}
