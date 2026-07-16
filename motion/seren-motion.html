@@ -303,11 +303,36 @@ function scene2() {
   return tl;
 }
 
+// S3 (posée à 10,7 s ; visible 11 → 17,5) : la carte s'étire en roadmap, la progression avance
+function scene3() {
+  const tl = gsap.timeline();
+  tl.set("#s3", { visibility: "visible" }, 0);
+  tl.set("#s3-cap", { opacity: 0, y: 20 }, 0);
+  tl.set("#s3-card", { opacity: 0, y: 40, scaleY: 0.9, transformOrigin: "50% 30%" }, 0);
+  tl.set("#s3-bar", { width: "25%" }, 0);
+  tl.set("#s3-dot2", { background: "#ffffff", borderColor: "#D9DBE0" }, 0);
+  tl.set("#s3-tag2", { opacity: 0, scale: 0.8 }, 0);
+
+  // la carte « s'étire » (continuité avec la carte S2 qui vient de sortir au même endroit)
+  tl.to("#s3-card", { opacity: 1, y: 0, scaleY: 1, duration: 0.85, ease: "power3.out" }, 0.35);
+  tl.to("#s3-cap", { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.65);
+  // progression 25 % → ~31 % (douce, cohérente avec « 2 sur 8 complétées » : l'étape passe « en cours », pas « complétée »)
+  // et passage « En cours » à ~13,5 s master (2,8 s locale)
+  tl.to("#s3-bar", { width: "31%", duration: 1.3, ease: "power2.inOut" }, 2.5);
+  tl.to("#s3-dot2", { background: "#6B5CE7", borderColor: "#6B5CE7", duration: 0.4 }, 2.8);
+  tl.to("#s3-tag2", { opacity: 1, scale: 1, duration: 0.45, ease: "back.out(1.8)" }, 2.95);
+  // sortie 16,9 → 17,5 master = 6,2 → 6,8 locale
+  tl.to(["#s3-cap", "#s3-card"], { opacity: 0, y: -26, duration: 0.55, ease: "power2.in", stagger: 0.06 }, 6.2);
+  tl.set("#s3", { visibility: "hidden" }, 6.85);
+  return tl;
+}
+
 // ---------- master ----------
 const tl = gsap.timeline({ repeat: -1 });
 tl.add(scene1(), 0);
 tl.add(scene2(), 5.2);
-// scene3..5 ajoutées dans les tasks suivantes
+tl.add(scene3(), 10.7);
+// scene4..5 ajoutées dans les tasks suivantes
 window.SEREN_MOTION = { tl, applyLang }; // API debug/vérification
 
 // ---------- mode debug : ?scene=s3 fige une scène (contrôle des styles/composition) ----------
