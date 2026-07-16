@@ -598,7 +598,7 @@ if (debugScene && document.getElementById(debugScene)) {
 node motion/build.mjs && node motion/verify.mjs
 ```
 
-Attendu : 6 ✅ (« data-i18n tous couverts », « aucun texte en dur ») — exit 0.
+Attendu : 7 ✅ (dont « data-i18n tous couverts », « aucun texte en dur ») — exit 0. (7 checks depuis le durcissement de la Task 2.)
 
 - [ ] **Step 6 : Vérification visuelle de chaque scène statique**
 
