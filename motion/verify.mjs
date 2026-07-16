@@ -30,7 +30,9 @@ const missing = used.filter(k => !(k in strings.fr) || !(k in strings.en));
 check(missing.length === 0, `data-i18n tous couverts${missing.length ? " — manquants : " + missing.join(", ") : ""}`);
 
 // 5. Aucun texte visible en dur dans le template (tout passe par data-i18n)
-const template = readFileSync(join(ROOT, "src/template.html"), "utf8");
+// — le <title> est exempté : chrome navigateur, invisible dans la composition
+const template = readFileSync(join(ROOT, "src/template.html"), "utf8")
+  .replace(/<title>[\s\S]*?<\/title>/, "<title></title>");
 const hardcoded = [...template.matchAll(/>([^<>{}]*[A-Za-zÀ-ÿ]{3,}[^<>{}]*)</g)]
   .map(m => m[1].trim()).filter(t => t && !t.startsWith("{{"));
 check(hardcoded.length === 0, `aucun texte en dur dans template.html${hardcoded.length ? " — trouvé : " + hardcoded.slice(0, 3).join(" | ") : ""}`);
