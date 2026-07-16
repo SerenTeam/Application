@@ -21,6 +21,7 @@
 ## Notes post-revue
 
 - **Task 1 (implémentation)** : le check n° 5 de `verify.mjs` tel que planifié flaggait le `<title>` du template (« Seren — Motion de présentation »). Décision : le `<title>` est du chrome navigateur, invisible pendant la lecture — il est **exempté** du check (dont l'objet est qu'aucun texte de *scène* ne contourne l'i18n). Le code du Step 6 ci-dessous intègre le correctif (`.replace(/<title>…/`). Le title reste en dur, non i18n (YAGNI).
+- **Task 9 (implémentation)** : deux défauts du plan détectés. ① Le `power3.inOut` unique du cercle est quasi plat au départ → **~250 ms d'écran quasi vide** après la mort du courrier (cercle sub-pixel à 24,05, perceptible seulement vers 24,3). Correctif : reveal **en deux temps** — naissance du point de repli (`scale 0→0,12`, 0,2 s, `power1.out`, dès 24,0 : ~137 px pile quand la carte meurt, peinte par-dessus le centre de la carte via l'ordre DOM) puis invasion (`0,12→1`, 0,95 s, `power2.inOut`, plein cadre ~2210 px à l'arrivée du logo). Code du Step 1 corrigé. ② Attendu « quasi blanc à 29,6 » erroné (power1.inOut → 0,778) : contrôle déplacé à 29,8 (≈ 0,944).
 - **Task 8 (revue qualité)** : 1 correctif appliqué — reset `scale: 1` sur `#s4-cap` à l'ouverture (la sortie anime son scale ; sans reset explicite, l'hygiène de boucle dépendait du rendu backward de GSAP au wrap — même invariant que le `x: 0` de T6). Commentaire wlines corrigé (21,4). Verdict storyboard S3→S4 : le raccord carte→carte (au lieu du morph littéral « la ligne s'ouvre ») est une **interprétation acceptée** — grammaire identique à S2→S3, le lien narratif est porté par le texte (l'étape « Clôture bancaire » passe En cours puis l'objet du courrier reprend « Clôture du compte ») ; spec réconciliée. Candidats T11 : état mi-scène pour `?scene=s4` (wlines à 0 en debug).
 - **Task 8 (implémentation)** : deux remontées. ① Attendu `pause(23.8)` trop optimiste (repli encore discret, `power3.in` back-loaded) → contrôle déplacé à 23,95 ci-dessous. ② **Gap S3→S4 mesuré à 90 ms** (S3-card à 0 à 17,51 ; S4-card démarrait à 17,60) — resserré à ~40 ms (entrée carte 0,4 → 0,35, caption 0,7 → 0,65) pour aligner tous les raccords carte→carte sur la respiration T7. Les tweens `width` des `.wline` relèvent de l'exception documentée en T7 (barres skeleton isolées, storyboard-mandaté).
 - **Task 7 (revue qualité)** : approuvée avec note documentaire. ① **Exception assumée à « transform/opacity uniquement »** : `#s3-bar` anime `width` (25 → 31 %) — élément unique isolé dans `.track` (`overflow:hidden`, hauteur fixe 17 px), layout confiné à une bande ~290×17, aucun voisin impacté ; `scaleX` déformerait le cap arrondi `border-radius:99px`. Paint-only, aucun risque 60 fps. ② **Gap S2→S3 de 40 ms conservé** ([11,01–11,05], blanc sur blanc, les deux tweens se terminent/démarrent naturellement — respiration programmée entre deux cartes, différente de la coupe mi-vol corrigée en T6 ; sert le rythme apaisé). ③ `back.out(1.8)` sur le badge : micro-pop ~0,5 px, dans la tolérance du précédent T6.
@@ -883,8 +884,10 @@ function scene5() {
   tl.set("#s5-logo", { opacity: 0, scale: 0.82 }, 0);
   tl.set("#s5-tag", { opacity: 0, y: 22 }, 0);
 
-  // le cercle part du point de repli du courrier (centre) — 24 → 25,1 s master
-  tl.to("#s5-bg", { scale: 1, duration: 1.1, ease: "power3.inOut" }, 0.3);
+  // le cercle naît du point de repli du courrier (24,0 → 24,2 master)…
+  tl.to("#s5-bg", { scale: 0.12, duration: 0.2, ease: "power1.out" }, 0.3);
+  // …puis envahit l'écran (24,2 → 25,15) — plein cadre (~2210 px ≥ diagonale 2203) quand le logo arrive
+  tl.to("#s5-bg", { scale: 1, duration: 0.95, ease: "power2.inOut" }, 0.5);
   tl.to("#s5-logo", { opacity: 1, scale: 1, duration: 0.8, ease: "power2.out" }, 1.1);
   tl.to("#s5-tag", { opacity: 1, y: 0, duration: 0.7, ease: "power2.out" }, 2.1);
   // hold ~3 s puis fondu blanc de rebouclage 28,8 → 30 (master)
@@ -903,7 +906,7 @@ console.assert(Math.abs(tl.duration() - 30) < 0.15, "durée master ≈ 30 s, obt
 node motion/build.mjs && node motion/verify.mjs
 ```
 
-Console : `pause(25.5)` → écran bleu plein, logo crème/blanc. `pause(27)` → tagline « On s'occupe du reste. ». `pause(29.6)` → quasi blanc. `pause(29.98)` puis `pause(0.02)` → **les deux frames sont blanches** (raccord invisible). `SEREN_MOTION.tl.duration()` → 30 ± 0,15. Laisser tourner 3 cycles complets (`play()`) : aucune couture perceptible, aucun élément fantôme d'un cycle précédent.
+Console : `pause(25.5)` → écran bleu plein, logo crème/blanc. `pause(27)` → tagline « On s'occupe du reste. ». `pause(29.8)` → quasi blanc (overlay ≈ 0,94 — `power1.inOut` ne donne que 0,78 à 29,6). `pause(29.98)` puis `pause(0.02)` → **les deux frames sont blanches** (raccord invisible). `SEREN_MOTION.tl.duration()` → 30 ± 0,15. Laisser tourner 3 cycles complets (`play()`) : aucune couture perceptible, aucun élément fantôme d'un cycle précédent.
 
 - [ ] **Step 3 : Commit**
 
