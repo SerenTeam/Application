@@ -21,6 +21,7 @@
 ## Notes post-revue
 
 - **Task 1 (implémentation)** : le check n° 5 de `verify.mjs` tel que planifié flaggait le `<title>` du template (« Seren — Motion de présentation »). Décision : le `<title>` est du chrome navigateur, invisible pendant la lecture — il est **exempté** du check (dont l'objet est qu'aucun texte de *scène* ne contourne l'i18n). Le code du Step 6 ci-dessous intègre le correctif (`.replace(/<title>…/`). Le title reste en dur, non i18n (YAGNI).
+- **Task 5 (implémentation)** : deux bugs du plan détectés par l'implémenteur. ① Attendus des `pause()` erronés (4 papiers à 2,5 s, pas ~8 ; convergence visible à 5,5 s, pas 5,3 — ease back-loaded) : attendus corrigés ci-dessous. ② **Durée structurelle de scene1 gonflée à 7,06 s** : les flottements fixes (1,6 s ×2) de p7/p8 débordaient la fin de scène, faussant le point de bouclage du `repeat:-1` (+1,4 s de blanc par cycle à ce stade). Correctif : flottements **calés sur la fenêtre restante** (`floatSpan = 4.9 − (t+0.5)`, appliqué si > 0,8 s) — p1→p9 flottent en durées décroissantes, fin exacte au départ de la convergence, durée de scène = 5,66 s. Code du Step 1 corrigé ci-dessous.
 - **Task 4 (revue qualité)** : approuvée sans correctif. Mineurs assumés : gris d'illustration `#EFEFF3`/`#E4E6EA` hors palette (décor papier/skeleton, volontaire) ; convention locale `.font-display` = Inter (inverse de DESIGN.md — fichier autonome, commenté) ; ombres mono-couche proportionnées. Rappels QA : sans `?scene=` l'écran reste blanc jusqu'à la Task 5 (attendu) ; re-vérifier le point bleu en `?scene=s2` après le branchement `var(--sel)` de la Task 6.
 - **Task 4 (revue spec)** : une déviation d'un token détectée dans le bloc debug (`querySelector(".opt.sel")` au lieu de `".opt.sel .ring"`). Décision : le code committé est conservé — il est fonctionnellement équivalent (héritage de la CSS var jusqu'au `::after`) et **plus cohérent** avec le bloc de remplacement de la Task 5 et la cible GSAP de la Task 6 (`tl.set(".opt.sel", …)`). Le plan (Task 4 Step 4) est aligné sur le code.
 - **Task 3 (revue qualité)** : deux arbitrages éditoriaux. ① `en.s3_title` « Your tasks » → **« Your steps »** (le produit et la landing disent "step(s)"/"roadmap", jamais "tasks" — l'intention de la spec est de réutiliser le vocabulaire maison) ; spec mise à jour. ② **Réconciliation storyboard S3** : la barre passait 25 % → 50 % alors que le libellé « 2 sur 8 complétées » reste statique et que l'étape passe « en cours » (pas « complétée ») → barre **25 % → ~31 %** (progression douce, sémantiquement cohérente) ; spec + Task 7 mises à jour. Conservés en l'état : "Closing bank accounts" (libellé exact de la landing, prime sur le parallélisme), "Someone else close" (mineur). Heads-up Task 6 : vérifier visuellement que `s2_q` ne wrap pas mal dans la carte (l'espace ASCII avant « ? » est un point de coupe valide).
@@ -646,8 +647,10 @@ function scene1() {
   papers.forEach((p, i) => {
     t += gaps[i];
     tl.to(p, { opacity: 1, scale: 1, y: 0, duration: 0.5, ease: "power2.out" }, t);
-    // micro-flottement sur les premiers papiers seulement (les derniers arrivent trop tard dans la scène)
-    if (i < 8) tl.to(p, { y: "-=7", duration: 1.6, ease: "sine.inOut", yoyo: true, repeat: 1 }, t + 0.5);
+    // micro-flottement calé sur la fenêtre restante : chaque papier redescend pile à 4,9 s
+    // (départ de la convergence) → la scène garde une durée structurelle exacte de 5,66 s
+    const floatSpan = 4.9 - (t + 0.5);
+    if (floatSpan > 0.8) tl.to(p, { y: "-=7", duration: floatSpan / 2, ease: "sine.inOut", yoyo: true, repeat: 1 }, t + 0.5);
   });
   // sortie : tout converge vers le centre et se fond (4,9 → 5,6) — overwrite tue les flottements encore actifs
   tl.to(papers, {
@@ -692,7 +695,7 @@ if (debugScene && document.getElementById(debugScene)) {
 node motion/build.mjs && node motion/verify.mjs
 ```
 
-Ouvrir le fichier. Console : `SEREN_MOTION.tl.pause(2.5)` → ~8 papiers visibles, 2 lignes de texte. `SEREN_MOTION.tl.pause(4.5)` → 14 papiers. `SEREN_MOTION.tl.pause(5.3)` → papiers en convergence centrale, presque fondus. `SEREN_MOTION.tl.play()` → la cascade s'accélère visiblement, flottement doux, aucun à-coup.
+Ouvrir le fichier. Console : `SEREN_MOTION.tl.pause(2.5)` → 4 papiers visibles, 2 lignes de texte. `SEREN_MOTION.tl.pause(4.5)` → 14 papiers. `SEREN_MOTION.tl.pause(5.5)` → convergence centrale bien visible (l'ease `power3.in` charge la fin de fenêtre). `SEREN_MOTION.tl.duration()` → 5.66. `SEREN_MOTION.tl.play()` → la cascade s'accélère visiblement, flottement doux, aucun à-coup.
 
 - [ ] **Step 4 : Commit**
 
