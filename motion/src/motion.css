@@ -11,3 +11,59 @@ body.idle { cursor: none; }
 }
 #white-overlay { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 90; }
 .font-display { font-family: "Inter", system-ui, sans-serif; } /* captions/titres, graisse 400 */
+
+/* ---------- scènes ---------- */
+.scene { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; visibility: hidden; }
+.caption { font-size: 68px; font-weight: 400; letter-spacing: -1.2px; color: #1D1D1D; text-align: center; line-height: 1.25; z-index: 2; }
+.caption .line2 { display: block; color: #42424A; }
+.caption.sub { font-size: 60px; margin-bottom: 62px; }
+.ucard { background: #fff; border: 2px solid #F2F0FF; border-radius: 52px; box-shadow: 0 10px 53px rgba(135,126,135,.14); }
+
+/* ---------- S1 : papiers ---------- */
+.paper { position: absolute; width: 178px; height: 226px; background: #fff; border: 2px solid #EFEFF3; border-radius: 24px; box-shadow: 0 10px 34px rgba(79,79,79,.13); }
+.paper i { display: block; height: 14px; border-radius: 99px; background: #E4E6EA; margin: 31px 29px 0; }
+.paper i:nth-child(2) { width: 55%; }
+.paper.sm { width: 144px; height: 182px; } .paper.sm i { height: 12px; margin: 24px 24px 0; }
+.paper.xs { width: 115px; height: 146px; } .paper.xs i { height: 10px; margin: 19px 19px 0; }
+.p1 { left: 13%; top: 19%; }  .p2 { right: 15%; top: 14%; }  .p3 { left: 19%; bottom: 12%; }
+.p4 { right: 18%; bottom: 15%; } .p5 { left: 6%; top: 44%; } .p6 { right: 5%; top: 40%; }
+.p7 { left: 30%; top: 7%; }   .p8 { right: 31%; bottom: 5%; } .p9 { left: 44%; top: 74%; }
+.p10 { left: 44%; top: 5%; }  .p11 { right: 34%; top: 12%; }  .p12 { left: 7%; bottom: 7%; }
+.p13 { right: 7%; bottom: 30%; } .p14 { left: 23%; top: 32%; }
+
+/* ---------- S2 : questionnaire ---------- */
+#s2-card { width: 960px; padding: 62px 67px; }
+#s2-card h3 { font-size: 41px; font-weight: 500; color: #1D1D1D; margin-bottom: 38px; }
+.opt { display: flex; align-items: center; gap: 24px; height: 106px; border: 2px solid #D9DBE0; border-radius: 99px; padding: 0 38px; font-size: 35px; font-weight: 500; color: #42424A; margin-top: 22px; background: #fff; }
+.opt .ring { width: 41px; height: 41px; border-radius: 50%; border: 3px solid #D9DBE0; flex: none; position: relative; }
+.opt .ring::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: #006BFA; transform: scale(0); }
+
+/* ---------- S3 : roadmap ---------- */
+#s3-card { width: 1060px; padding: 58px 67px; }
+.rhead { display: flex; justify-content: space-between; align-items: center; font-size: 36px; font-weight: 600; color: #1D1D1D; margin-bottom: 19px; }
+.rhead small { color: #666676; font-size: 30px; font-weight: 500; }
+.track { height: 17px; border-radius: 99px; background: #EAF3FE; overflow: hidden; margin-bottom: 43px; }
+#s3-bar { display: block; height: 100%; border-radius: 99px; background: #006BFA; width: 25%; }
+.row { display: flex; align-items: center; gap: 29px; padding: 22px 0; font-size: 35px; font-weight: 500; color: #42424A; }
+.dot { width: 53px; height: 53px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; border: 3px solid #D9DBE0; background: #fff; }
+.dot svg { width: 26px; height: 26px; }
+.dot.ok { background: #16A34A; border-color: #16A34A; }
+.dot.todo { background: #fff; }
+.tag { margin-left: auto; font-size: 26px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; border-radius: 99px; padding: 7px 24px; }
+.tag.done { background: #E9F7EF; color: #16A34A; }
+.tag.prog { background: #F2F0FF; color: #6B5CE7; }
+
+/* ---------- S4 : courrier ---------- */
+#s4-card { width: 990px; padding: 58px 67px; }
+#s4-card h3 { font-size: 35px; font-weight: 600; color: #1D1D1D; margin-bottom: 34px; }
+.wline { height: 17px; border-radius: 99px; background: #E4E6EA; margin-top: 24px; width: 0; }
+.lfoot { display: flex; align-items: center; gap: 24px; margin-top: 48px; }
+.btn-pdf { height: 92px; border-radius: 99px; background: #006BFA; color: #fff; font-size: 32px; font-weight: 500; display: inline-flex; align-items: center; padding: 0 43px; gap: 17px; }
+.btn-pdf svg { width: 34px; height: 34px; }
+.sent { display: inline-flex; align-items: center; gap: 14px; font-size: 29px; font-weight: 600; color: #16A34A; }
+.sent svg { width: 31px; height: 31px; }
+
+/* ---------- S5 : signature ---------- */
+#s5-bg { position: absolute; left: 50%; top: 50%; width: 2600px; height: 2600px; margin: -1300px 0 0 -1300px; border-radius: 50%; background: #297FF3; }
+#s5-logo { width: 500px; z-index: 2; }
+#s5-tag { font-size: 64px; font-weight: 400; letter-spacing: -1px; color: #fff; margin-top: 53px; z-index: 2; }

@@ -23,3 +23,13 @@ function fit() {
 }
 addEventListener("resize", fit);
 fit();
+
+// ---------- mode debug : ?scene=s3 affiche une scène statique (aucune animation) ----------
+const debugScene = new URLSearchParams(location.search).get("scene");
+if (debugScene && document.getElementById(debugScene)) {
+  document.getElementById(debugScene).style.visibility = "visible";
+  // état "milieu de scène" pour contrôler les styles
+  if (debugScene === "s1") document.querySelectorAll("#s1 .paper").forEach((p, i) => { p.style.transform = `rotate(${[-11,9,7,-14,5,-7,15,-5,3,-8,6,12,4,-18][i]}deg)`; });
+  if (debugScene === "s2") document.querySelector(".opt.sel").style.setProperty("--sel", "1");
+  if (debugScene === "s5") document.getElementById("s5-bg").style.transform = "scale(1)";
+}
