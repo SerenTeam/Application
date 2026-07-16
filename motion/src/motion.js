@@ -47,8 +47,10 @@ function scene1() {
   papers.forEach((p, i) => {
     t += gaps[i];
     tl.to(p, { opacity: 1, scale: 1, y: 0, duration: 0.5, ease: "power2.out" }, t);
-    // micro-flottement sur les premiers papiers seulement (les derniers arrivent trop tard dans la scène)
-    if (i < 8) tl.to(p, { y: "-=7", duration: 1.6, ease: "sine.inOut", yoyo: true, repeat: 1 }, t + 0.5);
+    // micro-flottement calé sur la fenêtre restante : chaque papier redescend pile à 4,9 s
+    // (départ de la convergence) → la scène garde une durée structurelle exacte de 5,66 s
+    const floatSpan = 4.9 - (t + 0.5);
+    if (floatSpan > 0.8) tl.to(p, { y: "-=7", duration: floatSpan / 2, ease: "sine.inOut", yoyo: true, repeat: 1 }, t + 0.5);
   });
   // sortie : tout converge vers le centre et se fond (4,9 → 5,6) — overwrite tue les flottements encore actifs
   tl.to(papers, {
