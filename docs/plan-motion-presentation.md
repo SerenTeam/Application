@@ -18,6 +18,12 @@
 
 ---
 
+## Notes post-revue
+
+- **Task 1 (implémentation)** : le check n° 5 de `verify.mjs` tel que planifié flaggait le `<title>` du template (« Seren — Motion de présentation »). Décision : le `<title>` est du chrome navigateur, invisible pendant la lecture — il est **exempté** du check (dont l'objet est qu'aucun texte de *scène* ne contourne l'i18n). Le code du Step 6 ci-dessous intègre le correctif (`.replace(/<title>…/`). Le title reste en dur, non i18n (YAGNI).
+
+---
+
 ## Structure de fichiers cible
 
 ```
@@ -214,7 +220,9 @@ const missing = used.filter(k => !(k in strings.fr) || !(k in strings.en));
 check(missing.length === 0, `data-i18n tous couverts${missing.length ? " — manquants : " + missing.join(", ") : ""}`);
 
 // 5. Aucun texte visible en dur dans le template (tout passe par data-i18n)
-const template = readFileSync(join(ROOT, "src/template.html"), "utf8");
+// — le <title> est exempté : chrome navigateur, invisible dans la composition (note post-revue Task 1)
+const template = readFileSync(join(ROOT, "src/template.html"), "utf8")
+  .replace(/<title>[\s\S]*?<\/title>/, "<title></title>");
 const hardcoded = [...template.matchAll(/>([^<>{}]*[A-Za-zÀ-ÿ]{3,}[^<>{}]*)</g)]
   .map(m => m[1].trim()).filter(t => t && !t.startsWith("{{"));
 check(hardcoded.length === 0, `aucun texte en dur dans template.html${hardcoded.length ? " — trouvé : " + hardcoded.slice(0, 3).join(" | ") : ""}`);
