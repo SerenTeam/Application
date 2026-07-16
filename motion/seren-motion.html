@@ -327,12 +327,36 @@ function scene3() {
   return tl;
 }
 
+// S4 (posée à 17,2 s ; visible 17,5 → 24) : le courrier s'écrit, PDF + « Envoyé »
+function scene4() {
+  const tl = gsap.timeline();
+  tl.set("#s4", { visibility: "visible" }, 0);
+  tl.set("#s4-cap", { opacity: 0, y: 20 }, 0);
+  tl.set("#s4-card", { opacity: 0, y: 40, scale: 0.94, transformOrigin: "50% 50%" }, 0);
+  tl.set($$("#s4 .wline"), { width: 0 }, 0);
+  tl.set("#s4-sent", { opacity: 0, x: -14 }, 0);
+
+  tl.to("#s4-card", { opacity: 1, y: 0, scale: 1, duration: 0.8, ease: "power3.out" }, 0.4);
+  tl.to("#s4-cap", { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.7);
+  // les lignes « s'écrivent » (largeurs finales variées), 19 → 21,3 s master
+  const widths = ["96%", "88%", "92%", "58%"];
+  $$("#s4 .wline").forEach((l, i) => {
+    tl.to(l, { width: widths[i], duration: 0.75, ease: "power1.inOut" }, 1.8 + i * 0.55);
+  });
+  tl.to("#s4-sent", { opacity: 1, x: 0, duration: 0.5, ease: "power2.out" }, 4.4);
+  // sortie : repli vers le centre (le cercle bleu de S5 partira de ce point), 23,4 → 24
+  tl.to(["#s4-cap", "#s4-card"], { opacity: 0, scale: 0.36, y: 30, duration: 0.65, ease: "power3.in" }, 6.2);
+  tl.set("#s4", { visibility: "hidden" }, 6.9);
+  return tl;
+}
+
 // ---------- master ----------
 const tl = gsap.timeline({ repeat: -1 });
 tl.add(scene1(), 0);
 tl.add(scene2(), 5.2);
 tl.add(scene3(), 10.7);
-// scene4..5 ajoutées dans les tasks suivantes
+tl.add(scene4(), 17.2);
+// scene5 ajoutée dans la task suivante
 window.SEREN_MOTION = { tl, applyLang }; // API debug/vérification
 
 // ---------- mode debug : ?scene=s3 fige une scène (contrôle des styles/composition) ----------
