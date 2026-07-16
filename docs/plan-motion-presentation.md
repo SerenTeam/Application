@@ -21,6 +21,7 @@
 ## Notes post-revue
 
 - **Task 1 (implémentation)** : le check n° 5 de `verify.mjs` tel que planifié flaggait le `<title>` du template (« Seren — Motion de présentation »). Décision : le `<title>` est du chrome navigateur, invisible pendant la lecture — il est **exempté** du check (dont l'objet est qu'aucun texte de *scène* ne contourne l'i18n). Le code du Step 6 ci-dessous intègre le correctif (`.replace(/<title>…/`). Le title reste en dur, non i18n (YAGNI).
+- **Task 8 (implémentation)** : deux remontées. ① Attendu `pause(23.8)` trop optimiste (repli encore discret, `power3.in` back-loaded) → contrôle déplacé à 23,95 ci-dessous. ② **Gap S3→S4 mesuré à 90 ms** (S3-card à 0 à 17,51 ; S4-card démarrait à 17,60) — resserré à ~40 ms (entrée carte 0,4 → 0,35, caption 0,7 → 0,65) pour aligner tous les raccords carte→carte sur la respiration T7. Les tweens `width` des `.wline` relèvent de l'exception documentée en T7 (barres skeleton isolées, storyboard-mandaté).
 - **Task 7 (revue qualité)** : approuvée avec note documentaire. ① **Exception assumée à « transform/opacity uniquement »** : `#s3-bar` anime `width` (25 → 31 %) — élément unique isolé dans `.track` (`overflow:hidden`, hauteur fixe 17 px), layout confiné à une bande ~290×17, aucun voisin impacté ; `scaleX` déformerait le cap arrondi `border-radius:99px`. Paint-only, aucun risque 60 fps. ② **Gap S2→S3 de 40 ms conservé** ([11,01–11,05], blanc sur blanc, les deux tweens se terminent/démarrent naturellement — respiration programmée entre deux cartes, différente de la coupe mi-vol corrigée en T6 ; sert le rythme apaisé). ③ `back.out(1.8)` sur le badge : micro-pop ~0,5 px, dans la tolérance du précédent T6.
 - **Task 6 (revue qualité)** : approuvée. ① **Exception documentée à « transform/opacity uniquement »** : la sélection S2 (fond/bord de la pilule) et le statut S3 (pastille) utilisent des tweens de **couleur** courts sur un élément unique — exigés par le storyboard, paint-only, aucun risque 60 fps ; exception assumée. ② **Raccord S1→S2 affiné** : le hide de `#s1` à 5,65 s coupait sec 9 papiers encore en convergence (creux de présence ~0,10 à 5,67 s) → hide déplacé à **5,76 s** (les papiers atteignent opacité 0 à 5,756 et se fondent naturellement sous la carte peinte par-dessus). Code du Step 1 (T5) corrigé ci-dessous. ③ `background` en shorthand accepté (interpolé correctement par GSAP, cosmétique).
 - **Task 5 (revue qualité)** : approuvée — hygiène de boucle et robustesse au seek vérifiées empiriquement (cycles byte-identiques, 0 frame de glitch au wrap). Durée brute réelle : **5,756 s** (queue du stagger de convergence au-delà des marqueurs 5,65/5,66) — acceptée, le point de bouclage final sera 30,0 s (scène 5). Repliés en **Task 6** (retouche scene1) : `x: 0` ajouté au set d'ouverture + suppression du set redondant à 5,66 (l'hygiène ne doit pas dépendre de l'ordre de rendu interne de GSAP au wrap) + commentaire de durée corrigé. Reporté en **Task 11** : mesure fps convergence (will-change si besoin). Le code du Step 1 ci-dessous intègre ces retouches ; le code committé en Task 5 les recevra en Task 6.
@@ -830,8 +831,8 @@ function scene4() {
   tl.set($$("#s4 .wline"), { width: 0 }, 0);
   tl.set("#s4-sent", { opacity: 0, x: -14 }, 0);
 
-  tl.to("#s4-card", { opacity: 1, y: 0, scale: 1, duration: 0.8, ease: "power3.out" }, 0.4);
-  tl.to("#s4-cap", { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.7);
+  tl.to("#s4-card", { opacity: 1, y: 0, scale: 1, duration: 0.8, ease: "power3.out" }, 0.35);
+  tl.to("#s4-cap", { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.65);
   // les lignes « s'écrivent » (largeurs finales variées), 19 → 21,3 s master
   const widths = ["96%", "88%", "92%", "58%"];
   $$("#s4 .wline").forEach((l, i) => {
@@ -854,7 +855,7 @@ tl.add(scene4(), 17.2);
 node motion/build.mjs && node motion/verify.mjs
 ```
 
-Console : `pause(18.6)` → courrier posé, 4 lignes vides. `pause(21.5)` → 4 lignes écrites (96/88/92/58 %). `pause(22.3)` → badge vert « Envoyé » affiché. `pause(23.8)` → carte en repli réduit vers le centre.
+Console : `pause(18.6)` → courrier posé, 4 lignes vides. `pause(21.5)` → 4 lignes écrites (96/88/92/58 %). `pause(22.3)` → badge vert « Envoyé » affiché. `pause(23.95)` → carte en repli réduit vers le centre (le `power3.in` charge la toute fin de fenêtre — à 23,8 le repli est encore discret).
 
 - [ ] **Step 3 : Commit**
 
