@@ -10,3 +10,4 @@ body.idle { cursor: none; }
   font-family: "Inter Tight", system-ui, sans-serif;
 }
 #white-overlay { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 90; }
+.font-display { font-family: "Inter", system-ui, sans-serif; } /* captions/titres, graisse 400 */
