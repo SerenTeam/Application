@@ -21,6 +21,7 @@
 ## Notes post-revue
 
 - **Task 1 (implémentation)** : le check n° 5 de `verify.mjs` tel que planifié flaggait le `<title>` du template (« Seren — Motion de présentation »). Décision : le `<title>` est du chrome navigateur, invisible pendant la lecture — il est **exempté** du check (dont l'objet est qu'aucun texte de *scène* ne contourne l'i18n). Le code du Step 6 ci-dessous intègre le correctif (`.replace(/<title>…/`). Le title reste en dur, non i18n (YAGNI).
+- **Task 8 (revue qualité)** : 1 correctif appliqué — reset `scale: 1` sur `#s4-cap` à l'ouverture (la sortie anime son scale ; sans reset explicite, l'hygiène de boucle dépendait du rendu backward de GSAP au wrap — même invariant que le `x: 0` de T6). Commentaire wlines corrigé (21,4). Verdict storyboard S3→S4 : le raccord carte→carte (au lieu du morph littéral « la ligne s'ouvre ») est une **interprétation acceptée** — grammaire identique à S2→S3, le lien narratif est porté par le texte (l'étape « Clôture bancaire » passe En cours puis l'objet du courrier reprend « Clôture du compte ») ; spec réconciliée. Candidats T11 : état mi-scène pour `?scene=s4` (wlines à 0 en debug).
 - **Task 8 (implémentation)** : deux remontées. ① Attendu `pause(23.8)` trop optimiste (repli encore discret, `power3.in` back-loaded) → contrôle déplacé à 23,95 ci-dessous. ② **Gap S3→S4 mesuré à 90 ms** (S3-card à 0 à 17,51 ; S4-card démarrait à 17,60) — resserré à ~40 ms (entrée carte 0,4 → 0,35, caption 0,7 → 0,65) pour aligner tous les raccords carte→carte sur la respiration T7. Les tweens `width` des `.wline` relèvent de l'exception documentée en T7 (barres skeleton isolées, storyboard-mandaté).
 - **Task 7 (revue qualité)** : approuvée avec note documentaire. ① **Exception assumée à « transform/opacity uniquement »** : `#s3-bar` anime `width` (25 → 31 %) — élément unique isolé dans `.track` (`overflow:hidden`, hauteur fixe 17 px), layout confiné à une bande ~290×17, aucun voisin impacté ; `scaleX` déformerait le cap arrondi `border-radius:99px`. Paint-only, aucun risque 60 fps. ② **Gap S2→S3 de 40 ms conservé** ([11,01–11,05], blanc sur blanc, les deux tweens se terminent/démarrent naturellement — respiration programmée entre deux cartes, différente de la coupe mi-vol corrigée en T6 ; sert le rythme apaisé). ③ `back.out(1.8)` sur le badge : micro-pop ~0,5 px, dans la tolérance du précédent T6.
 - **Task 6 (revue qualité)** : approuvée. ① **Exception documentée à « transform/opacity uniquement »** : la sélection S2 (fond/bord de la pilule) et le statut S3 (pastille) utilisent des tweens de **couleur** courts sur un élément unique — exigés par le storyboard, paint-only, aucun risque 60 fps ; exception assumée. ② **Raccord S1→S2 affiné** : le hide de `#s1` à 5,65 s coupait sec 9 papiers encore en convergence (creux de présence ~0,10 à 5,67 s) → hide déplacé à **5,76 s** (les papiers atteignent opacité 0 à 5,756 et se fondent naturellement sous la carte peinte par-dessus). Code du Step 1 (T5) corrigé ci-dessous. ③ `background` en shorthand accepté (interpolé correctement par GSAP, cosmétique).
@@ -826,14 +827,14 @@ git commit -m "feat(motion): scène 3 — roadmap, progression 25→31 %, statut
 function scene4() {
   const tl = gsap.timeline();
   tl.set("#s4", { visibility: "visible" }, 0);
-  tl.set("#s4-cap", { opacity: 0, y: 20 }, 0);
+  tl.set("#s4-cap", { opacity: 0, y: 20, scale: 1 }, 0); // scale couvert : la sortie l'anime (invariant d'hygiène T6)
   tl.set("#s4-card", { opacity: 0, y: 40, scale: 0.94, transformOrigin: "50% 50%" }, 0);
   tl.set($$("#s4 .wline"), { width: 0 }, 0);
   tl.set("#s4-sent", { opacity: 0, x: -14 }, 0);
 
   tl.to("#s4-card", { opacity: 1, y: 0, scale: 1, duration: 0.8, ease: "power3.out" }, 0.35);
   tl.to("#s4-cap", { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.65);
-  // les lignes « s'écrivent » (largeurs finales variées), 19 → 21,3 s master
+  // les lignes « s'écrivent » (largeurs finales variées), 19 → 21,4 s master
   const widths = ["96%", "88%", "92%", "58%"];
   $$("#s4 .wline").forEach((l, i) => {
     tl.to(l, { width: widths[i], duration: 0.75, ease: "power1.inOut" }, 1.8 + i * 0.55);

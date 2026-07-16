@@ -47,7 +47,7 @@ Cycle de 30 s. Les fenêtres indicatives peuvent glisser de ±0,5 s à l'implém
 
 - S1 → S2 : les papiers convergent et glissent dans la carte questionnaire.
 - S2 → S3 : la carte s'étire ; la question sort, les étapes entrent.
-- S3 → S4 : la ligne « Clôture bancaire » s'ouvre et devient le courrier.
+- S3 → S4 : raccord carte→carte (même grammaire que S2 → S3, respiration ~40 ms) — le lien narratif est porté par le texte : l'étape « Clôture bancaire » venait de passer « En cours », l'objet du courrier reprend « Clôture du compte ». (Réconcilié post-revue T8 — le morph littéral ligne→courrier serait disproportionné pour une boucle de fond.)
 - S4 → S5 : le courrier se replie au centre ; le cercle bleu part de ce point.
 - S5 → S1 : fondu vers blanc + réapparition du premier papier = **raccord de boucle invisible**.
 
