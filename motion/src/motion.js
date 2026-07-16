@@ -59,7 +59,7 @@ function scene1() {
     scale: 0.22, opacity: 0, duration: 0.7, ease: "power3.in", stagger: 0.012, overwrite: "auto",
   }, 4.9);
   tl.to(["#s1-l1", "#s1-l2"], { opacity: 0, y: -18, duration: 0.45, ease: "power2.in" }, 4.95);
-  tl.set("#s1", { visibility: "hidden" }, 5.65);
+  tl.set("#s1", { visibility: "hidden" }, 5.76);
   return tl;
 }
 
