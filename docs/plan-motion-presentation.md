@@ -807,7 +807,7 @@ Console : `pause(12.2)` → roadmap posée, barre à 25 %, ligne 2 pastille gris
 
 ```bash
 git add motion/src/motion.js motion/seren-motion.html
-git commit -m "feat(motion): scène 3 — roadmap, progression 25→50 %, statut En cours violet"
+git commit -m "feat(motion): scène 3 — roadmap, progression 25→31 %, statut En cours violet"
 ```
 
 ---
