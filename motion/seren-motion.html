@@ -383,9 +383,11 @@ window.SEREN_MOTION = { tl, applyLang }; // API debug/vérification
 
 // ---------- contrôles (aucune UI visible) : Espace pause · F plein écran · L langue ----------
 addEventListener("keydown", e => {
+  if (e.repeat) return; // touche maintenue (auto-repeat) : on n'agit qu'à l'appui initial
   if (e.code === "Space") { e.preventDefault(); tl.paused(!tl.paused()); }
   else if (e.key === "f" || e.key === "F") {
-    document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    // promesses couvertes : en contexte embed/edge le refus devient silencieux (pas d'erreur console)
+    document.fullscreenElement ? document.exitFullscreen().catch(() => {}) : document.documentElement.requestFullscreen().catch(() => {});
   }
   else if (e.key === "l" || e.key === "L") applyLang(lang === "fr" ? "en" : "fr");
 });
