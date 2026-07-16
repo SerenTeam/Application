@@ -21,6 +21,7 @@
 ## Notes post-revue
 
 - **Task 1 (implémentation)** : le check n° 5 de `verify.mjs` tel que planifié flaggait le `<title>` du template (« Seren — Motion de présentation »). Décision : le `<title>` est du chrome navigateur, invisible pendant la lecture — il est **exempté** du check (dont l'objet est qu'aucun texte de *scène* ne contourne l'i18n). Le code du Step 6 ci-dessous intègre le correctif (`.replace(/<title>…/`). Le title reste en dur, non i18n (YAGNI).
+- **Task 3 (revue qualité)** : deux arbitrages éditoriaux. ① `en.s3_title` « Your tasks » → **« Your steps »** (le produit et la landing disent "step(s)"/"roadmap", jamais "tasks" — l'intention de la spec est de réutiliser le vocabulaire maison) ; spec mise à jour. ② **Réconciliation storyboard S3** : la barre passait 25 % → 50 % alors que le libellé « 2 sur 8 complétées » reste statique et que l'étape passe « en cours » (pas « complétée ») → barre **25 % → ~31 %** (progression douce, sémantiquement cohérente) ; spec + Task 7 mises à jour. Conservés en l'état : "Closing bank accounts" (libellé exact de la landing, prime sur le parallélisme), "Someone else close" (mineur). Heads-up Task 6 : vérifier visuellement que `s2_q` ne wrap pas mal dans la carte (l'espace ASCII avant « ? » est un point de coupe valide).
 - **Task 2 (revue qualité)** : approuvée sans correctif. Couverture des glyphes français vérifiée par décodage des cmap woff2 (à è é ê ô ç É — ' '). Contrainte propagée à la **Task 3** : espaces ASCII uniquement dans les chaînes (pas d'espace fine insécable U+202F, absente du subset latin). Mineurs acceptés sans action (robustesse de `fetch-fonts.mjs`, outil dev ponctuel — polices déjà committées). Ajout en **Task 11** : garde-fou de fraîcheur du build.
 - **Task 1 (revue qualité)** : ajout de `.sort()` sur la liste des woff2 dans `fontsCss()` (`build.mjs`) — `readdirSync` ne garantit pas l'ordre selon le filesystem, ce qui aurait cassé le déterminisme byte-identique du livrable dès la Task 2. Corrigé dans le code du Step 2. Reportés en Task 2 (mineurs de revue) : garde sur l'absence du bloc strings dans verify (message lisible au lieu d'un TypeError), durcissement du check réseau (`//`, `import(`, `WebSocket`) avec exclusion du bloc GSAP vendored si faux positif, suppression du filtre mort `startsWith("{{")`, validation du slug de police dans `fontsCss()` (throw explicite), remplacement `{{FONTS_CSS}}` par fonction.
 
@@ -380,7 +381,7 @@ git commit -m "feat(motion): GSAP 3.12.5 vendored + Inter/Inter Tight woff2 emba
     "s2_o2": "My spouse or partner",
     "s2_o3": "Someone else close",
     "s3_cap": "Your path, in the right order.",
-    "s3_title": "Your tasks",
+    "s3_title": "Your steps",
     "s3_count": "2 of 8 completed",
     "s3_r1": "Death certificate",
     "s3_r2": "Closing bank accounts",
@@ -776,8 +777,9 @@ function scene3() {
   // la carte « s'étire » (continuité avec la carte S2 qui vient de sortir au même endroit)
   tl.to("#s3-card", { opacity: 1, y: 0, scaleY: 1, duration: 0.85, ease: "power3.out" }, 0.35);
   tl.to("#s3-cap", { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.65);
-  // progression 25 % → 50 % et passage « En cours » à ~13,5 s master (2,8 s locale)
-  tl.to("#s3-bar", { width: "50%", duration: 1.3, ease: "power2.inOut" }, 2.5);
+  // progression 25 % → ~31 % (douce, cohérente avec « 2 sur 8 complétées » : l'étape passe « en cours », pas « complétée »)
+  // et passage « En cours » à ~13,5 s master (2,8 s locale)
+  tl.to("#s3-bar", { width: "31%", duration: 1.3, ease: "power2.inOut" }, 2.5);
   tl.to("#s3-dot2", { background: "#6B5CE7", borderColor: "#6B5CE7", duration: 0.4 }, 2.8);
   tl.to("#s3-tag2", { opacity: 1, scale: 1, duration: 0.45, ease: "back.out(1.8)" }, 2.95);
   // sortie 16,9 → 17,5 master = 6,2 → 6,8 locale
@@ -794,7 +796,7 @@ tl.add(scene3(), 10.7);
 node motion/build.mjs && node motion/verify.mjs
 ```
 
-Console : `pause(12.2)` → roadmap posée, barre à 25 %, ligne 2 pastille grise SANS badge. `pause(14.5)` → barre à 50 %, pastille violette, badge « EN COURS » violet. `pause(17.2)` → carte en sortie. La coche verte « Acte de décès / COMPLÉTÉ » est visible dès l'entrée.
+Console : `pause(12.2)` → roadmap posée, barre à 25 %, ligne 2 pastille grise SANS badge. `pause(14.5)` → barre à ~31 %, pastille violette, badge « EN COURS » violet. `pause(17.2)` → carte en sortie. La coche verte « Acte de décès / COMPLÉTÉ » est visible dès l'entrée.
 
 - [ ] **Step 3 : Commit**
 
