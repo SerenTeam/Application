@@ -17,6 +17,7 @@ function fontsCss() {
   catch { return "/* pas de polices embarquées (Task 2) */"; }
   return dir.map(f => {
     const [slug, weight] = f.replace(".woff2", "").split("-");
+    if (!FAMILY[slug] || !/^\d+$/.test(weight)) throw new Error("nom de police inattendu : " + f);
     const b64 = readFileSync(join(SRC, "fonts", f)).toString("base64");
     return `@font-face{font-family:"${FAMILY[slug]}";font-style:normal;font-weight:${weight};` +
       `src:url(data:font/woff2;base64,${b64}) format("woff2");font-display:block;}`;
@@ -25,6 +26,6 @@ function fontsCss() {
 
 let html = readFileSync(join(SRC, "template.html"), "utf8");
 html = html.replaceAll(/\{\{INLINE:([^}]+)\}\}/g, (_, p) => readFileSync(join(SRC, p.trim()), "utf8"));
-html = html.replace("{{FONTS_CSS}}", fontsCss());
+html = html.replace("{{FONTS_CSS}}", () => fontsCss());
 writeFileSync(join(ROOT, "seren-motion.html"), html);
 console.log(`OK seren-motion.html (${Math.round(html.length / 1024)} KB)`);
