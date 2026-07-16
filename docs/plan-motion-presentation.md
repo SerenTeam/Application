@@ -21,6 +21,7 @@
 ## Notes post-revue
 
 - **Task 1 (implémentation)** : le check n° 5 de `verify.mjs` tel que planifié flaggait le `<title>` du template (« Seren — Motion de présentation »). Décision : le `<title>` est du chrome navigateur, invisible pendant la lecture — il est **exempté** du check (dont l'objet est qu'aucun texte de *scène* ne contourne l'i18n). Le code du Step 6 ci-dessous intègre le correctif (`.replace(/<title>…/`). Le title reste en dur, non i18n (YAGNI).
+- **Task 2 (revue qualité)** : approuvée sans correctif. Couverture des glyphes français vérifiée par décodage des cmap woff2 (à è é ê ô ç É — ' '). Contrainte propagée à la **Task 3** : espaces ASCII uniquement dans les chaînes (pas d'espace fine insécable U+202F, absente du subset latin). Mineurs acceptés sans action (robustesse de `fetch-fonts.mjs`, outil dev ponctuel — polices déjà committées). Ajout en **Task 11** : garde-fou de fraîcheur du build.
 - **Task 1 (revue qualité)** : ajout de `.sort()` sur la liste des woff2 dans `fontsCss()` (`build.mjs`) — `readdirSync` ne garantit pas l'ordre selon le filesystem, ce qui aurait cassé le déterminisme byte-identique du livrable dès la Task 2. Corrigé dans le code du Step 2. Reportés en Task 2 (mineurs de revue) : garde sur l'absence du bloc strings dans verify (message lisible au lieu d'un TypeError), durcissement du check réseau (`//`, `import(`, `WebSocket`) avec exclusion du bloc GSAP vendored si faux positif, suppression du filtre mort `startsWith("{{")`, validation du slug de police dans `fontsCss()` (throw explicite), remplacement `{{FONTS_CSS}}` par fonction.
 
 ---
@@ -968,6 +969,7 @@ git status --porcelain -- src/ server/ tests/ package.json vite.config.ts
 Attendu : build + tests verts, la commande `git status` ci-dessus ne liste **que** les fichiers du chantier courriers déjà présents avant (letter-templates), rien causé par ce chantier.
 
 - [ ] **Critère 8 — poids & fluidité** : `verify.mjs` ✅ poids ; visuellement aucune saccade sur un cycle complet (60 fps perçu ; en cas de doute, onglet Performance du navigateur, pas de long frame > 32 ms hors chargement).
+- [ ] **Fraîcheur du build** (note post-revue Task 2) : `node motion/build.mjs && git diff --exit-code -- motion/seren-motion.html` → diff vide (le livrable committé correspond bien aux sources).
 - [ ] **Documenter** : si des valeurs (timings, tailles) ont été ajustées en cours d'exécution, les reporter en « note post-revue » en tête de ce plan.
 - [ ] **Merge fast-forward dans main** (ne pas pousser — Arnaud le fait) :
 
