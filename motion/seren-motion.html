@@ -45,7 +45,7 @@ body.idle { cursor: none; }
 #s2-card h3 { font-size: 41px; font-weight: 500; color: #1D1D1D; margin-bottom: 38px; }
 .opt { display: flex; align-items: center; gap: 24px; height: 106px; border: 2px solid #D9DBE0; border-radius: 99px; padding: 0 38px; font-size: 35px; font-weight: 500; color: #42424A; margin-top: 22px; background: #fff; }
 .opt .ring { width: 41px; height: 41px; border-radius: 50%; border: 3px solid #D9DBE0; flex: none; position: relative; }
-.opt .ring::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: #006BFA; transform: scale(0); }
+.opt .ring::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: #006BFA; transform: scale(var(--sel, 0)); transition: none; }
 
 /* ---------- S3 : roadmap ---------- */
 #s3-card { width: 1060px; padding: 58px 67px; }
@@ -249,13 +249,13 @@ const $ = sel => document.querySelector(sel);
 const $$ = sel => [...document.querySelectorAll(sel)];
 const ROTATIONS = [-11, 9, 7, -14, 5, -7, 15, -5, 3, -8, 6, 12, 4, -18]; // p1..p14
 
-// S1 (0 → 5,6 s) : cascade accélérée de 14 papiers, captions, puis convergence vers le centre
+// S1 (0 → ~5,76 s) : cascade accélérée de 14 papiers, captions, puis convergence vers le centre
 function scene1() {
   const tl = gsap.timeline();
   const papers = $$("#s1 .paper");
   // reset (rejoué à chaque cycle → premier frame toujours identique)
   tl.set("#s1", { visibility: "visible" }, 0);
-  tl.set(papers, { opacity: 0, scale: 0.94, y: 22, rotation: i => ROTATIONS[i] }, 0);
+  tl.set(papers, { opacity: 0, scale: 0.94, x: 0, y: 22, rotation: i => ROTATIONS[i] }, 0);
   tl.set(["#s1-l1", "#s1-l2"], { opacity: 0, y: 24 }, 0);
   tl.set("#white-overlay", { opacity: 0 }, 0);
 
@@ -268,7 +268,7 @@ function scene1() {
     t += gaps[i];
     tl.to(p, { opacity: 1, scale: 1, y: 0, duration: 0.5, ease: "power2.out" }, t);
     // micro-flottement calé sur la fenêtre restante : chaque papier redescend pile à 4,9 s
-    // (départ de la convergence) → la scène garde une durée structurelle exacte de 5,66 s
+    // (départ de la convergence) ; la scène se termine à ~5,76 s (queue du stagger de convergence)
     const floatSpan = 4.9 - (t + 0.5);
     if (floatSpan > 0.8) tl.to(p, { y: "-=7", duration: floatSpan / 2, ease: "sine.inOut", yoyo: true, repeat: 1 }, t + 0.5);
   });
@@ -280,15 +280,34 @@ function scene1() {
   }, 4.9);
   tl.to(["#s1-l1", "#s1-l2"], { opacity: 0, y: -18, duration: 0.45, ease: "power2.in" }, 4.95);
   tl.set("#s1", { visibility: "hidden" }, 5.65);
-  // remet x/y/scale pour le cycle suivant (le set d'ouverture ne couvre pas x)
-  tl.set(papers, { x: 0 }, 5.66);
+  return tl;
+}
+
+// S2 (posée à 5,2 s ; visible 5,5 → 11) : la carte accueille les papiers convergés, une réponse se choisit
+function scene2() {
+  const tl = gsap.timeline();
+  tl.set("#s2", { visibility: "visible" }, 0);
+  tl.set("#s2-cap", { opacity: 0, y: 20 }, 0);
+  tl.set("#s2-card", { opacity: 0, y: 46, scale: 0.96 }, 0);
+  tl.set(".opt.sel", { background: "#fff", borderColor: "#D9DBE0", "--sel": 0 }, 0);
+
+  // entrée dans la continuité de la convergence des papiers (ils « deviennent » la carte)
+  tl.to("#s2-card", { opacity: 1, y: 0, scale: 1, duration: 0.8, ease: "power3.out" }, 0.45);
+  tl.to("#s2-cap", { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.75);
+  // sélection de la 1re réponse à ~8,5 s master (3,3 s locale)
+  tl.to(".opt.sel", { background: "#EAF3FE", borderColor: "#006BFA", duration: 0.4, ease: "power1.inOut" }, 3.3);
+  tl.to(".opt.sel", { "--sel": 1, duration: 0.35, ease: "back.out(2)" }, 3.45);
+  // sortie 10,4 → 11 (master) = 5,2 → 5,8 locale
+  tl.to(["#s2-cap", "#s2-card"], { opacity: 0, y: -26, duration: 0.55, ease: "power2.in", stagger: 0.06 }, 5.2);
+  tl.set("#s2", { visibility: "hidden" }, 5.85);
   return tl;
 }
 
 // ---------- master ----------
 const tl = gsap.timeline({ repeat: -1 });
 tl.add(scene1(), 0);
-// scene2..5 ajoutées dans les tasks suivantes
+tl.add(scene2(), 5.2);
+// scene3..5 ajoutées dans les tasks suivantes
 window.SEREN_MOTION = { tl, applyLang }; // API debug/vérification
 
 // ---------- mode debug : ?scene=s3 fige une scène (contrôle des styles/composition) ----------

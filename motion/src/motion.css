@@ -36,7 +36,7 @@ body.idle { cursor: none; }
 #s2-card h3 { font-size: 41px; font-weight: 500; color: #1D1D1D; margin-bottom: 38px; }
 .opt { display: flex; align-items: center; gap: 24px; height: 106px; border: 2px solid #D9DBE0; border-radius: 99px; padding: 0 38px; font-size: 35px; font-weight: 500; color: #42424A; margin-top: 22px; background: #fff; }
 .opt .ring { width: 41px; height: 41px; border-radius: 50%; border: 3px solid #D9DBE0; flex: none; position: relative; }
-.opt .ring::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: #006BFA; transform: scale(0); }
+.opt .ring::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: #006BFA; transform: scale(var(--sel, 0)); transition: none; }
 
 /* ---------- S3 : roadmap ---------- */
 #s3-card { width: 1060px; padding: 58px 67px; }
