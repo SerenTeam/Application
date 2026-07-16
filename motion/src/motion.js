@@ -144,7 +144,7 @@ function scene5() {
   tl.to("#s5-bg", { scale: 1, duration: 0.95, ease: "power2.inOut" }, 0.5);
   tl.to("#s5-logo", { opacity: 1, scale: 1, duration: 0.8, ease: "power2.out" }, 1.1);
   tl.to("#s5-tag", { opacity: 1, y: 0, duration: 0.7, ease: "power2.out" }, 2.1);
-  // hold ~3 s puis fondu blanc de rebouclage 28,8 → 30 (master)
+  // hold ~3 s puis fondu blanc de rebouclage 28,8 → 30 (master) — l'overlay est remis à 0 par scene1 (set à master 0)
   tl.to("#white-overlay", { opacity: 1, duration: 1.2, ease: "power1.inOut" }, 5.1);
   tl.set("#s5", { visibility: "hidden" }, 6.3);
   return tl;
@@ -157,9 +157,28 @@ tl.add(scene2(), 5.2);
 tl.add(scene3(), 10.7);
 tl.add(scene4(), 17.2);
 tl.add(scene5(), 23.7);
-// La master doit durer exactement 30 s (le fondu blanc se termine à 30,0)
+// La master doit durer ≈ 30 s (tolérance 0,15 — le fondu blanc se termine à 30,0)
 console.assert(Math.abs(tl.duration() - 30) < 0.15, "durée master ≈ 30 s, obtenu : " + tl.duration());
 window.SEREN_MOTION = { tl, applyLang }; // API debug/vérification
+
+// ---------- contrôles (aucune UI visible) : Espace pause · F plein écran · L langue ----------
+addEventListener("keydown", e => {
+  if (e.code === "Space") { e.preventDefault(); tl.paused(!tl.paused()); }
+  else if (e.key === "f" || e.key === "F") {
+    document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  }
+  else if (e.key === "l" || e.key === "L") applyLang(lang === "fr" ? "en" : "fr");
+});
+
+// curseur masqué après 3 s d'inactivité (fond de salle)
+let idleTimer;
+function wakeCursor() {
+  document.body.classList.remove("idle");
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => document.body.classList.add("idle"), 3000);
+}
+addEventListener("mousemove", wakeCursor);
+wakeCursor();
 
 // ---------- mode debug : ?scene=s3 fige une scène (contrôle des styles/composition) ----------
 const debugScene = new URLSearchParams(location.search).get("scene");
