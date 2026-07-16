@@ -21,6 +21,7 @@
 ## Notes post-revue
 
 - **Task 1 (implémentation)** : le check n° 5 de `verify.mjs` tel que planifié flaggait le `<title>` du template (« Seren — Motion de présentation »). Décision : le `<title>` est du chrome navigateur, invisible pendant la lecture — il est **exempté** du check (dont l'objet est qu'aucun texte de *scène* ne contourne l'i18n). Le code du Step 6 ci-dessous intègre le correctif (`.replace(/<title>…/`). Le title reste en dur, non i18n (YAGNI).
+- **Task 5 (revue qualité)** : approuvée — hygiène de boucle et robustesse au seek vérifiées empiriquement (cycles byte-identiques, 0 frame de glitch au wrap). Durée brute réelle : **5,756 s** (queue du stagger de convergence au-delà des marqueurs 5,65/5,66) — acceptée, le point de bouclage final sera 30,0 s (scène 5). Repliés en **Task 6** (retouche scene1) : `x: 0` ajouté au set d'ouverture + suppression du set redondant à 5,66 (l'hygiène ne doit pas dépendre de l'ordre de rendu interne de GSAP au wrap) + commentaire de durée corrigé. Reporté en **Task 11** : mesure fps convergence (will-change si besoin). Le code du Step 1 ci-dessous intègre ces retouches ; le code committé en Task 5 les recevra en Task 6.
 - **Task 5 (implémentation)** : deux bugs du plan détectés par l'implémenteur. ① Attendus des `pause()` erronés (4 papiers à 2,5 s, pas ~8 ; convergence visible à 5,5 s, pas 5,3 — ease back-loaded) : attendus corrigés ci-dessous. ② **Durée structurelle de scene1 gonflée à 7,06 s** : les flottements fixes (1,6 s ×2) de p7/p8 débordaient la fin de scène, faussant le point de bouclage du `repeat:-1` (+1,4 s de blanc par cycle à ce stade). Correctif : flottements **calés sur la fenêtre restante** (`floatSpan = 4.9 − (t+0.5)`, appliqué si > 0,8 s) — p1→p9 flottent en durées décroissantes, fin exacte au départ de la convergence, durée de scène = 5,66 s. Code du Step 1 corrigé ci-dessous.
 - **Task 4 (revue qualité)** : approuvée sans correctif. Mineurs assumés : gris d'illustration `#EFEFF3`/`#E4E6EA` hors palette (décor papier/skeleton, volontaire) ; convention locale `.font-display` = Inter (inverse de DESIGN.md — fichier autonome, commenté) ; ombres mono-couche proportionnées. Rappels QA : sans `?scene=` l'écran reste blanc jusqu'à la Task 5 (attendu) ; re-vérifier le point bleu en `?scene=s2` après le branchement `var(--sel)` de la Task 6.
 - **Task 4 (revue spec)** : une déviation d'un token détectée dans le bloc debug (`querySelector(".opt.sel")` au lieu de `".opt.sel .ring"`). Décision : le code committé est conservé — il est fonctionnellement équivalent (héritage de la CSS var jusqu'au `::after`) et **plus cohérent** avec le bloc de remplacement de la Task 5 et la cible GSAP de la Task 6 (`tl.set(".opt.sel", …)`). Le plan (Task 4 Step 4) est aligné sur le code.
@@ -629,13 +630,13 @@ const $ = sel => document.querySelector(sel);
 const $$ = sel => [...document.querySelectorAll(sel)];
 const ROTATIONS = [-11, 9, 7, -14, 5, -7, 15, -5, 3, -8, 6, 12, 4, -18]; // p1..p14
 
-// S1 (0 → 5,6 s) : cascade accélérée de 14 papiers, captions, puis convergence vers le centre
+// S1 (0 → ~5,76 s) : cascade accélérée de 14 papiers, captions, puis convergence vers le centre
 function scene1() {
   const tl = gsap.timeline();
   const papers = $$("#s1 .paper");
   // reset (rejoué à chaque cycle → premier frame toujours identique)
   tl.set("#s1", { visibility: "visible" }, 0);
-  tl.set(papers, { opacity: 0, scale: 0.94, y: 22, rotation: i => ROTATIONS[i] }, 0);
+  tl.set(papers, { opacity: 0, scale: 0.94, x: 0, y: 22, rotation: i => ROTATIONS[i] }, 0);
   tl.set(["#s1-l1", "#s1-l2"], { opacity: 0, y: 24 }, 0);
   tl.set("#white-overlay", { opacity: 0 }, 0);
 
@@ -648,7 +649,7 @@ function scene1() {
     t += gaps[i];
     tl.to(p, { opacity: 1, scale: 1, y: 0, duration: 0.5, ease: "power2.out" }, t);
     // micro-flottement calé sur la fenêtre restante : chaque papier redescend pile à 4,9 s
-    // (départ de la convergence) → la scène garde une durée structurelle exacte de 5,66 s
+    // (départ de la convergence) ; la scène se termine à ~5,76 s (queue du stagger de convergence)
     const floatSpan = 4.9 - (t + 0.5);
     if (floatSpan > 0.8) tl.to(p, { y: "-=7", duration: floatSpan / 2, ease: "sine.inOut", yoyo: true, repeat: 1 }, t + 0.5);
   });
@@ -660,8 +661,6 @@ function scene1() {
   }, 4.9);
   tl.to(["#s1-l1", "#s1-l2"], { opacity: 0, y: -18, duration: 0.45, ease: "power2.in" }, 4.95);
   tl.set("#s1", { visibility: "hidden" }, 5.65);
-  // remet x/y/scale pour le cycle suivant (le set d'ouverture ne couvre pas x)
-  tl.set(papers, { x: 0 }, 5.66);
   return tl;
 }
 
@@ -695,7 +694,7 @@ if (debugScene && document.getElementById(debugScene)) {
 node motion/build.mjs && node motion/verify.mjs
 ```
 
-Ouvrir le fichier. Console : `SEREN_MOTION.tl.pause(2.5)` → 4 papiers visibles, 2 lignes de texte. `SEREN_MOTION.tl.pause(4.5)` → 14 papiers. `SEREN_MOTION.tl.pause(5.5)` → convergence centrale bien visible (l'ease `power3.in` charge la fin de fenêtre). `SEREN_MOTION.tl.duration()` → 5.66. `SEREN_MOTION.tl.play()` → la cascade s'accélère visiblement, flottement doux, aucun à-coup.
+Ouvrir le fichier. Console : `SEREN_MOTION.tl.pause(2.5)` → 4 papiers visibles, 2 lignes de texte. `SEREN_MOTION.tl.pause(4.5)` → 14 papiers. `SEREN_MOTION.tl.pause(5.5)` → convergence centrale bien visible (l'ease `power3.in` charge la fin de fenêtre). `SEREN_MOTION.tl.duration()` → ~5.76 (queue du stagger de convergence). `SEREN_MOTION.tl.play()` → la cascade s'accélère visiblement, flottement doux, aucun à-coup.
 
 - [ ] **Step 4 : Commit**
 
@@ -977,6 +976,7 @@ Attendu : build + tests verts, la commande `git status` ci-dessus ne liste **que
 
 - [ ] **Critère 8 — poids & fluidité** : `verify.mjs` ✅ poids ; visuellement aucune saccade sur un cycle complet (60 fps perçu ; en cas de doute, onglet Performance du navigateur, pas de long frame > 32 ms hors chargement).
 - [ ] **Fraîcheur du build** (note post-revue Task 2) : `node motion/build.mjs && git diff --exit-code -- motion/seren-motion.html` → diff vide (le livrable committé correspond bien aux sources).
+- [ ] **Perf convergence S1** (note post-revue Task 5) : mesurer la fluidité pendant la convergence (14 papiers ombrés en scale simultané) ; si saccade constatée, ajouter `will-change: transform` à `.paper` (la spec le réserve aux papiers de S1).
 - [ ] **Documenter** : si des valeurs (timings, tailles) ont été ajustées en cours d'exécution, les reporter en « note post-revue » en tête de ce plan.
 - [ ] **Merge fast-forward dans main** (ne pas pousser — Arnaud le fait) :
 
