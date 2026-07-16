@@ -331,14 +331,14 @@ function scene3() {
 function scene4() {
   const tl = gsap.timeline();
   tl.set("#s4", { visibility: "visible" }, 0);
-  tl.set("#s4-cap", { opacity: 0, y: 20 }, 0);
+  tl.set("#s4-cap", { opacity: 0, y: 20, scale: 1 }, 0);
   tl.set("#s4-card", { opacity: 0, y: 40, scale: 0.94, transformOrigin: "50% 50%" }, 0);
   tl.set($$("#s4 .wline"), { width: 0 }, 0);
   tl.set("#s4-sent", { opacity: 0, x: -14 }, 0);
 
   tl.to("#s4-card", { opacity: 1, y: 0, scale: 1, duration: 0.8, ease: "power3.out" }, 0.35);
   tl.to("#s4-cap", { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.65);
-  // les lignes « s'écrivent » (largeurs finales variées), 19 → 21,3 s master
+  // les lignes « s'écrivent » (largeurs finales variées), 19 → 21,4 s master
   const widths = ["96%", "88%", "92%", "58%"];
   $$("#s4 .wline").forEach((l, i) => {
     tl.to(l, { width: widths[i], duration: 0.75, ease: "power1.inOut" }, 1.8 + i * 0.55);
