@@ -43,7 +43,7 @@ src/
 server/
 ├── server.js         # Express : auth proxy, produit transmission (/api/demo/*), static serving
 ├── lib/              # Moteur questionnaire v2, catalogue questions, rédacteur LLM, sessions
-└── routes/           # Routers Express (questionnaire v2)
+└── routes/           # Routers Express (questionnaire v2, letters — envoi email v1)
 ```
 
 ### Flux principal
@@ -73,6 +73,9 @@ Fichier `.env` à la racine (gitignored). Variables requises :
 - `MISTRAL_API_KEY` — clé API Mistral
 - `MISTRAL_MODEL` — modèle du rédacteur questionnaire v2 (défaut : `mistral-small-latest`)
 - `MISTRAL_AGENT_ID` — agent du produit transmission uniquement (`/api/demo/*`)
+- `RESEND_API_KEY`, `RESEND_FROM` — envoi des courriers par email (canal v1) ; absents → 503 propre, la feature est inerte
+- `RESEND_WEBHOOK_SECRET` — vérification de signature svix du webhook `/api/letters/webhook`
+- `WEBHOOK_RPC_SECRET` — secret partagé avec la base (table `webhook_config`) pour la RPC de mise à jour des statuts ; ⚠️ doit AUSSI être inséré en base : `insert into webhook_config (id, rpc_secret) values (1, '<valeur>');`
 - `CORS_ORIGIN` — origines autorisées, séparées par des virgules (défaut : `http://localhost:5173,http://localhost:3000`). À définir en production (ex. `https://app.seren.fr`)
 
 ## Workflow & état du projet (source de vérité — survit aux réinitialisations de mémoire)
@@ -81,7 +84,8 @@ Fichier `.env` à la racine (gitignored). Variables requises :
 - **Fait** : Plans 1, 2 & 3 (refonte questionnaire v2 : moteur serveur + rédacteur Mistral à fallback + sessions Supabase + frontend récap ; puis lot éditorial 13 étapes sourcées, rédacteur options-aware, rate limiting /start+/resume, reprise de session, invariant par valeur) livrés, mergés, validés E2E réel. Plan 4 (i18n FR/EN : détection device + toggle, dictionnaires typés, catalogues jumeaux, serveur bilingue — spec `docs/design-i18n.md`) livré, mergé, validé E2E réel. Plan 5 (refonte UI : concordance avec le design system de la landing `DESIGN.md` — spec `docs/design-refonte-ui.md`) livré, mergé, validé E2E visuel. Motion de présentation (chantier hors-app : `motion/seren-motion.html` — 30 s en boucle invisible, FR/EN via touche L, Espace/F, autonome/offline, régénérable par `node motion/build.mjs` + `verify.mjs` ; spec `docs/design-motion-presentation.md`) livré, mergé, 10/10 critères — reste le visionnage final humain sur écran réel (fluidité perçue, vraie touche F, `file://`).
 - **En attente (USER STEPS)** : `supabase login` + `link` + baseline par projet (voir `docs/runbook-supabase-cli.md`) — puis `supabase db push` appliquera la migration pg_cron en attente ; relecture juridique/éditoriale des 14 étapes éditoriales (13 du Plan 3 + pension d'orphelin/ASF).
 - **Décisions produit ouvertes** : correctif RLS `transmissions` (exposition aux authentifiés — proposition dans `docs/audit-rls.md` F1, produit gelé) ; droit à l'effacement RGPD (audit F2) ; personas non couvertes du questionnaire (élargir ou non).
-- **À exécuter** : `docs/design-envoi-courriers.md` (feature envoi — prochain chantier). Points-attention §1 (CLI + runbook) et §4 (audit RLS) clos ; pension d'orphelin livrée (étape ASF). Reste au backlog : décès à l'étranger (exclu v2), rate limiter multi-instances (inutile en mono-instance).
+- **Fait (suite)** : envoi de courriers v1 canal email (`docs/plan-envoi-courriers.md` — Resend, letter_sends, webhook signé + secret RPC en base, panneau d'envoi FR/EN) livré et mergé ; E2E live et activation = USER STEPS (compte Resend, migration, secrets). v2 (LRE Maileva) au backlog avec le modèle économique à trancher.
+- **À exécuter** : v2/v3 de `docs/design-envoi-courriers.md` (LRE/papier, portails). Points-attention §1 (CLI + runbook) et §4 (audit RLS) clos ; pension d'orphelin livrée (étape ASF). Reste au backlog : décès à l'étranger (exclu v2), rate limiter multi-instances (inutile en mono-instance).
 - **Compte de test E2E** (jetable, projet de dev) : `test.e2e.claude@seren-test.fr` / `TestSeren2026!` — confirmation email désactivée sur le projet Supabase.
 - **Produit transmission** (`/api/demo/*`, `DemoPage`, `AccessPage`, table `transmissions`) : produit DISTINCT du questionnaire, toujours sur l'ancien agent Mistral (`MISTRAL_AGENT_ID`) et une `Map()` mémoire — **ne pas toucher sans décision explicite**.
 - **Déploiement** : Render (`https://application-0vxw.onrender.com`). Les variables `VITE_*` sont figées au build → tout changement de `.env` côté client exige un redéploiement. `CORS_ORIGIN` recommandé sur Render.
