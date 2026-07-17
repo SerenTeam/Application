@@ -302,6 +302,19 @@ export const STRINGS_EN: Strings = {
     noteLabel: 'Note (optional)',
     notePlaceholder: 'E.g.: Sent by registered letter with acknowledgement of receipt',
     saving: 'Saving...',
+    send: {
+      recipientLabel: 'Recipient email',
+      recipientPlaceholder: 'email@example.com',
+      cta: 'Send by email',
+      sending: 'Sending...',
+      sentBadge: 'Sent',
+      deliveredBadge: 'Delivered',
+      alreadySentBadge: 'Already sent',
+      inProgress: 'This letter is already being sent, please wait a moment.',
+      failedBadge: 'Sending failed',
+      notConfigured: 'Email sending is not yet available at the moment.',
+      networkError: 'Something went wrong. You can try again.',
+    },
   },
 
   profile: {

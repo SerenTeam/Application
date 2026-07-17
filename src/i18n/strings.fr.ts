@@ -302,6 +302,19 @@ export const STRINGS_FR = {
     noteLabel: 'Note (optionnel)',
     notePlaceholder: 'Ex : Envoyé en recommandé AR',
     saving: 'Enregistrement...',
+    send: {
+      recipientLabel: 'Email du destinataire',
+      recipientPlaceholder: 'email@exemple.fr',
+      cta: 'Envoyer par email',
+      sending: 'Envoi...',
+      sentBadge: 'Envoyé',
+      deliveredBadge: 'Distribué',
+      alreadySentBadge: 'Déjà envoyé',
+      inProgress: 'Un envoi de ce courrier est déjà en cours, patientez un instant.',
+      failedBadge: "Échec de l'envoi",
+      notConfigured: "L'envoi d'email n'est pas encore configuré pour le moment.",
+      networkError: 'Une erreur est survenue. Vous pouvez réessayer.',
+    },
   },
 
   profile: {

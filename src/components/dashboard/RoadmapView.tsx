@@ -9,6 +9,7 @@ import { PillBadge } from '@/components/ui/pill-badge'
 import { LetterPreview } from '@/components/letter/LetterPreview'
 import { LetterVariablesForm } from '@/components/letter/LetterVariablesForm'
 import { LetterActions } from '@/components/letter/LetterActions'
+import { LetterSendPanel } from '@/components/letter/LetterSendPanel'
 import { MarkAsSentButton } from '@/components/letter/MarkAsSentButton'
 import { Mail, Circle, CircleCheck } from 'lucide-react'
 import type { RoadmapPhase, RoadmapStep, ProgressData } from './types'
@@ -294,6 +295,17 @@ function StepLetterSection({
 
       {/* Preview */}
       <LetterPreview content={resolvedLetter} notes={template.notes} />
+
+      {/* Envoi 1 clic — canal email uniquement (employeur, mutuelle) */}
+      {template.channel === 'email' && (
+        <LetterSendPanel
+          templateId={template.id}
+          stepId={stepDbId}
+          subject={resolvedSubject}
+          body={resolvedLetter}
+          isComplete={isComplete}
+        />
+      )}
 
       {/* Actions */}
       <div className="flex flex-wrap gap-3 items-start">
