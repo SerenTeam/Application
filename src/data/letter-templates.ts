@@ -16,6 +16,8 @@ export interface LetterTemplate {
   variables: LetterVariable[]
   tone: 'formel' | 'semi-formel'
   notes?: string
+  channel: 'email' | 'lre' | 'papier' | 'portail'
+  portal_url?: string
 }
 
 // ── Variables partagées ─────────────────────────────────────────────────
@@ -79,6 +81,7 @@ ${SIGNATURE}`,
     ],
     tone: 'formel',
     notes: 'Envoi recommandé avec accusé de réception. Joindre une copie de l\'acte de décès.',
+    channel: 'lre',
   },
 
   // 2. Assurance — Déclaration de décès
@@ -118,6 +121,7 @@ ${SIGNATURE}`,
     ],
     tone: 'formel',
     notes: 'Envoi recommandé avec accusé de réception. Joindre une copie de l\'acte de décès.',
+    channel: 'lre',
   },
 
   // 3. Assurance Vie — Demande de versement
@@ -159,6 +163,7 @@ ${SIGNATURE}`,
     ],
     tone: 'formel',
     notes: 'Envoi recommandé avec AR. Joindre : acte de décès, pièce d\'identité, justificatif de qualité de bénéficiaire.',
+    channel: 'lre',
   },
 
   // 4. Employeur — Notification
@@ -200,6 +205,7 @@ ${SIGNATURE}`,
     ],
     tone: 'semi-formel',
     notes: 'Email ou courrier simple. Joindre une copie de l\'acte de décès.',
+    channel: 'email',
   },
 
   // 5. CAF — Notification
@@ -236,6 +242,8 @@ ${SIGNATURE}`,
     ],
     tone: 'formel',
     notes: 'Espace CAF en ligne (caf.fr) ou courrier simple. Joindre l\'acte de décès.',
+    channel: 'portail',
+    portal_url: 'https://www.caf.fr',
   },
 
   // 6. CARSAT — Notification
@@ -273,6 +281,7 @@ ${SIGNATURE}`,
     ],
     tone: 'formel',
     notes: 'Envoi recommandé avec AR. Joindre l\'acte de décès.',
+    channel: 'lre',
   },
 
   // 7. Mutuelle — Résiliation
@@ -309,6 +318,7 @@ ${SIGNATURE}`,
     ],
     tone: 'formel',
     notes: 'Email ou courrier simple. Joindre l\'acte de décès.',
+    channel: 'email',
   },
 
   // 8. Bailleur — Notification
@@ -345,6 +355,7 @@ ${SIGNATURE}`,
     ],
     tone: 'formel',
     notes: 'Envoi recommandé avec AR obligatoire. Joindre l\'acte de décès.',
+    channel: 'lre',
   },
 
   // 9. CPAM — Notification
@@ -382,6 +393,8 @@ ${SIGNATURE}`,
     ],
     tone: 'formel',
     notes: 'Espace ameli.fr ou courrier simple. Joindre l\'acte de décès.',
+    channel: 'portail',
+    portal_url: 'https://www.ameli.fr',
   },
 
   // 10. Impôts (DGFiP) — Notification
@@ -419,6 +432,8 @@ ${SIGNATURE}`,
     ],
     tone: 'formel',
     notes: 'Espace impots.gouv.fr (messagerie sécurisée) ou courrier simple.',
+    channel: 'portail',
+    portal_url: 'https://www.impots.gouv.fr',
   },
 ]
 
