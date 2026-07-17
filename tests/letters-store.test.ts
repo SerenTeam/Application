@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — module JS serveur
-import { createSend, listSends, updateSendByProviderRef } from '../server/lib/letters-store.js'
+import { createSend, listSends, updateSendByProviderRef, markSendResult, claimRetry } from '../server/lib/letters-store.js'
 
 /**
  * Fake du query-builder Supabase : chaîne fluide qui enregistre les appels et résout
@@ -13,7 +13,7 @@ function fakeClient(results: Array<{ data?: unknown; error?: { message: string; 
   let i = 0
   const nextResult = () => results[Math.min(i++, results.length - 1)]
   const chain: Record<string, unknown> = {}
-  for (const m of ['from', 'insert', 'select', 'eq', 'order', 'update', 'delete']) {
+  for (const m of ['from', 'insert', 'select', 'eq', 'lt', 'order', 'update', 'delete']) {
     chain[m] = (...args: unknown[]) => {
       calls.push([m, args])
       return chain
@@ -80,6 +80,59 @@ describe('letters-store', () => {
     it('propage les erreurs Supabase', async () => {
       const { client } = fakeClient([{ data: null, error: { message: 'boom' } }])
       await expect(listSends(client, 'u1')).rejects.toThrow(/boom/)
+    })
+  })
+
+  describe('markSendResult', () => {
+    it('met à jour la ligne par id et retourne la ligne mise à jour', async () => {
+      const updated = { id: 's1', status: 'sent', provider_ref: 'prov-1', sent_at: '2026-07-17T00:00:00.000Z' }
+      const { client, calls } = fakeClient([{ data: updated, error: null }])
+      const result = await markSendResult(client, 's1', { status: 'sent', provider_ref: 'prov-1', sent_at: '2026-07-17T00:00:00.000Z' })
+      expect(result).toEqual(updated)
+      expect(calls).toContainEqual(['from', ['letter_sends']])
+      expect(calls).toContainEqual(['update', [{ status: 'sent', provider_ref: 'prov-1', sent_at: '2026-07-17T00:00:00.000Z' }]])
+      expect(calls).toContainEqual(['eq', ['id', 's1']])
+    })
+
+    it('propage les erreurs Supabase en exceptions lisibles', async () => {
+      const { client } = fakeClient([{ data: null, error: { message: 'boom' } }])
+      await expect(markSendResult(client, 's1', { status: 'failed', error: 'boom' })).rejects.toThrow(/boom/)
+    })
+  })
+
+  describe('claimRetry', () => {
+    it('ligne failed : UPDATE conditionnel WHERE status=failed → claim gagné, retourne la ligne', async () => {
+      const row = { id: 's1', status: 'sending' }
+      const { client, calls } = fakeClient([{ data: [row], error: null }])
+      const result = await claimRetry(client, 's1')
+      expect(result).toEqual(row)
+      const updateCall = calls.find(([m]) => m === 'update')
+      expect(updateCall?.[1][0]).toMatchObject({ status: 'sending' })
+      expect((updateCall?.[1][0] as { updated_at: string }).updated_at).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+      expect(calls).toContainEqual(['eq', ['id', 's1']])
+      expect(calls).toContainEqual(['eq', ['status', 'failed']])
+    })
+
+    it('allowStaleSending : garde WHERE status=sending AND updated_at < now-60s', async () => {
+      const { client, calls } = fakeClient([{ data: [{ id: 's1', status: 'sending' }], error: null }])
+      await claimRetry(client, 's1', { allowStaleSending: true })
+      expect(calls).toContainEqual(['eq', ['status', 'sending']])
+      const ltCall = calls.find(([m]) => m === 'lt')
+      expect(ltCall?.[1][0]).toBe('updated_at')
+      // La borne de fraîcheur doit être ≈ now - 60 s
+      const bound = new Date(ltCall?.[1][1] as string).getTime()
+      expect(Date.now() - bound).toBeGreaterThanOrEqual(59_000)
+      expect(Date.now() - bound).toBeLessThan(70_000)
+    })
+
+    it('0 ligne modifiée (une autre requête possède l’envoi) → claim perdu → null', async () => {
+      const { client } = fakeClient([{ data: [], error: null }])
+      expect(await claimRetry(client, 's1')).toBeNull()
+    })
+
+    it('propage les erreurs Supabase', async () => {
+      const { client } = fakeClient([{ data: null, error: { message: 'boom' } }])
+      await expect(claimRetry(client, 's1')).rejects.toThrow(/boom/)
     })
   })
 

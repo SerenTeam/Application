@@ -27,6 +27,17 @@ export const MESSAGES = {
     text_required: 'Texte requis',
     text_too_long: 'Maximum 200 caractères',
     date_future: 'La date ne peut pas être dans le futur',
+    // Courriers — envoi email (server/routes/letters.js)
+    letters_missing_fields: 'Champs requis manquants',
+    unknown_template: 'Modèle de courrier inconnu',
+    channel_not_available: 'Ce canal d’envoi n’est pas disponible pour ce courrier',
+    invalid_recipient_email: 'Adresse email du destinataire invalide',
+    letter_incomplete: 'Le courrier contient des variables non renseignées',
+    email_not_configured: 'Le service d’envoi d’email n’est pas configuré',
+    send_in_progress: 'Un envoi de ce courrier est déjà en cours, patientez un instant.',
+    send_failed: 'Échec de l’envoi du courrier',
+    send_error: 'Erreur lors de l’envoi du courrier',
+    letters_list_error: 'Erreur lors de la récupération des envois',
   },
   en: {
     session_required: 'session_id required',
@@ -51,6 +62,17 @@ export const MESSAGES = {
     text_required: 'Text required',
     text_too_long: 'Maximum 200 characters',
     date_future: 'The date cannot be in the future',
+    // Letters — email sending (server/routes/letters.js)
+    letters_missing_fields: 'Missing required fields',
+    unknown_template: 'Unknown letter template',
+    channel_not_available: 'This sending channel is not available for this letter',
+    invalid_recipient_email: 'Invalid recipient email address',
+    letter_incomplete: 'The letter still contains unresolved variables',
+    email_not_configured: 'The email sending service is not configured',
+    send_in_progress: 'This letter is already being sent, please wait a moment.',
+    send_failed: 'Failed to send the letter',
+    send_error: 'Error while sending the letter',
+    letters_list_error: 'Error while fetching sends',
   },
 }
 

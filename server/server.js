@@ -6,7 +6,12 @@ import dotenv from 'dotenv';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import { Resend } from 'resend';
 import { createQuestionnaireRouter } from './routes/questionnaire.js';
+import { createLettersRouter } from './routes/letters.js';
+import { createEmailSender } from './lib/email-sender.js';
+import * as lettersStore from './lib/letters-store.js';
+import { LETTER_CHANNELS } from './lib/letter-channels.js';
 
 dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.env') });
 
@@ -94,6 +99,18 @@ const MISTRAL_MODEL = process.env.MISTRAL_MODEL || 'mistral-small-latest'; // r�
 
 // Questionnaire v2 : flux piloté par le moteur (server/lib), IA limitée à la rédaction des textes.
 app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, mistral: client, model: MISTRAL_MODEL }));
+
+// Envoi de courriers (canal email v1, Resend). Client instancié PARESSEUSEMENT : si
+// RESEND_API_KEY est absent (dev local avant le USER STEP), resendClient reste `null` et
+// emailSender.send() lève `email_not_configured` (503, message clair) au lieu de faire
+// planter le serveur au démarrage.
+const resendClient = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+app.use('/api/letters', createLettersRouter({
+  requireAuth,
+  store: lettersStore,
+  emailSender: createEmailSender({ resendClient, from: process.env.RESEND_FROM }),
+  channels: LETTER_CHANNELS,
+}));
 
 // Client Supabase (clé publishable — opérations non authentifiées ; la RLS s'applique)
 const supabase = createClient(
