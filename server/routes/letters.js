@@ -2,15 +2,24 @@
 // injectées (comme server/routes/questionnaire.js) : testable avec supertest sans Supabase ni
 // appel réseau réel (emailSender toujours faké en test). Contrat : docs/plan-envoi-courriers.md,
 // Task 3 ; table letter_sends : supabase/migrations/20260716120000_letter_sends.sql.
-import { Router } from 'express'
+import express, { Router } from 'express'
 import crypto from 'crypto'
 import { renderLetterPdf } from '../lib/letter-pdf.js'
 import { createUserRateLimiter } from '../lib/rate-limit.js'
 import { msg } from '../lib/messages.js'
+import { verifySvixSignature } from '../lib/svix-verify.js'
 
 // Regex RFC basique — suffisante pour rejeter les fautes de frappe grossières côté serveur ;
 // la vraie validation de délivrabilité vient de la réponse du provider (Resend).
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+// Événements Resend gérés par le webhook → statut letter_sends. Les autres types (opened,
+// clicked, complained, etc.) sont ignorés (200 silencieux, voir POST /webhook).
+const RESEND_EVENT_STATUS = {
+  'email.sent': 'sent',
+  'email.delivered': 'delivered',
+  'email.bounced': 'failed',
+}
 
 /** Langue de la requête : la route n'a pas de session (contrairement au questionnaire v2), le
  * corps est donc la seule source. Repli 'fr' — comportement identique à bodyLang() dans
@@ -19,7 +28,7 @@ function bodyLang(req) {
   return req.body?.lang === 'en' ? 'en' : 'fr'
 }
 
-export function createLettersRouter({ requireAuth, store, emailSender, channels }) {
+export function createLettersRouter({ requireAuth, store, emailSender, channels, publicClient }) {
   const router = Router()
 
   // 20/h par utilisateur : un envoi correspond à une action volontaire après relecture,
@@ -138,6 +147,67 @@ export function createLettersRouter({ requireAuth, store, emailSender, channels 
       console.error('❌ letters/list :', error)
       res.status(500).json({ success: false, error: msg(bodyLang(req), 'letters_list_error') })
     }
+  })
+
+  // Webhook Resend — statuts delivered/bounced. PUBLIC (pas de requireAuth : Resend n'a pas de
+  // session utilisateur) ; la véracité vient UNIQUEMENT de la signature Svix vérifiée
+  // ci-dessous. express.raw() en middleware DE ROUTE : la vérification exige le corps BRUT
+  // (octet pour octet), pas le JSON reparsé. Suffisant quand le router est utilisé seul (tests) ;
+  // en production, server.js monte le même express.raw() sur ce chemin AVANT le express.json()
+  // global, sinon body-parser aurait déjà consommé le flux avant d'atteindre cette route (le
+  // second parseur voit req._body déjà à true et laisse req.body inchangé — un objet JS, plus
+  // le Buffer attendu ici).
+  // Pas de rate limiter sur cette route — délibéré : la vérification svix échoue à coût
+  // quasi nul (un HMAC), et un plafond global pénaliserait les retries légitimes de Resend.
+  router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    const secret = process.env.RESEND_WEBHOOK_SECRET
+    if (!secret) {
+      return res.status(503).json({ success: false, error: 'webhook_not_configured' })
+    }
+
+    const valid = verifySvixSignature({
+      secret,
+      svixId: req.headers['svix-id'],
+      svixTimestamp: req.headers['svix-timestamp'],
+      svixSignature: req.headers['svix-signature'],
+      rawBody: req.body,
+    })
+    if (!valid) {
+      return res.status(401).json({ success: false, error: 'invalid_signature' })
+    }
+
+    let payload
+    try {
+      payload = JSON.parse(Buffer.isBuffer(req.body) ? req.body.toString('utf8') : req.body)
+    } catch {
+      // Signature valide mais JSON malformé : ne devrait jamais arriver côté Resend — jamais de
+      // 500 sur un webhook signé (Resend réessaierait indéfiniment).
+      console.warn('⚠️ letters/webhook : payload JSON invalide malgré signature valide')
+      return res.status(200).json({ success: true })
+    }
+
+    const status = RESEND_EVENT_STATUS[payload?.type]
+    const providerRef = payload?.data?.email_id
+    if (!status || !providerRef) {
+      // Jamais le corps du payload dans les logs (PII potentielles côté destinataire) — juste
+      // le type d'événement.
+      console.warn(`⚠️ letters/webhook : événement ignoré (${payload?.type ?? 'type inconnu'})`)
+      return res.status(200).json({ success: true })
+    }
+
+    try {
+      await store.updateSendByProviderRef(publicClient, providerRef, {
+        status,
+        delivered_at: status === 'delivered' ? new Date().toISOString() : null,
+        error: status === 'failed' ? (payload?.data?.reason ?? payload?.data?.error ?? 'bounced') : null,
+      })
+    } catch (error) {
+      // Idem : jamais de 500 sur un webhook signé valide, même si la mise à jour échoue
+      // (BDD indisponible…) — on logue côté serveur et on acquitte quand même.
+      console.error('❌ letters/webhook — mise à jour du statut :', error)
+    }
+
+    return res.status(200).json({ success: true })
   })
 
   return router

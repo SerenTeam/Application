@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 // @ts-expect-error — module JS serveur
 import { createSend, listSends, updateSendByProviderRef, markSendResult, claimRetry } from '../server/lib/letters-store.js'
 
@@ -137,14 +137,25 @@ describe('letters-store', () => {
   })
 
   describe('updateSendByProviderRef', () => {
-    it('appelle la RPC security definer avec les bons arguments', async () => {
+    // La RPC est publiquement appelable via PostgREST (clé publishable + grant EXECUTE) :
+    // le secret partagé WEBHOOK_RPC_SECRET ↔ webhook_config est la vraie barrière, vérifiée
+    // PAR LA BASE — il doit donc TOUJOURS être transmis en p_secret.
+    beforeEach(() => {
+      vi.stubEnv('WEBHOOK_RPC_SECRET', 'rpc-secret-test')
+    })
+    afterEach(() => {
+      vi.unstubAllEnvs()
+      vi.restoreAllMocks()
+    })
+
+    it('appelle la RPC security definer avec les bons arguments, p_secret inclus', async () => {
       const { client, calls } = fakeClient([{ data: null, error: null }])
       await updateSendByProviderRef(client, 'prov-ref-1', { status: 'delivered', delivered_at: '2026-07-17T00:00:00.000Z' })
       expect(calls).toContainEqual([
         'rpc',
         [
           'update_letter_send_status',
-          { p_provider_ref: 'prov-ref-1', p_status: 'delivered', p_delivered_at: '2026-07-17T00:00:00.000Z', p_error: null },
+          { p_secret: 'rpc-secret-test', p_provider_ref: 'prov-ref-1', p_status: 'delivered', p_delivered_at: '2026-07-17T00:00:00.000Z', p_error: null },
         ],
       ])
     })
@@ -153,7 +164,19 @@ describe('letters-store', () => {
       const { client, calls } = fakeClient([{ data: null, error: null }])
       await updateSendByProviderRef(client, 'prov-ref-2', { status: 'failed', error: 'bounced' })
       const rpcCall = calls.find(([m]) => m === 'rpc')
-      expect(rpcCall?.[1][1]).toEqual({ p_provider_ref: 'prov-ref-2', p_status: 'failed', p_delivered_at: null, p_error: 'bounced' })
+      expect(rpcCall?.[1][1]).toEqual({ p_secret: 'rpc-secret-test', p_provider_ref: 'prov-ref-2', p_status: 'failed', p_delivered_at: null, p_error: 'bounced' })
+    })
+
+    it('WEBHOOK_RPC_SECRET absent → lève AVANT tout appel RPC, log explicite sans payload', async () => {
+      vi.unstubAllEnvs()
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const { client, calls } = fakeClient([{ data: null, error: null }])
+      await expect(updateSendByProviderRef(client, 'prov-ref-3', { status: 'delivered' })).rejects.toThrow(/WEBHOOK_RPC_SECRET/)
+      expect(calls.filter(([m]) => m === 'rpc')).toHaveLength(0)
+      expect(errorSpy).toHaveBeenCalledTimes(1)
+      const logged = errorSpy.mock.calls[0].join(' ')
+      expect(logged).toContain('WEBHOOK_RPC_SECRET')
+      expect(logged).not.toContain('prov-ref-3')
     })
 
     it('propage les erreurs Supabase', async () => {

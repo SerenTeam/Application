@@ -80,8 +80,20 @@ export async function listSends(client, userId) {
 
 // Appelée par la route webhook (Task 4), sans session utilisateur : la RPC security
 // definer ne touche que les colonnes de statut et ne renvoie aucune lecture.
+// p_secret (env WEBHOOK_RPC_SECRET ↔ table webhook_config) : la RPC est exposée par
+// PostgREST à quiconque détient la clé publishable — la base vérifie donc ELLE-MÊME un
+// secret partagé, sinon la vérification svix côté Express serait contournable en appelant
+// la RPC en direct. Secret absent côté serveur → on lève AVANT tout appel réseau (la route
+// webhook attrape et répond 200 + log — Resend ne doit jamais voir de 500 sur un webhook
+// signé valide) ; le message d'erreur ne contient jamais le payload.
 export async function updateSendByProviderRef(client, providerRef, { status, delivered_at = null, error: sendError = null }) {
+  const rpcSecret = process.env.WEBHOOK_RPC_SECRET
+  if (!rpcSecret) {
+    console.error('❌ letters-store : WEBHOOK_RPC_SECRET manquant — mise à jour du statut impossible (configurer la variable d\'environnement et la ligne webhook_config)')
+    throw new Error('WEBHOOK_RPC_SECRET manquant')
+  }
   const { error } = await client.rpc('update_letter_send_status', {
+    p_secret: rpcSecret,
     p_provider_ref: providerRef,
     p_status: status,
     p_delivered_at: delivered_at,

@@ -24,18 +24,44 @@ create policy "own sends" on letter_sends
 create index if not exists letter_sends_user_idx on letter_sends (user_id);
 create index if not exists letter_sends_provider_ref_idx on letter_sends (provider_ref);
 
+-- Secret partagé du webhook : table verrouillée (RLS activée, AUCUNE policy → illisible et
+-- inaccessible via l'API PostgREST, quel que soit le rôle anon/authenticated). Seule la
+-- fonction security definer ci-dessous peut la lire. La valeur est insérée à la main
+-- (USER STEP, jamais dans git) :
+--   insert into webhook_config (id, rpc_secret) values (1, '<valeur aléatoire forte>');
+-- et recopiée dans la variable d'environnement serveur WEBHOOK_RPC_SECRET.
+create table if not exists webhook_config (
+  id int primary key default 1 check (id = 1),
+  rpc_secret text not null
+);
+alter table webhook_config enable row level security;
+
 -- Le webhook Resend n'a pas de token utilisateur (RLS le bloquerait) : cette fonction
 -- security definer expose uniquement une mise à jour de statut par provider_ref, jamais
--- de lecture. La véracité vient de la signature du webhook, vérifiée côté Express (Task 4).
-create or replace function update_letter_send_status(p_provider_ref text, p_status text, p_delivered_at timestamptz default null, p_error text default null)
+-- de lecture. Défense en profondeur à DEUX niveaux : la signature Svix est vérifiée côté
+-- Express (Task 4), MAIS PostgREST expose toute fonction du schéma public en
+-- POST /rest/v1/rpc/<name> à quiconque détient la clé publishable (le grant EXECUTE est la
+-- seule barrière) — la vérification Express serait donc contournable en appelant la RPC en
+-- direct. D'où p_secret, vérifié PAR LA BASE contre webhook_config : secret absent/faux ou
+-- table non configurée → 0 ligne modifiée, silencieusement.
+-- Transitions de statut STRICTEMENT avant-only (les webhooks Resend peuvent être relivrés
+-- dans le désordre) : delivered et failed sont terminaux — un email.sent relivré en retard
+-- ne peut jamais rétrograder un delivered. L'erreur est purgée sur sent/delivered (une
+-- erreur d'une tentative passée ne doit pas survivre à un succès).
+create or replace function update_letter_send_status(p_secret text, p_provider_ref text, p_status text, p_delivered_at timestamptz default null, p_error text default null)
 returns void language sql security definer set search_path = public as $$
   update letter_sends
      set status = p_status,
          delivered_at = coalesce(p_delivered_at, delivered_at),
-         error = coalesce(p_error, error),
+         error = case when p_status in ('sent','delivered') then null else coalesce(p_error, error) end,
          updated_at = now()
    where provider_ref = p_provider_ref
-     and p_status in ('sent','delivered','failed');
+     and exists (select 1 from webhook_config where id = 1 and rpc_secret = p_secret)
+     and (
+          (p_status = 'sent'      and status = 'sending')
+       or (p_status = 'delivered' and status in ('sending','sent'))
+       or (p_status = 'failed'    and status in ('sending','sent'))
+     );
 $$;
 revoke all on function update_letter_send_status from public;
 grant execute on function update_letter_send_status to anon, authenticated;
