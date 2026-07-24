@@ -18,26 +18,28 @@ supabase link --project-ref oltwzvfjazwjvghpzhia
 # (demande le mot de passe BDD du projet — Dashboard → Settings → Database)
 ```
 
-## ⚠️ Baseline obligatoire avant le premier push
+## ⚠️ Baseline (fait le 2026-07-24 sur le projet principal)
 
-Les migrations existantes ont été appliquées à la main : la CLI ne le sait pas et tenterait de les rejouer (échec garanti sur les `create policy`, qui n'ont pas de `if not exists`). Marquer une fois pour toutes les migrations déjà appliquées :
+Les migrations posées à la main avant la CLI sont marquées `applied` une fois pour
+toutes (`supabase migration repair`). Depuis le chantier 0, la baseline v1
+(`20260701000000_baseline_v1.sql`) versionne aussi les 5 tables historiques :
+**un projet NEUF se monte par `supabase link` + `supabase db push`, sans SQL Editor.**
+
+État de référence du projet principal (`oltwzvfjazwjvghpzhia`) : les 6 migrations
+applied Local + Remote (`supabase migration list` pour contrôler).
+
+## Pour un nouveau projet (ex. staging)
 
 ```bash
-# Sur le projet de DEV (tout est appliqué sauf pg_cron si pas encore fait) :
-supabase migration repair --status applied 20260708120000
-supabase migration repair --status applied 20260709090000
-supabase migration repair --status applied 20260713120000
-# puis appliquer ce qui manque réellement :
-supabase db push        # appliquera 20260711100000 (pg_cron) s'il ne l'est pas
+supabase link --project-ref <ref-du-projet>
+supabase db push          # déroule tout : baseline v1 + migrations v2
 ```
 
-Vérification : `supabase migration list` — tout doit être `applied` des deux côtés (Local / Remote).
+Si `create extension pg_cron` échoue : Dashboard → Database → Extensions → activer
+pg_cron, puis relancer. Voir `docs/runbook-staging.md` pour le parcours complet.
 
-## Pour préprod et prod
-
-Répéter `link` + `repair` avec le `--project-ref` de chaque projet (visible dans l'URL du Dashboard). La baseline diffère : préprod/prod ont `sessions_lang` appliquée à la main, et `purge_sessions_cron`/`transmissions` selon l'historique — vérifier avec `supabase migration list` avant de `repair`, puis `db push`.
-
-Astuce multi-projets : `supabase link` ne retient qu'un projet à la fois. Pour basculer : relancer `link` avec l'autre ref (ou utiliser `--project-ref` directement sur les commandes qui le supportent).
+Astuce multi-projets : `supabase link` ne retient qu'un projet à la fois — relancer
+`link` pour basculer.
 
 ## Au quotidien (nouveau workflow)
 
