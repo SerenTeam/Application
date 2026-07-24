@@ -54,6 +54,13 @@ app.use(cors({
   },
 }));
 
+// Espace privé : interdire l'indexation par les moteurs (politique inverse de la
+// landing publique). Complété par public/robots.txt (Disallow: /).
+app.use((req, res, next) => {
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  next();
+});
+
 // Webhook Resend : la vérification de signature Svix exige le corps BRUT (octet pour octet).
 // Monté ICI, sur le chemin exact, AVANT le express.json() global ci-dessous : body-parser
 // (json/raw/text partagent le même mécanisme) marque req._body = true après son premier
