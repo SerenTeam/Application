@@ -53,7 +53,7 @@ export function HeaderNavLink({
  * wordmark « Seren. » + nav contextuelle. Remplace les 5 headers dupliqués (Dashboard,
  * Questionnaire, Profile, Documents, AuthLayout).
  *
- * NE PAS utiliser sur AccessPage/DemoPage : produit transmission gelé, header inline conservé.
+ * NE PAS utiliser sur AccessPage : produit transmission gelé (lecture seule), header inline conservé.
  */
 export function AppHeader({ variant = 'default', showEmail = true, children }: AppHeaderProps) {
   const { user, signOut } = useAuth()

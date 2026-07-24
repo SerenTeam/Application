@@ -1,7 +1,7 @@
 // Dictionnaire français — source de vérité pour la forme (voir `Strings` dérivé).
 // Les clés sont organisées par domaine, en miroir de `src/components/` et `src/pages/`.
-// Les courriers (src/data/letter-templates*) et le produit transmission (DemoPage,
-// AccessPage) restent hors périmètre : ils ne sont jamais traduits.
+// Les courriers (src/data/letter-templates*) et le produit transmission (AccessPage)
+// restent hors périmètre : ils ne sont jamais traduits.
 export const STRINGS_FR = {
   layout: {
     dashboard: 'Tableau de bord',

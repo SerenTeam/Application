@@ -153,8 +153,8 @@ function getSupabaseClient(accessToken) {
 }
 
 // ==================== PRODUIT TRANSMISSION (lecture seule) ====================
-// La création (démo /api/demo/*) a été retirée au chantier 0 — produit gelé.
-// Restent : la lecture par le propriétaire et la lecture par code d'accès (AccessPage).
+// La création (page de démo et ses trois routes serveur) a été retirée au chantier 0 —
+// produit gelé. Restent : lecture par le propriétaire et lecture par code d'accès (AccessPage).
 
 // Route pour récupérer la transmission du user connecté
 app.get('/api/user/transmission', requireAuth, async (req, res) => {
