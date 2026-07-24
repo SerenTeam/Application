@@ -6,9 +6,9 @@
 
 **Architecture :** Spec validée dans `docs/design-chantier-0-assainissement.md` (état des lieux vérifié le 24/07 : drifts schéma↔code déjà résolus — rien à migrer côté colonnes). Travail sur branche `feature/chantier-0-assainissement`, merge fast-forward dans `main` à la fin (Arnaud pushe lui-même). La task 7 opère dans le repo **landing** (`../landing`, commits sur `main` local).
 
-**Tech stack :** Express/Node 26 (serveur JS), React 18 + Vite + TS, Vitest (140 tests / 15 fichiers), Supabase CLI v2.109.1, @sentry/node + @sentry/react, GitHub Actions, Next 16 (landing).
+**Tech stack :** Express/Node 26 (serveur JS), React 18 + Vite + TS, Vitest (157 tests / 15 fichiers), Supabase CLI v2.109.1, @sentry/node + @sentry/react, GitHub Actions, Next 16 (landing).
 
-**Référence état initial :** `server/server.js` = 701 lignes (numéros de lignes cités d'après cet état). 140 tests verts. `supabase/schema_full.sql` = 289 lignes.
+**Référence état initial :** `server/server.js` = 701 lignes (numéros de lignes cités d'après cet état). 157 tests verts (15 fichiers). `supabase/schema_full.sql` = 289 lignes.
 
 **USER STEP à faire dès le début de la session d'exécution** (débloque la task 6, ~5 min, terminal d'Arnaud) :
 
@@ -45,8 +45,8 @@ Réalise A1 + A2 de la spec. Les routes `/api/auth/*` ne sont appelées par aucu
 
 ```js
 // ==================== PRODUIT TRANSMISSION (lecture seule) ====================
-// La création (démo /api/demo/*) a été retirée au chantier 0 — produit gelé.
-// Restent : la lecture par le propriétaire et la lecture par code d'accès (AccessPage).
+// La création (page de démo et ses trois routes serveur) a été retirée au chantier 0 —
+// produit gelé. Restent : lecture par le propriétaire et lecture par code d'accès (AccessPage).
 ```
 
 5. Lignes 426–680 : supprimer le bloc entier `// ==================== ROUTES MODE DÉMO ====================` (3 routes : start, answer, save). Le bloc suivant conservé commence à `// ==================== ROUTES UTILITAIRES ====================`.
@@ -80,7 +80,7 @@ Restent intacts : `requireAuth`, `getSupabaseClient`, `/api/user/transmission`, 
 
 - [ ] **Step 1.3 : Front** — dans `src/App.tsx` : supprimer la ligne `import { DemoPage } from '@/pages/DemoPage'` et la ligne `<Route path="/demo" element={<ProtectedRoute><DemoPage /></ProtectedRoute>} />` (seules références au fichier, vérifié). Puis : `git rm src/pages/DemoPage.tsx`.
 
-- [ ] **Step 1.4 : Type-check + tests** — Run : `npx tsc --noEmit` → 0 erreur. `npx vitest run` → **15 fichiers / 140 tests verts** (aucun test ne référence demo ni /api/auth — vérifié).
+- [ ] **Step 1.4 : Type-check + tests** — Run : `npx tsc --noEmit` → 0 erreur. `npx vitest run` → **15 fichiers / 157 tests verts** (aucun test ne référence demo ni /api/auth — vérifié).
 
 - [ ] **Step 1.5 : Boot check** — Run :
 
@@ -95,12 +95,14 @@ kill %1
 
 - [ ] **Step 1.6 : Vérif zéro PII dans les logs** — Run : `grep -rn "console\." server/` → plus AUCUNE occurrence loggant email, réponse IA, code d'accès, token ou payload utilisateur. Attendu restant : logs de démarrage (l.697–700), erreurs techniques préfixées `❌`/`⚠️` (auth middleware, transmission, letters, questionnaire — objets d'erreur uniquement), warning `letters-store` (config). `grep -rn "api/demo\|api/auth\|MISTRAL_AGENT_ID\|DemoPage" src/ server/` → zéro occurrence.
 
-- [ ] **Step 1.7 : Commit** —
+- [x] **Step 1.7 : Commit** —
 
 ```bash
 git add -A
 git commit -m "feat(chantier-0): gel démo transmission + suppression routes auth mortes — zéro PII loggée"
 ```
+
+> **Note post-revue (Task 1, 2026-07-24) :** (1) La suite compte **157 tests** (pas 140 — chiffre issu d'un run sans `.env` où 2 fichiers échouaient à la collecte ; décomptes corrigés dans tout le plan). (2) Le grep « zéro occurrence » du Step 1.6 était incompatible avec 3 commentaires : deux commentaires pré-existants devenus obsolètes (`AppHeader.tsx`, `strings.fr.ts` — ils citaient la DemoPage supprimée) et le header de section que le plan imposait avec le chemin littéral. Correctif : les deux commentaires mis à jour (AccessPage seule), le header reformulé sans chemin littéral (texte ci-dessus corrigé), grep vert ensuite.
 
 ---
 
@@ -194,7 +196,7 @@ mv .env.chantier0.bak .env
 ls .env   # → .env restauré (OBLIGATOIRE avant de continuer)
 ```
 
-Attendu : **15 fichiers / 140 tests verts**, tsc 0 erreur.
+Attendu : **15 fichiers / 157 tests verts**, tsc 0 erreur.
 
 - [ ] **Step 3.3 : Commit** —
 
@@ -284,7 +286,7 @@ Si `src/vite-env.d.ts` déclare une interface `ImportMetaEnv` explicite, y ajout
 
 Mettre à jour le commentaire de classe (« En production, reporterait vers Sentry » → « Reporte vers Sentry quand `VITE_SENTRY_DSN` est configurée »).
 
-- [ ] **Step 4.5 : Vérifier** — Run : `npx tsc --noEmit` → 0 erreur ; `npx vitest run` → 15 fichiers / 140 tests verts ; boot no-op :
+- [ ] **Step 4.5 : Vérifier** — Run : `npx tsc --noEmit` → 0 erreur ; `npx vitest run` → 15 fichiers / 157 tests verts ; boot no-op :
 
 ```bash
 PORT=3999 node server/server.js & sleep 1
@@ -353,7 +355,7 @@ Le schéma BDD vit dans `supabase/migrations/` (CLI Supabase — voir `docs/runb
 
 ## Tests & CI
 
-`npm test` — 140 tests (moteur, invariants anti-question-morte, parité FR/EN des catalogues, routes). CI GitHub Actions sur chaque push/PR : type-check + tests.
+`npm test` — 157 tests (moteur, invariants anti-question-morte, parité FR/EN des catalogues, routes). CI GitHub Actions sur chaque push/PR : type-check + tests.
 
 ## Déploiement
 
@@ -609,7 +611,7 @@ git commit -m "docs(chantier-0): runbook staging — Supabase + Render pas à pa
 3. **Section « Produit transmission »** : remplacer le paragraphe par : `- **Produit transmission** (\`AccessPage\`, routes GET \`/api/user/transmission\` + \`/api/transmission/:code\`, table \`transmissions\`) : produit DISTINCT du questionnaire, **gelé et réduit à la lecture seule au chantier 0** (la page de démo et ses trois routes serveur ont été supprimées, l'agent Mistral legacy débranché) — réactivation = décision produit explicite.` (⚠️ ne pas écrire les chemins littéraux des routes supprimées : le grep de vérification 9.2 exige zéro occurrence dans CLAUDE.md.)
 4. **Section « Fait (suite) »** : ajouter : `Chantier 0 assainissement (\`docs/design-chantier-0-assainissement.md\`) livré : gel démo + routes auth mortes supprimées (zéro PII loggée), noindex app, CI GitHub Actions, Sentry no-op sans DSN, README v2, baseline migrations + pg_cron/letter_sends poussées, landing robots.ts + plan périmé archivé, runbook staging.`
 5. **Section « En attente (USER STEPS) »** : retirer la partie `supabase login + link + baseline` (faite) ; ajouter : `compte Sentry + DSN sur Render puis redéploiement ; uptime check /api/health ; push GitHub (Application + landing) et vérif CI verte ; création staging (docs/runbook-staging.md).`
-6. **Points d'attention → Tests** : remplacer « (npm test) » par « (npm test, 140 tests) — exécutés en CI (.github/workflows/ci.yml) sur chaque push/PR ».
+6. **Points d'attention → Tests** : remplacer « (npm test) » par « (npm test, 157 tests) — exécutés en CI (.github/workflows/ci.yml) sur chaque push/PR ».
 7. **Points d'attention → Schema SQL** : remplacer la phrase par : `migrations versionnées dans \`supabase/migrations/\` (baseline v1 incluse — TOUTE évolution passe par migration + \`supabase db push\`, plus jamais de SQL Editor manuel) ; fichiers racine v1 et \`supabase/archive/\` = historique.`
 8. **Section Stack → IA** : remplacer `; agent conversationnel conservé pour le produit transmission` par `(l'agent conversationnel du produit transmission a été débranché au chantier 0)`.
 9. **Points d'attention → Sessions** : supprimer la phrase `Le produit transmission (\`/api/demo/*\`) reste sur une \`Map()\` en mémoire — perdu au redémarrage` (la Map et les routes n'existent plus).
@@ -619,7 +621,7 @@ git commit -m "docs(chantier-0): runbook staging — Supabase + Render pas à pa
 
 ```bash
 npx tsc --noEmit                          # 0 erreur
-npx vitest run                            # 15 fichiers / 140 tests verts
+npx vitest run                            # 15 fichiers / 157 tests verts
 grep -rn "api/demo\|api/auth\|MISTRAL_AGENT_ID\|DemoPage" src/ server/ CLAUDE.md README.md   # zéro occurrence
 node --check server/server.js
 supabase migration list                   # 6/6 applied Local + Remote
