@@ -2,9 +2,13 @@ name: CI
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       # Factices : src/lib/supabase.ts jette à l'import si absentes.
       # Aucun test ne fait d'appel réseau — jamais de secrets réels ici.

@@ -167,9 +167,13 @@ name: CI
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       # Factices : src/lib/supabase.ts jette à l'import si absentes.
       # Aucun test ne fait d'appel réseau — jamais de secrets réels ici.
@@ -206,6 +210,8 @@ git commit -m "feat(chantier-0): CI GitHub Actions — tsc + vitest sur push et 
 ```
 
 (La CI verte sur GitHub se vérifie après le push d'Arnaud — user step de clôture.)
+
+> **Note post-revue (Task 3, 2026-07-24) :** revue qualité — ajout de `permissions: contents: read` (top-level) et `timeout-minutes: 10` (job) au workflow ; bloc du Step 3.1 aligné. Notés pour plus tard (hors scope) : champ `engines` dans package.json (Task 5/9 si pertinent), groupe `concurrency` si les runs dupliqués push+PR deviennent gênants.
 
 ---
 
