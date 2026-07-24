@@ -307,6 +307,8 @@ git add -A
 git commit -m "feat(chantier-0): Sentry front + serveur — erreurs uniquement, inerte sans DSN"
 ```
 
+> **Note post-revue (Task 4, 2026-07-24) :** revue qualité — les routes gèrent leurs erreurs en try/catch + 500 JSON sans jamais `next(err)`, rendant `setupExpressErrorHandler` quasi inatteignable ; ajout de `Sentry.captureException(error)` dans les catch des chemins de requête (questionnaire ×5, letters ×3, transmission ×2) pour rendre les 500 applicatifs visibles. Restent volontairement hors capture : middleware auth (tokens invalides = flux attendu) et warns webhook. Notes mineures actées sans action : init après import express (suffisant en error-only), componentStack non attaché (choix minimal RGPD).
+
 ---
 
 ## Task 5 : README réécrit

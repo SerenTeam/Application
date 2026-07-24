@@ -195,6 +195,8 @@ app.get('/api/user/transmission', requireAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Get user transmission error:', error);
+    // Remonte aussi les 500 gérés à Sentry (no-op sans DSN) — les catch avalent l'erreur sinon.
+    Sentry.captureException(error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -229,6 +231,7 @@ app.get('/api/transmission/:code', requireAuth, async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erreur:', error);
+    Sentry.captureException(error);
     res.status(500).json({
       success: false,
       error: error.message

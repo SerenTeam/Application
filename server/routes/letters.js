@@ -4,6 +4,7 @@
 // Task 3 ; table letter_sends : supabase/migrations/20260716120000_letter_sends.sql.
 import express, { Router } from 'express'
 import crypto from 'crypto'
+import * as Sentry from '@sentry/node'
 import { renderLetterPdf } from '../lib/letter-pdf.js'
 import { createUserRateLimiter } from '../lib/rate-limit.js'
 import { msg } from '../lib/messages.js'
@@ -135,6 +136,8 @@ export function createLettersRouter({ requireAuth, store, emailSender, channels,
       }
     } catch (error) {
       console.error('❌ letters/send :', error)
+      // Remonte aussi les 500 gérés à Sentry (no-op sans DSN) — les catch avalent l'erreur sinon.
+      Sentry.captureException(error)
       res.status(500).json({ success: false, error: msg(lang, 'send_error') })
     }
   })
@@ -145,6 +148,7 @@ export function createLettersRouter({ requireAuth, store, emailSender, channels,
       res.json({ success: true, sends })
     } catch (error) {
       console.error('❌ letters/list :', error)
+      Sentry.captureException(error)
       res.status(500).json({ success: false, error: msg(bodyLang(req), 'letters_list_error') })
     }
   })
@@ -205,6 +209,7 @@ export function createLettersRouter({ requireAuth, store, emailSender, channels,
       // Idem : jamais de 500 sur un webhook signé valide, même si la mise à jour échoue
       // (BDD indisponible…) — on logue côté serveur et on acquitte quand même.
       console.error('❌ letters/webhook — mise à jour du statut :', error)
+      Sentry.captureException(error)
     }
 
     return res.status(200).json({ success: true })

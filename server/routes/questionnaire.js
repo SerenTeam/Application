@@ -2,6 +2,7 @@
 // Factory à dépendances injectées : testable avec supertest sans Mistral ni Supabase.
 // Contrat API : docs/design-questionnaire-v2.md, section « Contrat API ».
 import { Router } from 'express'
+import * as Sentry from '@sentry/node'
 import { QUESTIONS_CATALOG, textIn } from '../lib/questions-catalog.js'
 import { nextQuestion, validateAnswer, setAnswer, matchesWhen, progress } from '../lib/questionnaire-engine.js'
 import * as supabaseStore from '../lib/sessions-store.js'
@@ -124,6 +125,8 @@ export function createQuestionnaireRouter({
       res.json({ success: true, session_id: session.id, data })
     } catch (error) {
       console.error('❌ questionnaire/start :', error)
+      // Remonte aussi les 500 gérés à Sentry (no-op sans DSN) — les catch avalent l'erreur sinon.
+      Sentry.captureException(error)
       res.status(500).json({ success: false, error: msg(lang, 'start_error') })
     }
   })
@@ -156,6 +159,7 @@ export function createQuestionnaireRouter({
       res.json({ success: true, data })
     } catch (error) {
       console.error('❌ questionnaire/answer :', error)
+      Sentry.captureException(error)
       res.status(500).json({ success: false, error: msg(bodyLang(req), 'answer_error') })
     }
   })
@@ -181,6 +185,7 @@ export function createQuestionnaireRouter({
       })
     } catch (error) {
       console.error('❌ questionnaire/reask :', error)
+      Sentry.captureException(error)
       res.status(500).json({ success: false, error: msg(bodyLang(req), 'reask_error') })
     }
   })
@@ -197,6 +202,7 @@ export function createQuestionnaireRouter({
       res.json({ success: true, data })
     } catch (error) {
       console.error('❌ questionnaire/resume :', error)
+      Sentry.captureException(error)
       res.status(500).json({ success: false, error: msg(bodyLang(req), 'resume_error') })
     }
   })
@@ -216,6 +222,7 @@ export function createQuestionnaireRouter({
       res.json({ success: true, answers: session.answers })
     } catch (error) {
       console.error('❌ questionnaire/complete :', error)
+      Sentry.captureException(error)
       res.status(500).json({ success: false, error: msg(bodyLang(req), 'complete_error') })
     }
   })
