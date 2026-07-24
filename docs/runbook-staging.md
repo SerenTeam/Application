@@ -23,8 +23,10 @@ supabase db push                             # déroule TOUT : baseline v1 + mig
 supabase migration list                      # → 6 migrations applied Local + Remote
 ```
 
-Si `create extension pg_cron` échoue : Dashboard → Database → Extensions → activer
-pg_cron → relancer `supabase db push`.
+Si `create extension pg_cron` échoue : le premier push s'arrête là (état transitoire
+normal : baseline + 2 migrations appliquées, `migration list` incomplet). Dashboard →
+Database → Extensions → activer pg_cron → relancer `supabase db push` : les migrations
+restantes s'appliquent et `migration list` passe à 6/6.
 
 ⚠️ `link` ne retient qu'un projet à la fois : relancer `supabase link --project-ref
 oltwzvfjazwjvghpzhia` pour revenir au projet principal ensuite.
@@ -48,7 +50,7 @@ oltwzvfjazwjvghpzhia` pour revenir au projet principal ensuite.
 
 ## 4. Vérification
 
-- `https://<staging>.onrender.com/api/health` → `{"status":"ok"}`
+- `https://<staging>.onrender.com/api/health` → `{"status":"ok","timestamp":…}`
 - Créer un compte jetable sur le staging → dérouler le questionnaire → roadmap OK.
 - Le compte test E2E (`test.e2e.claude@seren-test.fr`) peut être recréé sur le projet
   staging si besoin (il n'existe que sur le projet principal).

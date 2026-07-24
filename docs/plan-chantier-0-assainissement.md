@@ -564,8 +564,10 @@ supabase db push                             # déroule TOUT : baseline v1 + mig
 supabase migration list                      # → 6 migrations applied Local + Remote
 ```
 
-Si `create extension pg_cron` échoue : Dashboard → Database → Extensions → activer
-pg_cron → relancer `supabase db push`.
+Si `create extension pg_cron` échoue : le premier push s'arrête là (état transitoire
+normal : baseline + 2 migrations appliquées, `migration list` incomplet). Dashboard →
+Database → Extensions → activer pg_cron → relancer `supabase db push` : les migrations
+restantes s'appliquent et `migration list` passe à 6/6.
 
 ⚠️ `link` ne retient qu'un projet à la fois : relancer `supabase link --project-ref
 oltwzvfjazwjvghpzhia` pour revenir au projet principal ensuite.
@@ -589,7 +591,7 @@ oltwzvfjazwjvghpzhia` pour revenir au projet principal ensuite.
 
 ## 4. Vérification
 
-- `https://<staging>.onrender.com/api/health` → `{"status":"ok"}`
+- `https://<staging>.onrender.com/api/health` → `{"status":"ok","timestamp":…}`
 - Créer un compte jetable sur le staging → dérouler le questionnaire → roadmap OK.
 - Le compte test E2E (`test.e2e.claude@seren-test.fr`) peut être recréé sur le projet
   staging si besoin (il n'existe que sur le projet principal).
@@ -607,6 +609,8 @@ oltwzvfjazwjvghpzhia` pour revenir au projet principal ensuite.
 git add docs/runbook-staging.md
 git commit -m "docs(chantier-0): runbook staging — Supabase + Render pas à pas"
 ```
+
+> **Note post-revue (Tasks 6+8, revue qualité conjointe, 2026-07-24) :** approuvée — rejouabilité sur base neuve validée par lecture des 6 migrations dans l'ordre (FK, extensions, idempotence), baseline conforme au schéma prod réel, env vars du runbook staging exactes vs code. Correctifs mineurs appliqués par le contrôleur : statut périmé du frontmatter de `runbook-supabase-cli.md` (login/link faits), précision de l'état transitoire si le premier push s'arrête à pg_cron (fichier + bloc du plan synchronisés), corps exact de `/api/health`.
 
 ---
 

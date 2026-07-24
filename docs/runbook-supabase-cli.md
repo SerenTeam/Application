@@ -1,7 +1,7 @@
 # Runbook — Migrations Supabase via CLI (`supabase db push`)
 
 > Clôture du §1 de `docs/plan-points-attention.md`. Rédigé le 2026-07-16.
-> État : CLI installée (`brew install supabase/tap/supabase`, v2.109.1), `supabase init` fait (`supabase/config.toml` versionné). Reste l'authentification et le lien par projet — **étapes utilisateur** (~5 min, une seule fois).
+> État : CLI installée (`brew install supabase/tap/supabase`, v2.109.1), `supabase init` fait (`supabase/config.toml` versionné). Authentification + lien faits le 2026-07-24 sur le projet principal (un clone frais devra refaire `link` : l'état vit dans `supabase/.temp/`, gitignored).
 
 ## Pourquoi
 
