@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 // Point d'accès unique aux tables `documents` et `step_actions`.
-// Les noms de colonnes doivent correspondre à supabase/schema_full.sql —
+// Les noms de colonnes doivent correspondre à supabase/migrations/20260701000000_baseline_v1.sql —
 // conformité verrouillée par tests/documents-lib.test.ts (invariant anti-drift).
 // Le client est injecté pour rester testable sans variables d'environnement.
 

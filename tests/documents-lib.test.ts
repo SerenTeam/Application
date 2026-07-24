@@ -10,16 +10,16 @@ import {
   saveLetterDocument,
 } from '@/lib/documents'
 
-// ── Colonnes réelles extraites de schema_full.sql ───────────────────────
+// ── Colonnes réelles extraites de la baseline (source canonique vivante) ─
 // Le bug d'origine : le client interrogeait des colonnes fantômes
 // (action_type, action_date, document_type). Ces tests garantissent que
 // tout payload/filtre envoyé à Supabase référence des colonnes du schéma.
 
-const SCHEMA = readFileSync(path.resolve(__dirname, '../supabase/schema_full.sql'), 'utf8')
+const SCHEMA = readFileSync(path.resolve(__dirname, '../supabase/migrations/20260701000000_baseline_v1.sql'), 'utf8')
 
 function tableColumns(table: string): Set<string> {
   const m = SCHEMA.match(new RegExp(`CREATE TABLE IF NOT EXISTS ${table} \\(([\\s\\S]*?)\\n\\);`))
-  if (!m) throw new Error(`table ${table} introuvable dans schema_full.sql`)
+  if (!m) throw new Error(`table ${table} introuvable dans la baseline (supabase/migrations/20260701000000_baseline_v1.sql)`)
   const cols = new Set<string>()
   for (const line of m[1].split('\n')) {
     // les colonnes commencent par un identifiant minuscule ; les contraintes (CHECK, …) par un mot-clé majuscule
