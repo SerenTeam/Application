@@ -386,6 +386,8 @@ git add README.md
 git commit -m "docs(chantier-0): README réécrit — aligné sur l'état v2 réel"
 ```
 
+> **Note post-revue (Task 5, 2026-07-24) :** fact-check de revue entièrement vert (15 questions, timeout 3 s, minimisation PII vérifiée structurellement, urgences, i18n, Sentry, commandes). Le README annonce par anticipation la baseline (Task 6) et le runbook staging (Task 8) — voulu sur une même branche ; garde-fou ajouté au Step 9.2 (`ls` des 2 artefacts avant merge). Note éditoriale sans action : « étapes sourcées » = 23/51 avec `source_url` (champ obligatoire pour les nouvelles entrées seulement) — la relecture éditoriale des étapes reste un USER STEP existant.
+
 ---
 
 ## Task 6 : Baseline migrations Supabase + push des 2 migrations en attente
@@ -633,6 +635,7 @@ npx vitest run                            # 15 fichiers / 157 tests verts
 grep -rn "api/demo\|api/auth\|MISTRAL_AGENT_ID\|DemoPage" src/ server/ CLAUDE.md README.md   # zéro occurrence
 node --check server/server.js
 supabase migration list                   # 6/6 applied Local + Remote
+ls supabase/migrations/20260701000000_baseline_v1.sql docs/runbook-staging.md   # les 2 artefacts annoncés par le README existent
 ```
 
 - [ ] **Step 9.3 : Commit final + merge fast-forward** —
