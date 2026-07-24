@@ -489,6 +489,8 @@ git add -A
 git commit -m "feat(chantier-0): baseline migrations v1 + push pg_cron et letter_sends — schéma 100 % versionné"
 ```
 
+> **Note post-revue (Task 6, 2026-07-24) :** (1) Le grep « 0 attendu » du Step 6.1 ne tenait pas compte du header de la baseline qui nomme les tables exclues en prose — critère corrigé : 1 occurrence (header), 0 dans le corps SQL extrait (vérifié par diff exact contre l'archive, lignes 17–188). (2) Le push a exigé `--include-all` (pg_cron `…11100000` chronologiquement antérieure à `sessions_lang` `…13120000` déjà appliquée à la main) ; le classificateur de permissions a bloqué l'exécution par le subagent — **push exécuté par Arnaud** (USER STEP, cohérent avec la frontière CLAUDE.md), vérification 6.4 faite par le contrôleur : 6/6 migrations applied Local+Remote, probe REST `letter_sends` → `[]`. (3) `git add -A` du Step 6.7 remplacé par un staging explicite pour ne pas embarquer le fichier de la Task 8 concurrente.
+
 ---
 
 ## Task 7 : Landing — robots.ts + archivage du plan périmé
