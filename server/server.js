@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Resend } from 'resend';
+import * as Sentry from '@sentry/node';
 import { createQuestionnaireRouter } from './routes/questionnaire.js';
 import { createLettersRouter } from './routes/letters.js';
 import { createEmailSender } from './lib/email-sender.js';
@@ -13,6 +14,15 @@ import * as lettersStore from './lib/letters-store.js';
 import { LETTER_CHANNELS } from './lib/letter-channels.js';
 
 dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.env') });
+
+// Sentry serveur : erreurs uniquement (pas de tracing, pas de PII), inerte sans SENTRY_DSN.
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    tracesSampleRate: 0,
+    sendDefaultPii: false,
+  });
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -241,6 +251,11 @@ app.get('*', (req, res) => {
     res.status(404).json({ success: false, error: 'Not found' });
   }
 });
+
+// Après toutes les routes : capture les erreurs Express non gérées vers Sentry.
+if (process.env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
+}
 
 // Démarrage du serveur
 app.listen(PORT, () => {

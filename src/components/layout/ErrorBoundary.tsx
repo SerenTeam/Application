@@ -1,4 +1,5 @@
 import { Component, type ReactNode, type ErrorInfo } from 'react'
+import * as Sentry from '@sentry/react'
 import { ErrorPage } from '@/pages/errors/ErrorPage'
 
 interface ErrorBoundaryProps {
@@ -12,7 +13,7 @@ interface ErrorBoundaryState {
 /**
  * SER-65 — ErrorBoundary global.
  * Intercepte les erreurs JS non gérées et affiche la page d'erreur.
- * En production, reporterait vers Sentry.
+ * Reporte vers Sentry quand `VITE_SENTRY_DSN` est configurée.
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
@@ -26,9 +27,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('[ErrorBoundary] Uncaught error:', error, errorInfo)
-
-    // TODO: Sentry.captureException(error, { extra: errorInfo })
-    // Quand Sentry est intégré, décommenter la ligne ci-dessus
+    // No-op si Sentry non initialisé (VITE_SENTRY_DSN absente)
+    Sentry.captureException(error)
   }
 
   render() {
