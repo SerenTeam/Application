@@ -3,7 +3,7 @@
 > Audit défensif de la sécurité d'accès BDD du projet Seren.
 > Réalisé le 2026-07-16 (§4 de `docs/plan-points-attention.md`). Contexte projet : voir `CLAUDE.md`.
 > Périmètre : 7 tables `public` — `questionnaires`, `roadmaps`, `steps`, `step_actions`, `documents`, `transmissions`, `questionnaire_sessions`.
-> Sources de vérité : `supabase/schema_full.sql` (consolidé), `supabase/migrations/*.sql`, et les fichiers historiques racine `supabase_v1_schema.sql` / `supabase_auth_setup.sql` (état v1).
+> Sources de vérité : `supabase/archive/schema_full_2026-07-16.sql` (consolidé, archivé au chantier 0 — le schéma vivant est désormais `supabase/migrations/*.sql`, baseline incluse), et les fichiers historiques racine `supabase_v1_schema.sql` / `supabase_auth_setup.sql` (état v1).
 
 ## Méthodologie
 

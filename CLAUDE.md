@@ -7,7 +7,7 @@ Plateforme d'accompagnement post-décès : questionnaire guidé (rédaction IA),
 - **Frontend** : React 18, TypeScript, Vite, Tailwind CSS v4 (CSS-first `@theme`), Shadcn/ui, Radix UI, Lucide icons
 - **Backend** : Express.js (`server/server.js` + `server/routes/`) — questionnaire v2 (moteur + rédacteur), courriers (envoi email), transmission (lecture seule), static serving
 - **BDD** : Supabase (PostgreSQL + Auth + RLS)
-- **IA** : Mistral AI — rédacteur stateless du questionnaire v2 (textes uniquement, jamais de données) (l'agent conversationnel du produit transmission a été débranché au chantier 0)
+- **IA** : Mistral AI — rédacteur stateless du questionnaire v2 (textes uniquement, jamais de données ; l'agent conversationnel du produit transmission a été débranché au chantier 0)
 - **PDF** : jsPDF (export courriers)
 - **Analytics** : PostHog
 

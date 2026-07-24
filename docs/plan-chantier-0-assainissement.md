@@ -644,7 +644,7 @@ supabase migration list                   # 6/6 applied Local + Remote
 ls supabase/migrations/20260701000000_baseline_v1.sql docs/runbook-staging.md   # les 2 artefacts annoncés par le README existent
 ```
 
-- [ ] **Step 9.3 : Commit final + merge fast-forward** —
+- [x] **Step 9.3 : Commit final + merge fast-forward** —
 
 ```bash
 git add -A
