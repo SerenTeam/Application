@@ -14,7 +14,6 @@ import { ResetPasswordConfirmPage } from '@/pages/ResetPasswordConfirmPage'
 import { ResetPasswordSuccessPage } from '@/pages/ResetPasswordSuccessPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { QuestionnairePage } from '@/pages/QuestionnairePage'
-import { DemoPage } from '@/pages/DemoPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { AccessPage } from '@/pages/AccessPage'
 import { DocumentsPage } from '@/pages/DocumentsPage'
@@ -69,7 +68,6 @@ export default function App() {
 
               {/* Protected routes */}
               <Route path="/" element={<ProtectedRoute><QuestionnairePage /></ProtectedRoute>} />
-              <Route path="/demo" element={<ProtectedRoute><DemoPage /></ProtectedRoute>} />
               <Route path="/access" element={<ProtectedRoute><AccessPage /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
