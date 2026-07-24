@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Seren - Plateforme d'accompagnement post-deces",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "vite",
     "dev:server": "node --watch server/server.js",

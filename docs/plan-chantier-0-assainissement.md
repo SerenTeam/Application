@@ -23,7 +23,7 @@ supabase link --project-ref oltwzvfjazwjvghpzhia   # demande le mot de passe BDD
 
 **Files:** aucun.
 
-- [ ] **Step 0.1 :** `git -C /Users/arnaudgay/Documents/git/Seren/Application checkout -b feature/chantier-0-assainissement` (depuis `main` propre). Vérifier : `git status` → clean, branche créée.
+- [x] **Step 0.1 :** `git -C /Users/arnaudgay/Documents/git/Seren/Application checkout -b feature/chantier-0-assainissement` (depuis `main` propre). Vérifier : `git status` → clean, branche créée.
 
 ---
 
@@ -36,7 +36,7 @@ Réalise A1 + A2 de la spec. Les routes `/api/auth/*` ne sont appelées par aucu
 - Modify: `src/App.tsx`
 - Delete: `src/pages/DemoPage.tsx`
 
-- [ ] **Step 1.1 : Supprimer les blocs dans `server/server.js`** (lignes d'après l'état initial 702 lignes) :
+- [x] **Step 1.1 : Supprimer les blocs dans `server/server.js`** (lignes d'après l'état initial 701 lignes) :
 
 1. Ligne 7 : supprimer `import crypto from 'crypto';` (seul usager : `generateAccessCode`, supprimé ci-dessous).
 2. Ligne 120 : supprimer `const AGENT_ID = process.env.MISTRAL_AGENT_ID; // utilisé UNIQUEMENT par le produit transmission (/api/demo/*)`.
@@ -76,13 +76,13 @@ app.get('*', (req, res) => {
 
 Restent intacts : `requireAuth`, `getSupabaseClient`, `/api/user/transmission`, `/api/transmission/:code`, `/api/health`, routers questionnaire + letters, client Mistral (`client`, utilisé par le questionnaire v2).
 
-- [ ] **Step 1.2 : Vérifier la syntaxe** — Run : `node --check server/server.js` → exit 0, aucune sortie.
+- [x] **Step 1.2 : Vérifier la syntaxe** — Run : `node --check server/server.js` → exit 0, aucune sortie.
 
-- [ ] **Step 1.3 : Front** — dans `src/App.tsx` : supprimer la ligne `import { DemoPage } from '@/pages/DemoPage'` et la ligne `<Route path="/demo" element={<ProtectedRoute><DemoPage /></ProtectedRoute>} />` (seules références au fichier, vérifié). Puis : `git rm src/pages/DemoPage.tsx`.
+- [x] **Step 1.3 : Front** — dans `src/App.tsx` : supprimer la ligne `import { DemoPage } from '@/pages/DemoPage'` et la ligne `<Route path="/demo" element={<ProtectedRoute><DemoPage /></ProtectedRoute>} />` (seules références au fichier, vérifié). Puis : `git rm src/pages/DemoPage.tsx`.
 
-- [ ] **Step 1.4 : Type-check + tests** — Run : `npx tsc --noEmit` → 0 erreur. `npx vitest run` → **15 fichiers / 157 tests verts** (aucun test ne référence demo ni /api/auth — vérifié).
+- [x] **Step 1.4 : Type-check + tests** — Run : `npx tsc --noEmit` → 0 erreur. `npx vitest run` → **15 fichiers / 157 tests verts** (aucun test ne référence demo ni /api/auth — vérifié).
 
-- [ ] **Step 1.5 : Boot check** — Run :
+- [x] **Step 1.5 : Boot check** — Run :
 
 ```bash
 PORT=3999 node server/server.js & sleep 1
@@ -93,7 +93,7 @@ curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3999/api/nimporte     
 kill %1
 ```
 
-- [ ] **Step 1.6 : Vérif zéro PII dans les logs** — Run : `grep -rn "console\." server/` → plus AUCUNE occurrence loggant email, réponse IA, code d'accès, token ou payload utilisateur. Attendu restant : logs de démarrage (l.697–700), erreurs techniques préfixées `❌`/`⚠️` (auth middleware, transmission, letters, questionnaire — objets d'erreur uniquement), warning `letters-store` (config). `grep -rn "api/demo\|api/auth\|MISTRAL_AGENT_ID\|DemoPage" src/ server/` → zéro occurrence.
+- [x] **Step 1.6 : Vérif zéro PII dans les logs** — Run : `grep -rn "console\." server/` → plus AUCUNE occurrence loggant email, réponse IA, code d'accès, token ou payload utilisateur. Attendu restant : logs de démarrage (l.697–700), erreurs techniques préfixées `❌`/`⚠️` (auth middleware, transmission, letters, questionnaire — objets d'erreur uniquement), warning `letters-store` (config). `grep -rn "api/demo\|api/auth\|MISTRAL_AGENT_ID\|DemoPage" src/ server/` → zéro occurrence.
 
 - [x] **Step 1.7 : Commit** —
 
@@ -114,14 +114,14 @@ Espace privé (données sensibles) : politique inverse de la landing. Réalise A
 - Create: `public/robots.txt`
 - Modify: `server/server.js`
 
-- [ ] **Step 2.1 :** Créer `public/robots.txt` (le dossier `public/` n'existe pas encore — Vite le copiera dans `dist/` au build) :
+- [x] **Step 2.1 :** Créer `public/robots.txt` (le dossier `public/` n'existe pas encore — Vite le copiera dans `dist/` au build) :
 
 ```
 User-agent: *
 Disallow: /
 ```
 
-- [ ] **Step 2.2 :** Dans `server/server.js`, insérer APRÈS le bloc `app.use(cors({...}))` et AVANT le montage du webhook (`app.use('/api/letters/webhook', ...)`) — l'ordre garantit le header sur TOUTES les réponses, y compris statiques :
+- [x] **Step 2.2 :** Dans `server/server.js`, insérer APRÈS le bloc `app.use(cors({...}))` et AVANT le montage du webhook (`app.use('/api/letters/webhook', ...)`) — l'ordre garantit le header sur TOUTES les réponses, y compris statiques :
 
 ```js
 // Espace privé : interdire l'indexation par les moteurs (politique inverse de la
@@ -132,7 +132,7 @@ app.use((req, res, next) => {
 });
 ```
 
-- [ ] **Step 2.3 : Vérifier** — Run :
+- [x] **Step 2.3 : Vérifier** — Run :
 
 ```bash
 node --check server/server.js
@@ -144,7 +144,7 @@ curl -s http://localhost:3999/robots.txt                            # → User-a
 kill %1
 ```
 
-- [ ] **Step 2.4 : Commit** —
+- [x] **Step 2.4 : Commit** —
 
 ```bash
 git add public/robots.txt server/server.js
@@ -160,7 +160,7 @@ Réalise A4. Vérifié le 24/07 : sans `.env`, 13/15 fichiers passent ; `tests/i
 **Files:**
 - Create: `.github/workflows/ci.yml`
 
-- [ ] **Step 3.1 :** Créer `.github/workflows/ci.yml` :
+- [x] **Step 3.1 :** Créer `.github/workflows/ci.yml` :
 
 ```yaml
 name: CI
@@ -190,7 +190,7 @@ jobs:
       - run: npx vitest run
 ```
 
-- [ ] **Step 3.2 : Simuler la CI localement** (mêmes conditions : pas de `.env`, variables factices) — Run :
+- [x] **Step 3.2 : Simuler la CI localement** (mêmes conditions : pas de `.env`, variables factices) — Run :
 
 ```bash
 mv .env .env.chantier0.bak
@@ -202,7 +202,7 @@ ls .env   # → .env restauré (OBLIGATOIRE avant de continuer)
 
 Attendu : **15 fichiers / 157 tests verts**, tsc 0 erreur.
 
-- [ ] **Step 3.3 : Commit** —
+- [x] **Step 3.3 : Commit** —
 
 ```bash
 git add .github/workflows/ci.yml
@@ -226,9 +226,9 @@ Réalise A5. Pattern Resend : env absente → feature inerte, aucun crash. Confi
 - Modify: `src/main.tsx`
 - Modify: `src/components/layout/ErrorBoundary.tsx`
 
-- [ ] **Step 4.1 :** Run : `npm install @sentry/node @sentry/react` → exit 0.
+- [x] **Step 4.1 :** Run : `npm install @sentry/node @sentry/react` → exit 0.
 
-- [ ] **Step 4.2 : Serveur** — dans `server/server.js` :
+- [x] **Step 4.2 : Serveur** — dans `server/server.js` :
 
 1. Ajouter aux imports (en tête, avec les autres imports) : `import * as Sentry from '@sentry/node';`
 2. Juste APRÈS la ligne `dotenv.config({ ... })`, ajouter :
@@ -253,7 +253,7 @@ if (process.env.SENTRY_DSN) {
 }
 ```
 
-- [ ] **Step 4.3 : Front** — créer `src/lib/sentry.ts` :
+- [x] **Step 4.3 : Front** — créer `src/lib/sentry.ts` :
 
 ```ts
 import * as Sentry from '@sentry/react'
@@ -280,7 +280,7 @@ initSentry()
 
 Si `src/vite-env.d.ts` déclare une interface `ImportMetaEnv` explicite, y ajouter `readonly VITE_SENTRY_DSN?: string` ; sinon ne rien faire.
 
-- [ ] **Step 4.4 : ErrorBoundary** — dans `src/components/layout/ErrorBoundary.tsx` : ajouter `import * as Sentry from '@sentry/react'` et remplacer le bloc TODO de `componentDidCatch` :
+- [x] **Step 4.4 : ErrorBoundary** — dans `src/components/layout/ErrorBoundary.tsx` : ajouter `import * as Sentry from '@sentry/react'` et remplacer le bloc TODO de `componentDidCatch` :
 
 ```ts
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -292,7 +292,7 @@ Si `src/vite-env.d.ts` déclare une interface `ImportMetaEnv` explicite, y ajout
 
 Mettre à jour le commentaire de classe (« En production, reporterait vers Sentry » → « Reporte vers Sentry quand `VITE_SENTRY_DSN` est configurée »).
 
-- [ ] **Step 4.5 : Vérifier** — Run : `npx tsc --noEmit` → 0 erreur ; `npx vitest run` → 15 fichiers / 157 tests verts ; boot no-op :
+- [x] **Step 4.5 : Vérifier** — Run : `npx tsc --noEmit` → 0 erreur ; `npx vitest run` → 15 fichiers / 157 tests verts ; boot no-op :
 
 ```bash
 PORT=3999 node server/server.js & sleep 1
@@ -300,7 +300,7 @@ curl -s http://localhost:3999/api/health    # → ok, démarrage sans erreur ni 
 kill %1
 ```
 
-- [ ] **Step 4.6 : Commit** —
+- [x] **Step 4.6 : Commit** —
 
 ```bash
 git add -A
@@ -318,7 +318,7 @@ Réalise A6. L'actuel décrit la v1 périmée (agent 20 questions, Cormorant Gar
 **Files:**
 - Modify: `README.md` (remplacement intégral)
 
-- [ ] **Step 5.1 :** Remplacer intégralement `README.md` par :
+- [x] **Step 5.1 :** Remplacer intégralement `README.md` par :
 
 ````markdown
 # Seren — Plateforme d'accompagnement post-décès
@@ -377,9 +377,9 @@ Render (build : `npm ci && npm run build`, run : `npm start`). Les variables `VI
 
 (`.env.example` n'existe pas dans le repo — vérifié — d'où le commentaire « créer .env » ; ne pas créer de `.env.example` dans cette task, hors scope.)
 
-- [ ] **Step 5.2 : Vérifier** — relire le rendu (`head -40 README.md`), s'assurer qu'aucune mention v1 ne subsiste : `grep -in "cormorant\|20 questions\|30 etapes\|30 étapes\|conversationnel" README.md` → zéro occurrence.
+- [x] **Step 5.2 : Vérifier** — relire le rendu (`head -40 README.md`), s'assurer qu'aucune mention v1 ne subsiste : `grep -in "cormorant\|20 questions\|30 etapes\|30 étapes\|conversationnel" README.md` → zéro occurrence.
 
-- [ ] **Step 5.3 : Commit** —
+- [x] **Step 5.3 : Commit** —
 
 ```bash
 git add README.md
@@ -399,7 +399,7 @@ Réalise le lot B (clôture T7 + T8). **Pré-requis : le USER STEP `supabase log
 - Move: `supabase/schema_full.sql` → `supabase/archive/schema_full_2026-07-16.sql`
 - Modify: `docs/runbook-supabase-cli.md`
 
-- [ ] **Step 6.1 : Créer la baseline** — extraction VERBATIM des sections 1–5 de `supabase/schema_full.sql` (lignes 17–188 : tables `questionnaires`, `roadmaps`, `steps`, `step_actions`, `documents` + index + RLS + policies ; les sections 6–8 — transmissions, sessions, pg_cron — sont déjà portées par leurs migrations propres). Run :
+- [x] **Step 6.1 : Créer la baseline** — extraction VERBATIM des sections 1–5 de `supabase/schema_full.sql` (lignes 17–188 : tables `questionnaires`, `roadmaps`, `steps`, `step_actions`, `documents` + index + RLS + policies ; les sections 6–8 — transmissions, sessions, pg_cron — sont déjà portées par leurs migrations propres). Run :
 
 ```bash
 { cat <<'EOF'
@@ -421,7 +421,7 @@ sed -n '17,188p' supabase/schema_full.sql; } > supabase/migrations/2026070100000
 
 Vérifier l'extraction : `grep -c "CREATE TABLE" supabase/migrations/20260701000000_baseline_v1.sql` → **5** ; `tail -2` → se termine par `USING (auth.uid() = user_id);` (policy delete de `documents`) ; aucune mention de `transmissions` ni `questionnaire_sessions` : `grep -c "transmissions\|questionnaire_sessions" supabase/migrations/20260701000000_baseline_v1.sql` → 0.
 
-- [ ] **Step 6.2 : Baseline sur le projet existant** — marquer comme appliquées les migrations déjà en base (la baseline + les 3 posées à la main), Run :
+- [x] **Step 6.2 : Baseline sur le projet existant** — marquer comme appliquées les migrations déjà en base (la baseline + les 3 posées à la main), Run :
 
 ```bash
 supabase migration repair --status applied 20260701000000
@@ -433,9 +433,9 @@ supabase migration list
 
 Attendu à la fin : `20260701000000`, `20260708120000`, `20260709090000`, `20260713120000` = applied côté Remote ; `20260711100000` (pg_cron) et `20260716120000` (letter_sends) = Local uniquement. Si l'état Remote diffère (une des deux « en attente » déjà appliquée à la main), l'ajouter au repair au lieu de la pousser, et le documenter en note post-revue.
 
-- [ ] **Step 6.3 : Push** — Run : `yes | supabase db push` (le `yes` répond au prompt de confirmation ; si un mot de passe BDD est demandé → USER STEP, demander à Arnaud de le saisir). Attendu : applique `20260711100000` puis `20260716120000` sans erreur. Si `create extension pg_cron` échoue : USER STEP — activer l'extension dans Dashboard → Database → Extensions → pg_cron, puis relancer le push.
+- [x] **Step 6.3 : Push** — Run : `yes | supabase db push` (le `yes` répond au prompt de confirmation ; si un mot de passe BDD est demandé → USER STEP, demander à Arnaud de le saisir). Attendu : applique `20260711100000` puis `20260716120000` sans erreur. Si `create extension pg_cron` échoue : USER STEP — activer l'extension dans Dashboard → Database → Extensions → pg_cron, puis relancer le push.
 
-- [ ] **Step 6.4 : Vérifier** — Run : `supabase migration list` → les 6 migrations applied Local ET Remote. Puis probe REST (token du compte test E2E, cf. CLAUDE.md) :
+- [x] **Step 6.4 : Vérifier** — Run : `supabase migration list` → les 6 migrations applied Local ET Remote. Puis probe REST (token du compte test E2E, cf. CLAUDE.md) :
 
 ```bash
 URL=$(grep "^VITE_SUPABASE_URL" .env | cut -d= -f2)
@@ -446,14 +446,14 @@ curl -s "$URL/rest/v1/letter_sends?select=id&limit=1" -H "apikey: $KEY" -H "Auth
 
 Attendu : `[]` (200, table existe) — plus l'erreur `PGRST205`. Vérification cron (optionnelle, si Docker tourne : `supabase db diff --linked` → aucune différence ; sinon USER STEP 1 min : Dashboard → SQL Editor → `select jobname, schedule from cron.job;` → `purge-questionnaire-sessions | 17 3 * * *`).
 
-- [ ] **Step 6.5 : Archiver `schema_full.sql`** (redondant dès que la baseline existe — un projet neuf se monte par `supabase db push` seul) — Run :
+- [x] **Step 6.5 : Archiver `schema_full.sql`** (redondant dès que la baseline existe — un projet neuf se monte par `supabase db push` seul) — Run :
 
 ```bash
 mkdir -p supabase/archive
 git mv supabase/schema_full.sql supabase/archive/schema_full_2026-07-16.sql
 ```
 
-- [ ] **Step 6.6 : Mettre à jour `docs/runbook-supabase-cli.md`** — remplacer la section « ⚠️ Baseline obligatoire avant le premier push » et la section « Pour préprod et prod » par :
+- [x] **Step 6.6 : Mettre à jour `docs/runbook-supabase-cli.md`** — remplacer la section « ⚠️ Baseline obligatoire avant le premier push » et la section « Pour préprod et prod » par :
 
 ```markdown
 ## ⚠️ Baseline (fait le 2026-07-24 sur le projet principal)
@@ -482,7 +482,7 @@ Astuce multi-projets : `supabase link` ne retient qu'un projet à la fois — re
 
 (Conserver le reste du runbook : préambule « Pourquoi », « Mise en place », « Workflow courant » s'il existe.)
 
-- [ ] **Step 6.7 : Commit** —
+- [x] **Step 6.7 : Commit** —
 
 ```bash
 git add -A
@@ -501,7 +501,7 @@ Réalise le lot C, dans le repo **landing** (`/Users/arnaudgay/Documents/git/Ser
 - Rename: `src/app/robots.txt` → `src/app/robots.ts`
 - Move: `docs/superpowers/plans/2026-05-11-design-system-migration.md` → `docs/superpowers/plans/archive/`
 
-- [ ] **Step 7.1 :** Run :
+- [x] **Step 7.1 :** Run :
 
 ```bash
 cd /Users/arnaudgay/Documents/git/Seren/landing
@@ -509,15 +509,15 @@ git status --short   # → doit être clean ; sinon s'arrêter et demander à Ar
 git mv src/app/robots.txt src/app/robots.ts
 ```
 
-- [ ] **Step 7.2 : Vérifier le build** — Run : `npm run build` (dans la landing) → exit 0 ET la liste des routes générées contient `/robots.txt`. En cas d'échec de build, vérifier s'il est PRÉ-EXISTANT (non lié au renommage) : `git stash` → `npm run build` → `git stash pop` ; s'il échouait déjà avant, s'arrêter et le signaler sans rien committer.
+- [x] **Step 7.2 : Vérifier le build** — Run : `npm run build` (dans la landing) → exit 0 ET la liste des routes générées contient `/robots.txt`. En cas d'échec de build, vérifier s'il est PRÉ-EXISTANT (non lié au renommage) : `git stash` → `npm run build` → `git stash pop` ; s'il échouait déjà avant, s'arrêter et le signaler sans rien committer.
 
-- [ ] **Step 7.3 : Commit du fix** —
+- [x] **Step 7.3 : Commit du fix** —
 
 ```bash
 git add -A && git commit -m "fix: robots.txt contenait du code typescript servi verbatim — renommé en robots.ts (route next)"
 ```
 
-- [ ] **Step 7.4 : Archiver le plan périmé** — Run :
+- [x] **Step 7.4 : Archiver le plan périmé** — Run :
 
 ```bash
 mkdir -p docs/superpowers/plans/archive
@@ -536,7 +536,7 @@ Réalise le lot D (préparation ; les créations de comptes sont des user steps 
 **Files:**
 - Create: `docs/runbook-staging.md`
 
-- [ ] **Step 8.1 :** Créer `docs/runbook-staging.md` :
+- [x] **Step 8.1 :** Créer `docs/runbook-staging.md` :
 
 ````markdown
 # Runbook — Environnement de staging (Supabase + Render)
@@ -603,7 +603,7 @@ oltwzvfjazwjvghpzhia` pour revenir au projet principal ensuite.
   migration de test dessus : staging d'abord, prod ensuite (`supabase link` + `db push`).
 ````
 
-- [ ] **Step 8.2 : Commit** —
+- [x] **Step 8.2 : Commit** —
 
 ```bash
 git add docs/runbook-staging.md
@@ -620,7 +620,7 @@ git commit -m "docs(chantier-0): runbook staging — Supabase + Render pas à pa
 - Modify: `CLAUDE.md`
 - Modify: `docs/plan-chantier-0-assainissement.md` (cases cochées + notes post-revue)
 
-- [ ] **Step 9.1 : Mettre à jour `CLAUDE.md`** :
+- [x] **Step 9.1 : Mettre à jour `CLAUDE.md`** :
 
 1. **Section Architecture**, ligne `server.js` : remplacer `# Express : auth proxy, produit transmission (/api/demo/*), static serving` par `# Express : transmission (lecture seule), health, static serving + SPA fallback`.
 2. **Variables d'environnement** : supprimer la ligne `MISTRAL_AGENT_ID` ; ajouter : `- \`SENTRY_DSN\`, \`VITE_SENTRY_DSN\` — monitoring erreurs (facultatif : absents → Sentry inerte). \`VITE_SENTRY_DSN\` figée au build (redéploiement requis).`
@@ -633,7 +633,7 @@ git commit -m "docs(chantier-0): runbook staging — Supabase + Render pas à pa
 9. **Points d'attention → Sessions** : supprimer la phrase `Le produit transmission (\`/api/demo/*\`) reste sur une \`Map()\` en mémoire — perdu au redémarrage` (la Map et les routes n'existent plus).
 10. **Section Stack → Backend** : remplacer `— questionnaire v2 (moteur + rédacteur), produit transmission, auth proxy, static serving` par `— questionnaire v2 (moteur + rédacteur), courriers (envoi email), transmission (lecture seule), static serving`.
 
-- [ ] **Step 9.2 : Vérification globale** — Run et confirmer :
+- [x] **Step 9.2 : Vérification globale** — Run et confirmer :
 
 ```bash
 npx tsc --noEmit                          # 0 erreur
@@ -655,6 +655,8 @@ git log --oneline -8
 ```
 
 (Arnaud pushe lui-même — ne PAS pousser.)
+
+> **Note post-revue (Task 9, 2026-07-24) :** merge du Step 9.3 déplacé APRÈS la revue finale de branche (décision contrôleur — revue avant merge) ; `supabase migration list` du Step 9.2 vérifié par le contrôleur (classificateur de permissions côté subagents) : 6/6 applied Local+Remote. Ajout `engines.node >= 22` à package.json (recommandation revue Task 3).
 
 ---
 

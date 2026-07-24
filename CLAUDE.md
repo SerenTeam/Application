@@ -5,9 +5,9 @@ Plateforme d'accompagnement post-décès : questionnaire guidé (rédaction IA),
 ## Stack
 
 - **Frontend** : React 18, TypeScript, Vite, Tailwind CSS v4 (CSS-first `@theme`), Shadcn/ui, Radix UI, Lucide icons
-- **Backend** : Express.js (`server/server.js` + `server/routes/`) — questionnaire v2 (moteur + rédacteur), produit transmission, auth proxy, static serving
+- **Backend** : Express.js (`server/server.js` + `server/routes/`) — questionnaire v2 (moteur + rédacteur), courriers (envoi email), transmission (lecture seule), static serving
 - **BDD** : Supabase (PostgreSQL + Auth + RLS)
-- **IA** : Mistral AI — rédacteur stateless du questionnaire v2 (textes uniquement, jamais de données) ; agent conversationnel conservé pour le produit transmission
+- **IA** : Mistral AI — rédacteur stateless du questionnaire v2 (textes uniquement, jamais de données) (l'agent conversationnel du produit transmission a été débranché au chantier 0)
 - **PDF** : jsPDF (export courriers)
 - **Analytics** : PostHog
 
@@ -41,7 +41,7 @@ src/
 ├── data/             # Catalogues statiques (steps-catalog, letter-templates)
 └── types/            # Types TypeScript partagés
 server/
-├── server.js         # Express : auth proxy, produit transmission (/api/demo/*), static serving
+├── server.js         # Express : transmission (lecture seule), health, static serving + SPA fallback
 ├── lib/              # Moteur questionnaire v2, catalogue questions, rédacteur LLM, sessions
 └── routes/           # Routers Express (questionnaire v2, letters — envoi email v1)
 ```
@@ -72,28 +72,28 @@ Fichier `.env` à la racine (gitignored). Variables requises :
 - `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` — client Supabase backend (jamais la clé secrète `sb_secret_…` : la RLS doit s'appliquer via le token utilisateur)
 - `MISTRAL_API_KEY` — clé API Mistral
 - `MISTRAL_MODEL` — modèle du rédacteur questionnaire v2 (défaut : `mistral-small-latest`)
-- `MISTRAL_AGENT_ID` — agent du produit transmission uniquement (`/api/demo/*`)
 - `RESEND_API_KEY`, `RESEND_FROM` — envoi des courriers par email (canal v1) ; absents → 503 propre, la feature est inerte
 - `RESEND_WEBHOOK_SECRET` — vérification de signature svix du webhook `/api/letters/webhook`
 - `WEBHOOK_RPC_SECRET` — secret partagé avec la base (table `webhook_config`) pour la RPC de mise à jour des statuts ; ⚠️ doit AUSSI être inséré en base : `insert into webhook_config (id, rpc_secret) values (1, '<valeur>');`
 - `CORS_ORIGIN` — origines autorisées, séparées par des virgules (défaut : `http://localhost:5173,http://localhost:3000`). À définir en production (ex. `https://app.seren.fr`)
+- `SENTRY_DSN`, `VITE_SENTRY_DSN` — monitoring erreurs (facultatif : absents → Sentry inerte). `VITE_SENTRY_DSN` figée au build (redéploiement requis).
 
 ## Workflow & état du projet (source de vérité — survit aux réinitialisations de mémoire)
 
 - **Process établi** : brainstorming → spec (`docs/design-*.md`) → plan (`docs/plan-*.md`) → exécution **subagent-driven** (1 subagent frais par task + revue spec + revue qualité, correctifs systématiques, chaque déviation documentée par une « note post-revue » dans le plan). Merge **local** dans `main` (fast-forward) ; Arnaud pushe lui-même sur GitHub. Décisions produit → lui demander ; correctifs techniques des revues → appliquer sans re-consulter.
 - **Fait** : Plans 1, 2 & 3 (refonte questionnaire v2 : moteur serveur + rédacteur Mistral à fallback + sessions Supabase + frontend récap ; puis lot éditorial 13 étapes sourcées, rédacteur options-aware, rate limiting /start+/resume, reprise de session, invariant par valeur) livrés, mergés, validés E2E réel. Plan 4 (i18n FR/EN : détection device + toggle, dictionnaires typés, catalogues jumeaux, serveur bilingue — spec `docs/design-i18n.md`) livré, mergé, validé E2E réel. Plan 5 (refonte UI : concordance avec le design system de la landing `DESIGN.md` — spec `docs/design-refonte-ui.md`) livré, mergé, validé E2E visuel. Motion de présentation (chantier hors-app : `motion/seren-motion.html` — 30 s en boucle invisible, FR/EN via touche L, Espace/F, autonome/offline, régénérable par `node motion/build.mjs` + `verify.mjs` ; spec `docs/design-motion-presentation.md`) livré, mergé, 10/10 critères — reste le visionnage final humain sur écran réel (fluidité perçue, vraie touche F, `file://`).
-- **En attente (USER STEPS)** : `supabase login` + `link` + baseline par projet (voir `docs/runbook-supabase-cli.md`) — puis `supabase db push` appliquera la migration pg_cron en attente ; relecture juridique/éditoriale des 14 étapes éditoriales (13 du Plan 3 + pension d'orphelin/ASF).
+- **En attente (USER STEPS)** : relecture juridique/éditoriale des 14 étapes éditoriales (13 du Plan 3 + pension d'orphelin/ASF) ; compte Sentry + 2 DSN sur Render puis redéploiement ; uptime check /api/health (UptimeRobot) ; push GitHub (Application + landing) et vérif CI verte au premier push ; suppression de la variable d'agent Mistral obsolète des env (.env local + Render) ; création staging (docs/runbook-staging.md).
 - **Décisions produit ouvertes** : correctif RLS `transmissions` (exposition aux authentifiés — proposition dans `docs/audit-rls.md` F1, produit gelé) ; droit à l'effacement RGPD (audit F2) ; personas non couvertes du questionnaire (élargir ou non).
-- **Fait (suite)** : envoi de courriers v1 canal email (`docs/plan-envoi-courriers.md` — Resend, letter_sends, webhook signé + secret RPC en base, panneau d'envoi FR/EN) livré et mergé ; E2E live et activation = USER STEPS (compte Resend, migration, secrets). v2 (LRE Maileva) au backlog avec le modèle économique à trancher.
+- **Fait (suite)** : envoi de courriers v1 canal email (`docs/plan-envoi-courriers.md` — Resend, letter_sends, webhook signé + secret RPC en base, panneau d'envoi FR/EN) livré et mergé ; E2E live et activation = USER STEPS (compte Resend, migration, secrets). v2 (LRE Maileva) au backlog avec le modèle économique à trancher. Chantier 0 assainissement (`docs/design-chantier-0-assainissement.md`) livré : gel démo + routes auth mortes supprimées (zéro PII loggée), noindex app, CI GitHub Actions, Sentry no-op sans DSN (500 gérés capturés), README v2, baseline migrations + pg_cron/letter_sends poussées (schéma 100 % versionné), landing robots.ts + plan périmé archivé, runbook staging.
 - **À exécuter** : v2/v3 de `docs/design-envoi-courriers.md` (LRE/papier, portails). Points-attention §1 (CLI + runbook) et §4 (audit RLS) clos ; pension d'orphelin livrée (étape ASF). Reste au backlog : décès à l'étranger (exclu v2), rate limiter multi-instances (inutile en mono-instance).
 - **Compte de test E2E** (jetable, projet de dev) : `test.e2e.claude@seren-test.fr` / `TestSeren2026!` — confirmation email désactivée sur le projet Supabase.
-- **Produit transmission** (`/api/demo/*`, `DemoPage`, `AccessPage`, table `transmissions`) : produit DISTINCT du questionnaire, toujours sur l'ancien agent Mistral (`MISTRAL_AGENT_ID`) et une `Map()` mémoire — **ne pas toucher sans décision explicite**.
+- **Produit transmission** (`AccessPage`, routes GET `/api/user/transmission` + `/api/transmission/:code`, table `transmissions`) : produit DISTINCT du questionnaire, **gelé et réduit à la lecture seule au chantier 0** (la page de démo et ses trois routes serveur ont été supprimées, l'agent Mistral legacy débranché) — réactivation = décision produit explicite.
 - **Déploiement** : Render (`https://application-0vxw.onrender.com`). Les variables `VITE_*` sont figées au build → tout changement de `.env` côté client exige un redéploiement. `CORS_ORIGIN` recommandé sur Render.
 
 ## Points d'attention
 
-- **Tests** : Vitest (`npm test`) — moteur, catalogues, invariants croisés, routes (supertest). Les invariants interdisent toute question sans étape et tout drift entre catalogues
-- **Sessions** : questionnaire v2 persisté dans `questionnaire_sessions` (Supabase, RLS, TTL 24 h). Le produit transmission (`/api/demo/*`) reste sur une `Map()` en mémoire — perdu au redémarrage
+- **Tests** : Vitest (`npm test`, 157 tests) — exécutés en CI (`.github/workflows/ci.yml`) sur chaque push/PR — moteur, catalogues, invariants croisés, routes (supertest). Les invariants interdisent toute question sans étape et tout drift entre catalogues
+- **Sessions** : questionnaire v2 persisté dans `questionnaire_sessions` (Supabase, RLS, TTL 24 h).
 - **PII vers Mistral** : le rédacteur ne reçoit que le prénom du défunt, la relation et la dernière réponse fermée (valeurs enum) — jamais l'historique, le nom de famille ni la date de décès
-- **Schema SQL** : migrations versionnées dans `supabase/migrations/` (à appliquer via SQL Editor ou `supabase db push`) ; `supabase_v1_schema.sql` et `supabase_auth_setup.sql` à la racine = état historique v1
+- **Schema SQL** : migrations versionnées dans `supabase/migrations/` (baseline v1 incluse — TOUTE évolution passe par migration + `supabase db push`, plus jamais de SQL Editor manuel) ; fichiers racine v1 et `supabase/archive/` = historique.
 - **RLS** : les policies Supabase Row Level Security sont actives — les requêtes côté serveur utilisent le token utilisateur via `getSupabaseClient(token)`
