@@ -8,11 +8,12 @@ Application web qui accompagne les proches d'une personne décédée dans leurs 
 - **Roadmap personnalisée** : génération des démarches depuis un catalogue de ~50 étapes sourcées, classées par urgence (48 h / semaine / mois / long terme).
 - **Courriers pré-remplis** : modèles avec variables auto-remplies, export PDF, envoi par email (Resend) avec suivi de statut (webhook signé). Les courriers restent en français (destinés aux organismes français).
 - **i18n FR/EN** : détection de la langue du device + toggle persistant ; catalogues d'étapes jumeaux avec invariant de parité testé.
+- **Forfait payant** : Stripe Checkout one-shot + webhook signé idempotent ; l'accès est vérifié côté serveur contre la table `purchases`, jamais sur un état client. La vente est fermée par défaut (`PAYMENTS_ENABLED`).
 - **Auth Supabase** (RLS active sur toutes les tables) · **Monitoring Sentry** (optionnel, inerte sans DSN).
 
 ## Stack
 
-React 18 + TypeScript + Vite + Tailwind CSS v4 + Shadcn/ui · Express.js · Supabase (PostgreSQL, Auth, RLS) · Mistral AI · Resend · Vitest.
+React 18 + TypeScript + Vite + Tailwind CSS v4 + Shadcn/ui · Express.js · Supabase (PostgreSQL, Auth, RLS) · Mistral AI · Resend · Stripe · Vitest.
 
 ## Démarrage
 
@@ -28,7 +29,7 @@ Autres commandes : `npm run build` (production dans `dist/`), `npm start` (Expre
 
 ```
 src/            React (pages, components par domaine, hooks, i18n, catalogues)
-server/         Express — moteur questionnaire v2, rédacteur Mistral, envoi courriers
+server/         Express — moteur questionnaire v2, rédacteur Mistral, envoi courriers, paiement Stripe
 supabase/       Migrations versionnées (baseline incluse) — `supabase db push`
 tests/          Vitest : moteur, catalogues, invariants croisés, routes (supertest)
 docs/           Specs (design-*.md), plans (plan-*.md), runbooks

@@ -26,11 +26,11 @@
 **Files:**
 - Modify: `package.json`, `package-lock.json`
 
-- [ ] **Step 0.1 :** Vérifier la branche — `git -C /home/user/Application status` → propre, sur `claude/chantier-1-roadmap-lcbe7n`.
+- [x] **Step 0.1 :** Vérifier la branche — `git -C /home/user/Application status` → propre, sur `claude/chantier-1-roadmap-lcbe7n`.
 
-- [ ] **Step 0.2 :** `npm install stripe@22.3.2 --save-exact` (les dépendances du projet sont épinglées sans `^` pour les libs applicatives). Vérifier : `"stripe": "22.3.2"` dans `dependencies`.
+- [x] **Step 0.2 :** `npm install stripe@22.3.2 --save-exact` (les dépendances du projet sont épinglées sans `^` pour les libs applicatives). Vérifier : `"stripe": "22.3.2"` dans `dependencies`.
 
-- [ ] **Step 0.3 : Commit** —
+- [x] **Step 0.3 : Commit** —
 
 ```bash
 git add package.json package-lock.json
@@ -51,7 +51,7 @@ Points de conception à respecter dans le SQL :
 **Files:**
 - Create: `supabase/migrations/20260725120000_purchases.sql`
 
-- [ ] **Step 1.1 :** Créer la migration :
+- [x] **Step 1.1 :** Créer la migration :
 
 ```sql
 -- Achats du forfait Seren (Stripe Checkout one-shot — chantier 1).
@@ -149,9 +149,9 @@ grant execute on function mark_purchase_refunded    to anon, authenticated;
 grant execute on function expire_purchase           to anon, authenticated;
 ```
 
-- [ ] **Step 1.2 :** Relire la migration contre les invariants : aucune policy autre que `select` ; les 4 RPC portent toutes la clause `exists (... webhook_config ...)` ; toutes les transitions sont gardées.
+- [x] **Step 1.2 :** Relire la migration contre les invariants : aucune policy autre que `select` ; les 4 RPC portent toutes la clause `exists (... webhook_config ...)` ; toutes les transitions sont gardées.
 
-- [ ] **Step 1.3 : Commit** — `git commit -m "feat(chantier-1): migration purchases — RLS lecture seule + 4 RPC security definer idempotentes"`
+- [x] **Step 1.3 : Commit** — `git commit -m "feat(chantier-1): migration purchases — RLS lecture seule + 4 RPC security definer idempotentes"`
 
 ---
 
@@ -162,7 +162,7 @@ Miroir de `server/lib/letters-store.js` : lectures avec le client **utilisateur*
 **Files:**
 - Create: `server/lib/purchases-store.js`
 
-- [ ] **Step 2.1 :** Créer le store avec ces fonctions :
+- [x] **Step 2.1 :** Créer le store avec ces fonctions :
 
 | Fonction | Client | Rôle |
 | --- | --- | --- |
@@ -178,7 +178,7 @@ Contraintes, reprises telles quelles de `letters-store.js` :
 - Aucune erreur ne transporte de donnée du payload Stripe.
 - Un helper privé `rpc(client, name, params)` factorise « secret manquant → throw » + « erreur PostgREST → throw » plutôt que de répéter le bloc quatre fois.
 
-- [ ] **Step 2.2 : Commit** — `git commit -m "feat(chantier-1): store purchases — lectures RLS, écritures par RPC"`
+- [x] **Step 2.2 : Commit** — `git commit -m "feat(chantier-1): store purchases — lectures RLS, écritures par RPC"`
 
 ---
 
@@ -188,9 +188,9 @@ Contraintes, reprises telles quelles de `letters-store.js` :
 - Create: `server/lib/stripe-client.js`, `server/routes/payments.js`
 - Modify: `server/server.js`, `server/lib/messages.js`
 
-- [ ] **Step 3.1 : `server/lib/stripe-client.js`** — instanciation **paresseuse**, exactement comme le client Resend (`server.js:145`) : sans `STRIPE_SECRET_KEY`, l'export vaut `null` et la feature est inerte au lieu de faire planter le démarrage. Expose aussi `getPrice()` : `prices.retrieve(STRIPE_PRICE_ID)` avec cache mémoire TTL 10 min, renvoyant `{ amount_total, currency }` ou `null` si Stripe est injoignable (jamais d'exception propagée — l'UI doit dégrader, pas casser).
+- [x] **Step 3.1 : `server/lib/stripe-client.js`** — instanciation **paresseuse**, exactement comme le client Resend (`server.js:145`) : sans `STRIPE_SECRET_KEY`, l'export vaut `null` et la feature est inerte au lieu de faire planter le démarrage. Expose aussi `getPrice()` : `prices.retrieve(STRIPE_PRICE_ID)` avec cache mémoire TTL 10 min, renvoyant `{ amount_total, currency }` ou `null` si Stripe est injoignable (jamais d'exception propagée — l'UI doit dégrader, pas casser).
 
-- [ ] **Step 3.2 : `server/routes/payments.js`** — factory `createPaymentsRouter({ requireAuth, store, stripe, publicClient, paymentsEnabled, priceId, includedSends, appUrl })`, sur le modèle de `createLettersRouter`. Toutes les dépendances injectées : les tests n'ouvrent aucune connexion.
+- [x] **Step 3.2 : `server/routes/payments.js`** — factory `createPaymentsRouter({ requireAuth, store, stripe, publicClient, paymentsEnabled, priceId, includedSends, appUrl })`, sur le modèle de `createLettersRouter`. Toutes les dépendances injectées : les tests n'ouvrent aucune connexion.
 
 **`POST /checkout`** (`requireAuth` + `createUserRateLimiter({ max: 10, windowMs: 60*60*1000 })`) :
 1. `paymentsEnabled` faux **ou** `stripe` null **ou** `priceId` absent → **503** `payments_disabled`.
@@ -218,15 +218,15 @@ Contraintes, reprises telles quelles de `letters-store.js` :
    `user_id` provient de `metadata.user_id` (repli `client_reference_id`) : posé par notre propre serveur à la création de la session et rapporté sous signature vérifiée — donc digne de confiance. Absent → log + 200 (ne jamais faire boucler Stripe sur une donnée qu'on ne peut pas réparer).
 4. Toute erreur de traitement → log + `Sentry.captureException` + **200** quand même. Aucun contenu de payload dans les logs (PII payeur).
 
-- [ ] **Step 3.3 : Clés dans `server/lib/messages.js`** — section « Paiement (server/routes/payments.js) », **FR et EN, mêmes clés** : `payments_disabled`, `checkout_failed`, `purchase_required`, `payments_status_error`.
+- [x] **Step 3.3 : Clés dans `server/lib/messages.js`** — section « Paiement (server/routes/payments.js) », **FR et EN, mêmes clés** : `payments_disabled`, `checkout_failed`, `purchase_required`, `payments_status_error`.
 
-- [ ] **Step 3.4 : Montage dans `server/server.js`** — deux points de vigilance :
+- [x] **Step 3.4 : Montage dans `server/server.js`** — deux points de vigilance :
   1. `app.use('/api/payments/webhook', express.raw({ type: 'application/json' }))` **avant** `app.use(express.json())` (ligne 84), à côté du montage Resend existant (ligne 83) et pour la même raison, déjà documentée là-bas : body-parser marque `req._body` après son premier passage et tout parseur suivant laisse `req.body` intact — un JSON reparsé ne permet plus de vérifier une signature octet-exacte.
   2. Le router se monte **après** la déclaration de `const supabase` (ligne 40) dont il reçoit `publicClient`, comme `createLettersRouter`.
 
   Lecture des variables : `paymentsEnabled: process.env.PAYMENTS_ENABLED === 'true'` (**défaut faux**, D2 — toute autre valeur ferme la vente), `priceId: process.env.STRIPE_PRICE_ID`, `includedSends: Number(process.env.FORFAIT_INCLUDED_SENDS ?? 5)`, `appUrl: process.env.APP_URL || 'http://localhost:5173'`.
 
-- [ ] **Step 3.5 : Commit** — `git commit -m "feat(chantier-1): routes /api/payments — checkout, status, webhook signé"`
+- [x] **Step 3.5 : Commit** — `git commit -m "feat(chantier-1): routes /api/payments — checkout, status, webhook signé"`
 
 ---
 
@@ -236,16 +236,16 @@ Contraintes, reprises telles quelles de `letters-store.js` :
 - Create: `server/lib/require-purchase.js`
 - Modify: `server/server.js`, `server/routes/letters.js`
 
-- [ ] **Step 4.1 : `createRequirePurchase({ store, paymentsEnabled })`** → middleware monté **après** `requireAuth` (il dépend de `req.user` et `req.supabaseClient`) :
+- [x] **Step 4.1 : `createRequirePurchase({ store, paymentsEnabled })`** → middleware monté **après** `requireAuth` (il dépend de `req.user` et `req.supabaseClient`) :
   - `paymentsEnabled` faux → `next()` immédiat. **C'est le comportement actuel à l'identique** : tant que la vente est fermée, rien ne change pour personne (D2, invariant 4).
   - Sinon `store.getPaidPurchase(req.supabaseClient, req.user.id)` ; absent → **402** `{ success: false, error: msg(lang, 'purchase_required'), code: 'PURCHASE_REQUIRED' }`.
   - Erreur de lecture → **500** + Sentry (ne **jamais** laisser passer sur erreur : un incident BDD ne doit pas ouvrir le gate).
 
-- [ ] **Step 4.2 :** Injecter dans `createLettersRouter` (nouveau paramètre `requirePurchase`, avec un défaut « passe-plat » pour ne pas casser les tests existants qui construisent le router sans lui) et le monter sur `POST /send` : `router.post('/send', requireAuth, requirePurchase, sendLimiter, ...)`. Ordre voulu : on ne consomme pas de quota de rate limiting pour une requête qui sera refusée en 402.
+- [x] **Step 4.2 :** Injecter dans `createLettersRouter` (nouveau paramètre `requirePurchase`, avec un défaut « passe-plat » pour ne pas casser les tests existants qui construisent le router sans lui) et le monter sur `POST /send` : `router.post('/send', requireAuth, requirePurchase, sendLimiter, ...)`. Ordre voulu : on ne consomme pas de quota de rate limiting pour une requête qui sera refusée en 402.
 
-- [ ] **Step 4.3 :** Câbler dans `server/server.js` et **vérifier** que `GET /api/letters` (liste) **n'est pas** gaté — consulter l'historique de ses propres envois reste accessible même après remboursement.
+- [x] **Step 4.3 :** Câbler dans `server/server.js` et **vérifier** que `GET /api/letters` (liste) **n'est pas** gaté — consulter l'historique de ses propres envois reste accessible même après remboursement.
 
-- [ ] **Step 4.4 : Commit** — `git commit -m "feat(chantier-1): gating serveur — 402 sur l'envoi sans achat, inerte vente fermée"`
+- [x] **Step 4.4 : Commit** — `git commit -m "feat(chantier-1): gating serveur — 402 sur l'envoi sans achat, inerte vente fermée"`
 
 ---
 
@@ -256,15 +256,15 @@ Vitest + supertest, **zéro réseau, zéro secret réel**. Le SDK Stripe est un 
 **Files:**
 - Create: `tests/payments-routes.test.ts`, `tests/payments-webhook.test.ts`, `tests/purchase-gate.test.ts`
 
-- [ ] **Step 5.1 : `payments-routes.test.ts`** — 401 sans token ; **503** vente fermée (et **aucune** session Stripe créée : `create` non appelé) ; vente ouverte → session créée + ligne `pending` + `url` renvoyée ; achat déjà `paid` → `already_purchased`, pas de seconde session ; `/status` renvoie le prix lu depuis Stripe et **`price: null`** quand Stripe échoue (la route reste 200) ; le rate limiter coupe au 11ᵉ appel.
+- [x] **Step 5.1 : `payments-routes.test.ts`** — 401 sans token ; **503** vente fermée (et **aucune** session Stripe créée : `create` non appelé) ; vente ouverte → session créée + ligne `pending` + `url` renvoyée ; achat déjà `paid` → `already_purchased`, pas de seconde session ; `/status` renvoie le prix lu depuis Stripe et **`price: null`** quand Stripe échoue (la route reste 200) ; le rate limiter coupe au 11ᵉ appel.
 
-- [ ] **Step 5.2 : `payments-webhook.test.ts`** — signature invalide → **401** ; type inconnu → **200** sans écriture ; `checkout.session.completed` → `paid` ; **rejeu du même événement → 0 changement** ; `completed` reçu **avant** la ligne `pending` → achat créé en `paid` ; `charge.refunded` → `refunded` ; `completed` relivré **après** un remboursement → reste `refunded` ; échec du store → **200** malgré tout (invariant 5) ; `expired` → `expired`.
+- [x] **Step 5.2 : `payments-webhook.test.ts`** — signature invalide → **401** ; type inconnu → **200** sans écriture ; `checkout.session.completed` → `paid` ; **rejeu du même événement → 0 changement** ; `completed` reçu **avant** la ligne `pending` → achat créé en `paid` ; `charge.refunded` → `refunded` ; `completed` relivré **après** un remboursement → reste `refunded` ; échec du store → **200** malgré tout (invariant 5) ; `expired` → `expired`.
 
-- [ ] **Step 5.3 : `purchase-gate.test.ts`** — `POST /api/letters/send` : passe vente fermée ; **402** vente ouverte sans achat ; passe avec achat `paid` ; **402** après remboursement ; **500** (et non un passage) si la lecture échoue ; `GET /api/letters` jamais gaté.
+- [x] **Step 5.3 : `purchase-gate.test.ts`** — `POST /api/letters/send` : passe vente fermée ; **402** vente ouverte sans achat ; passe avec achat `paid` ; **402** après remboursement ; **500** (et non un passage) si la lecture échoue ; `GET /api/letters` jamais gaté.
 
-- [ ] **Step 5.4 :** `npx vitest run` → **157 tests existants toujours verts** + les nouveaux. `npx tsc --noEmit` → 0 erreur.
+- [x] **Step 5.4 :** `npx vitest run` → **157 tests existants toujours verts** + les nouveaux. `npx tsc --noEmit` → 0 erreur.
 
-- [ ] **Step 5.5 : Commit** — `git commit -m "test(chantier-1): routes paiement, webhook idempotent, gating"`
+- [x] **Step 5.5 : Commit** — `git commit -m "test(chantier-1): routes paiement, webhook idempotent, gating"`
 
 ---
 
@@ -274,20 +274,20 @@ Vitest + supertest, **zéro réseau, zéro secret réel**. Le SDK Stripe est un 
 - Create: `src/hooks/usePayments.ts`
 - Modify: `src/components/letter/LetterSendPanel.tsx`, `src/pages/DashboardPage.tsx`, `src/i18n/strings.fr.ts`, `src/i18n/strings.en.ts`
 
-- [ ] **Step 6.1 : `usePayments()`** — appelle `GET /api/payments/status` via `apiFetch`, expose `{ loading, paymentsEnabled, purchase, price, refresh }`. Helper de formatage du montant à partir de `{ amount_total, currency }` **et de la langue courante** (`Intl.NumberFormat`) — jamais de montant écrit à la main (invariant 1).
+- [x] **Step 6.1 : `usePayments()`** — appelle `GET /api/payments/status` via `apiFetch`, expose `{ loading, paymentsEnabled, purchase, price, refresh }`. Helper de formatage du montant à partir de `{ amount_total, currency }` **et de la langue courante** (`Intl.NumberFormat`) — jamais de montant écrit à la main (invariant 1).
 
-- [ ] **Step 6.2 : `LetterSendPanel`** — si `paymentsEnabled && purchase?.status !== 'paid'`, remplacer le bloc d'envoi par l'appel à l'action : titre, montant formaté (masqué si `price` est `null`), bouton qui `POST /api/payments/checkout` puis `window.location.href = url`. Tout le reste du courrier (aperçu, variables, copie, PDF) **reste intact** — D1. Vente fermée → composant strictement inchangé.
+- [x] **Step 6.2 : `LetterSendPanel`** — si `paymentsEnabled && purchase?.status !== 'paid'`, remplacer le bloc d'envoi par l'appel à l'action : titre, montant formaté (masqué si `price` est `null`), bouton qui `POST /api/payments/checkout` puis `window.location.href = url`. Tout le reste du courrier (aperçu, variables, copie, PDF) **reste intact** — D1. Vente fermée → composant strictement inchangé.
 
-- [ ] **Step 6.3 : `DashboardPage`** — lire `?checkout=` :
+- [x] **Step 6.3 : `DashboardPage`** — lire `?checkout=` :
   - `success` → bandeau « paiement en cours de confirmation », `refresh()` toutes les 2 s, **10 tentatives maximum** puis message « la confirmation peut prendre une minute » (jamais de boucle infinie) ; passage à `paid` → bandeau de confirmation. **Le paramètre d'URL ne débloque rien par lui-même** (invariant 3) : il ne fait qu'afficher un état d'attente, la vérité vient de `/status` qui lit la base.
   - `cancel` → retour silencieux, aucun message culpabilisant (P11 de la roadmap produit : achat en période de vulnérabilité, zéro dark pattern).
   - Dans les deux cas, nettoyer le paramètre de l'URL (`navigate(pathname, { replace: true })`).
 
-- [ ] **Step 6.4 : Chaînes FR + EN** sous une clé `payments` dans les deux dictionnaires (parité garantie par tsc). Design system : bleu `#006BFA` seule couleur d'action, tokens du `@theme`, pilules et cartes arrondies — **jamais de hex en dur**.
+- [x] **Step 6.4 : Chaînes FR + EN** sous une clé `payments` dans les deux dictionnaires (parité garantie par tsc). Design system : bleu `#006BFA` seule couleur d'action, tokens du `@theme`, pilules et cartes arrondies — **jamais de hex en dur**.
 
-- [ ] **Step 6.5 :** `npx tsc --noEmit` + `npm run build` → OK.
+- [x] **Step 6.5 :** `npx tsc --noEmit` + `npm run build` → OK.
 
-- [ ] **Step 6.6 : Commit** — `git commit -m "feat(chantier-1): paywall envoi + retour de Checkout, FR/EN"`
+- [x] **Step 6.6 : Commit** — `git commit -m "feat(chantier-1): paywall envoi + retour de Checkout, FR/EN"`
 
 ---
 
@@ -296,11 +296,11 @@ Vitest + supertest, **zéro réseau, zéro secret réel**. Le SDK Stripe est un 
 **Files:**
 - Modify: `CLAUDE.md`, `README.md`, `docs/plan-chantier-1-paiement.md`
 
-- [ ] **Step 7.1 : `CLAUDE.md`** — ajouter aux « Variables d'environnement » : `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`, `PAYMENTS_ENABLED` (défaut **faux** — la vente ne s'ouvre qu'explicitement), `FORFAIT_INCLUDED_SENDS`, `APP_URL` ; noter que `WEBHOOK_RPC_SECRET` sert désormais **aussi** aux RPC de paiement. Mettre à jour « Workflow & état du projet » (chantier 1 livré, vente fermée en attente de la relecture juridique) et l'architecture (`server/routes/payments.js`).
+- [x] **Step 7.1 : `CLAUDE.md`** — ajouter aux « Variables d'environnement » : `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`, `PAYMENTS_ENABLED` (défaut **faux** — la vente ne s'ouvre qu'explicitement), `FORFAIT_INCLUDED_SENDS`, `APP_URL` ; noter que `WEBHOOK_RPC_SECRET` sert désormais **aussi** aux RPC de paiement. Mettre à jour « Workflow & état du projet » (chantier 1 livré, vente fermée en attente de la relecture juridique) et l'architecture (`server/routes/payments.js`).
 
-- [ ] **Step 7.2 : `README.md`** — mentionner le paiement dans les fonctionnalités et l'architecture serveur.
+- [x] **Step 7.2 : `README.md`** — mentionner le paiement dans les fonctionnalités et l'architecture serveur.
 
-- [ ] **Step 7.3 : Vérification globale** —
+- [x] **Step 7.3 : Vérification globale** —
 
 ```bash
 cd /home/user/Application
@@ -312,9 +312,9 @@ grep -rnE "149|99 ?€|payment=success" src/ server/ --include="*.ts" --include=
 
 Attendu : tsc 0 erreur ; 157 tests existants + nouveaux, tous verts ; build OK ; **dernière commande sans aucun résultat** (invariants 1 et 3 : ni montant en dur, ni déblocage par URL).
 
-- [ ] **Step 7.4 :** Cocher les steps de ce plan, y consigner chaque « note post-revue ».
+- [x] **Step 7.4 :** Cocher les steps de ce plan, y consigner chaque « note post-revue ».
 
-- [ ] **Step 7.5 : Push + PR** —
+- [x] **Step 7.5 : Push + PR** —
 
 ```bash
 git push -u origin claude/chantier-1-roadmap-lcbe7n
@@ -338,6 +338,35 @@ Aucun n'est nécessaire pour exécuter les tasks 0 → 7. Ils conditionnent la *
 | 6 | Prod : mêmes variables **sauf** `PAYMENTS_ENABLED`, laissé **non défini** | après merge |
 | 7 | Relecture juridique du catalogue (P1, déjà en attente) + CGU/CGV et rétractation relues, acceptation configurée côté Stripe | **avant** d'ouvrir la vente |
 | 8 | Ouverture de la vente : `PAYMENTS_ENABLED=true` en prod + bascule sur les clés Stripe **live** | quand 7 est fait et le chantier 2 livré |
+
+---
+
+## Notes post-revue (exécution du 2026-07-25)
+
+Écarts entre le plan et ce qui a été livré — tous assumés, aucun ne touche aux invariants.
+
+1. **Tasks 3 et 4 commitées ensemble.** Le câblage du gate dans `server/server.js` référence
+   `createRequirePurchase` : séparer les deux commits aurait produit un commit intermédiaire au
+   serveur cassé. Un seul commit `feat(chantier-1): routes /api/payments + gating serveur`.
+2. **`tests/helpers/purchases-fake.ts` ajouté** (absent de la liste de fichiers du plan) : les
+   trois suites ont besoin du même faux store, et le dupliquer trois fois aurait fait diverger
+   la reproduction des gardes SQL — c'est précisément ce que les tests d'idempotence vérifient.
+   Non collecté par Vitest (`include: tests/**/*.test.ts`).
+3. **Cache au niveau du module dans `usePayments`** (non prévu). `LetterSendPanel` est monté une
+   fois par courrier : sans cache, chaque courrier affiché aurait déclenché sa propre requête
+   `/status`, et le bloc d'envoi aurait clignoté à chaque montage. Purgé sur `SIGNED_IN` /
+   `SIGNED_OUT` (`resetPaymentsCache`, appelé depuis `useAuth`) pour ne jamais montrer l'état
+   d'un compte à un autre.
+4. **Le retour anticipé du paywall est placé après tous les hooks** de `LetterSendPanel` :
+   première rédaction fautive (il sautait le `useCallback` de `handleSend` — violation des
+   règles des hooks), corrigée avant le commit.
+5. **`CheckoutReturnBanner` extrait en composant** (`src/components/payments/`) au lieu d'être
+   inline dans `DashboardPage`, déjà à 389 lignes.
+6. **Step 7.3, commande de vérification affinée.** Le `grep` du plan remonte aussi les
+   commentaires qui *citent* la faille (« ?payment=success », « le fake-door 99/149/199 ») :
+   attendu, ce sont des explications, pas du code. Les seules occurrences retenues comme
+   légitimes en code sont la construction de `success_url` dans `server/routes/payments.js`.
+   Vérifié : aucun montant en dur, aucun déblocage par URL.
 
 ---
 
