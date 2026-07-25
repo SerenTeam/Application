@@ -1,4 +1,4 @@
-> **Statut** : v1.0 du 18/07/2026, versionnée au repo le 25/07/2026 pour servir de référence aux chantiers (relecture d'Arnaud encore partielle — signaler toute incohérence plutôt que de la corriger silencieusement). Le chantier 0 est LIVRÉ (cf. CLAUDE.md et `docs/design-chantier-0-assainissement.md`) ; prochain : chantier 1.
+> **Statut** : INSTANTANÉ v1.0 (18/07/2026) versionné le 25/07/2026 comme copie de secours. **La source de vérité est le document « Roadmap Technique - Seren » sur le Google Drive d'Arnaud** (relecture en cours — le lire via le connecteur Drive quand il est disponible ; en cas d'écart, Drive fait foi). Le chantier 0 est LIVRÉ (cf. CLAUDE.md et `docs/design-chantier-0-assainissement.md`) ; prochain : chantier 1.
 
 # Seren — Roadmap Technique
 
