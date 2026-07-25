@@ -1,6 +1,9 @@
 # Runbook — Environnement de staging (Supabase + Render)
 
-> Chantier 0, lot D. Objectif : un projet Supabase et un service Render de staging,
+> Chantier 0, lot D. **Note 2026-07-25 :** la préprod existait déjà (`Seren_app_preprod`,
+> ref `kvtzhyxlqouvpwasedbe`) — schéma aligné par `supabase db reset --linked` (base vide,
+> rien à préserver) : 6/6 migrations, 9 tables. Ce runbook reste le chemin pour tout NOUVEL
+> environnement. Objectif d'origine : un projet Supabase et un service Render de staging,
 > séparés de la prod — indispensable avant de manipuler paiements (chantier 1) et
 > envois réels (chantier 2). Durée totale : ~30 min, majoritairement des clics.
 
