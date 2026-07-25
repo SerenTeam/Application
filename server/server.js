@@ -9,8 +9,12 @@ import { Resend } from 'resend';
 import * as Sentry from '@sentry/node';
 import { createQuestionnaireRouter } from './routes/questionnaire.js';
 import { createLettersRouter } from './routes/letters.js';
+import { createPaymentsRouter } from './routes/payments.js';
 import { createEmailSender } from './lib/email-sender.js';
+import { createStripeClient, createPriceReader } from './lib/stripe-client.js';
+import { createRequirePurchase } from './lib/require-purchase.js';
 import * as lettersStore from './lib/letters-store.js';
+import * as purchasesStore from './lib/purchases-store.js';
 import { LETTER_CHANNELS } from './lib/letter-channels.js';
 
 dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.env') });
@@ -81,6 +85,9 @@ app.use((req, res, next) => {
 // server/routes/letters.js — par cohérence et pour rester correct si le router est un jour
 // utilisé seul, mais c'est bien CE montage-ci qui protège le corps en production).
 app.use('/api/letters/webhook', express.raw({ type: 'application/json' }));
+// Webhook Stripe : même contrainte de corps brut, même raison, même position (avant le
+// express.json() global) — la signature Stripe se vérifie octet pour octet.
+app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 // Serve static files: prefer dist/ (built), fallback to public/
@@ -138,6 +145,31 @@ const MISTRAL_MODEL = process.env.MISTRAL_MODEL || 'mistral-small-latest'; // r�
 // Questionnaire v2 : flux piloté par le moteur (server/lib), IA limitée à la rédaction des textes.
 app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, mistral: client, model: MISTRAL_MODEL }));
 
+// ==================== PAIEMENT DU FORFAIT (chantier 1) ====================
+// PAYMENTS_ENABLED gouverne la vente ET le gating d'un seul geste : non défini (défaut) → la
+// vente est fermée (503 sur /checkout) ET le gate laisse passer, c'est-à-dire exactement le
+// comportement d'avant ce chantier. `=== 'true'` : toute autre valeur ferme la vente.
+const paymentsEnabled = process.env.PAYMENTS_ENABLED === 'true';
+const stripeClient = createStripeClient();
+const stripePriceId = process.env.STRIPE_PRICE_ID;
+// Quota d'envois inclus dans le forfait : figé à l'achat (chantier 2 le consommera).
+const forfaitIncludedSends = Number(process.env.FORFAIT_INCLUDED_SENDS ?? 5) || 0;
+
+app.use('/api/payments', createPaymentsRouter({
+  requireAuth,
+  store: purchasesStore,
+  stripe: stripeClient,
+  // Le webhook (POST /api/payments/webhook, route publique) n'a pas de token utilisateur : il
+  // passe par ce client bare (clé publishable) et par les RPC security definer de la migration
+  // purchases pour écrire malgré la RLS — voir purchases-store.js.
+  publicClient: supabase,
+  getPrice: createPriceReader({ stripe: stripeClient, priceId: stripePriceId }),
+  paymentsEnabled,
+  priceId: stripePriceId,
+  includedSends: forfaitIncludedSends,
+  appUrl: process.env.APP_URL || 'http://localhost:5173',
+}));
+
 // Envoi de courriers (canal email v1, Resend). Client instancié PARESSEUSEMENT : si
 // RESEND_API_KEY est absent (dev local avant le USER STEP), resendClient reste `null` et
 // emailSender.send() lève `email_not_configured` (503, message clair) au lieu de faire
@@ -145,6 +177,8 @@ app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, mistral: 
 const resendClient = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 app.use('/api/letters', createLettersRouter({
   requireAuth,
+  // Gate du forfait sur l'envoi (D1). Inerte tant que la vente est fermée.
+  requirePurchase: createRequirePurchase({ store: purchasesStore, paymentsEnabled }),
   store: lettersStore,
   emailSender: createEmailSender({ resendClient, from: process.env.RESEND_FROM }),
   channels: LETTER_CHANNELS,

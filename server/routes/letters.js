@@ -29,7 +29,11 @@ function bodyLang(req) {
   return req.body?.lang === 'en' ? 'en' : 'fr'
 }
 
-export function createLettersRouter({ requireAuth, store, emailSender, channels, publicClient }) {
+// Gate du forfait par défaut : passe-plat. Un router construit sans `requirePurchase` (tests
+// antérieurs au chantier 1, usage isolé) se comporte donc exactement comme avant.
+const NO_GATE = (req, res, next) => next()
+
+export function createLettersRouter({ requireAuth, store, emailSender, channels, publicClient, requirePurchase = NO_GATE }) {
   const router = Router()
 
   // 20/h par utilisateur : un envoi correspond à une action volontaire après relecture,
@@ -41,7 +45,9 @@ export function createLettersRouter({ requireAuth, store, emailSender, channels,
     message: (req) => msg(bodyLang(req), 'too_many_requests'),
   })
 
-  router.post('/send', requireAuth, sendLimiter, async (req, res) => {
+  // Ordre voulu : le gate AVANT le limiteur — une requête qui sera refusée en 402 ne doit pas
+  // consommer le quota horaire d'envois de l'utilisateur.
+  router.post('/send', requireAuth, requirePurchase, sendLimiter, async (req, res) => {
     const lang = bodyLang(req)
     try {
       const { template_id, step_id, subject, resolved_body, recipient_email } = req.body ?? {}

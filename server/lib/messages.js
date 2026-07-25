@@ -38,6 +38,11 @@ export const MESSAGES = {
     send_failed: 'Échec de l’envoi du courrier',
     send_error: 'Erreur lors de l’envoi du courrier',
     letters_list_error: 'Erreur lors de la récupération des envois',
+    // Paiement — forfait Stripe (server/routes/payments.js, server/lib/require-purchase.js)
+    payments_disabled: 'Le paiement n’est pas encore ouvert',
+    checkout_failed: 'Impossible d’ouvrir la page de paiement, réessayez dans un instant',
+    purchase_required: 'Cette action fait partie du forfait Seren',
+    payments_status_error: 'Erreur lors de la vérification de votre forfait',
   },
   en: {
     session_required: 'session_id required',
@@ -73,6 +78,11 @@ export const MESSAGES = {
     send_failed: 'Failed to send the letter',
     send_error: 'Error while sending the letter',
     letters_list_error: 'Error while fetching sends',
+    // Payments — Seren plan (server/routes/payments.js, server/lib/require-purchase.js)
+    payments_disabled: 'Payment is not open yet',
+    checkout_failed: 'Unable to open the payment page, please try again in a moment',
+    purchase_required: 'This action is part of the Seren plan',
+    payments_status_error: 'Error while checking your plan',
   },
 }
 
