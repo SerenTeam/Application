@@ -356,4 +356,20 @@ export const STRINGS_EN: Strings = {
     copyFailedTitle: 'Unable to copy',
     copyFailedDescription: 'Please select the text manually.',
   },
+
+  // Seren plan (chantier 1). No amount is written here: the price comes from Stripe and is
+  // interpolated into `ctaWithPrice` at render time.
+  payments: {
+    paywallTitle: 'Sending is part of the Seren plan',
+    paywallDescription:
+      'You can read and download this letter freely. The plan adds sending by Seren and reply tracking.',
+    cta: 'Unlock sending',
+    ctaWithPrice: 'Unlock sending — {price}',
+    opening: 'Opening payment...',
+    checkoutFailed: 'Unable to open the payment page. You can try again.',
+    confirming: 'Payment received, confirming...',
+    confirmingSlow:
+      'Confirmation may take a minute. Feel free to carry on — your plan will activate on its own.',
+    confirmed: 'Your Seren plan is active.',
+  },
 }

@@ -356,6 +356,22 @@ export const STRINGS_FR = {
     copyFailedTitle: 'Impossible de copier',
     copyFailedDescription: 'Veuillez sélectionner le texte manuellement.',
   },
+
+  // Forfait Seren (chantier 1). Aucun montant n'est écrit ici : le prix vient de Stripe et
+  // s'insère dans `priceSuffix` / `ctaWithPrice` au moment du rendu.
+  payments: {
+    paywallTitle: 'L’envoi fait partie du forfait Seren',
+    paywallDescription:
+      'Vous pouvez consulter et télécharger ce courrier librement. Le forfait ajoute l’envoi par Seren et le suivi des réponses.',
+    cta: 'Débloquer l’envoi',
+    ctaWithPrice: 'Débloquer l’envoi — {price}',
+    opening: 'Ouverture du paiement...',
+    checkoutFailed: 'Impossible d’ouvrir la page de paiement. Vous pouvez réessayer.',
+    confirming: 'Paiement reçu, confirmation en cours...',
+    confirmingSlow:
+      'La confirmation peut prendre une minute. Vous pouvez continuer, votre forfait s’activera tout seul.',
+    confirmed: 'Votre forfait Seren est actif.',
+  },
 }
 
 export type Strings = typeof STRINGS_FR

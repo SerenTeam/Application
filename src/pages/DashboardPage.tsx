@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { getStepsCatalog } from '@/data/steps-catalog'
 import { AppHeader, HeaderNavLink } from '@/components/layout/AppHeader'
+import { CheckoutReturnBanner } from '@/components/payments/CheckoutReturnBanner'
 import { useT } from '@/i18n/useT'
 import { useLang } from '@/i18n/LanguageContext'
 import type { Strings } from '@/i18n/strings.fr'
@@ -298,6 +299,9 @@ export function DashboardPage() {
         <Sidebar activeView={activeView} onNavigate={handleNavigate} />
 
         <main className="flex-1 p-4 md:p-10 overflow-y-auto max-w-[1200px]">
+          {/* Retour de Stripe Checkout — n'affiche qu'un état d'attente, ne débloque rien. */}
+          <CheckoutReturnBanner />
+
           {activeView === 'dashboard' && (
             <DashboardOverview
               completedCount={completedCount}
