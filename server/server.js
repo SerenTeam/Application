@@ -10,6 +10,7 @@ import * as Sentry from '@sentry/node';
 import { createQuestionnaireRouter } from './routes/questionnaire.js';
 import { createLettersRouter } from './routes/letters.js';
 import { createPaymentsRouter } from './routes/payments.js';
+import { createBasicAuthGate } from './lib/basic-auth.js';
 import { createEmailSender } from './lib/email-sender.js';
 import { createStripeClient, createPriceReader } from './lib/stripe-client.js';
 import { createRequirePurchase } from './lib/require-purchase.js';
@@ -74,6 +75,19 @@ app.use((req, res, next) => {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   next();
 });
+
+// Porte d'accès type .htaccess pour les environnements non publics (préprod, staging) :
+// active UNIQUEMENT si SITE_PASSWORD est défini — en production la variable est absente et le
+// middleware laisse tout passer (même discipline que Resend, Stripe et Sentry : sans sa
+// variable, la feature est inerte). Monté ici, donc AVANT express.static : c'est le HTML et les
+// assets qu'il protège. Les routes /api/* sont exclues par le middleware lui-même — elles
+// portent leur propre authentification Bearer, et les webhooks signés (Stripe, Resend) n'ont
+// évidemment pas d'identifiants Basic à présenter.
+app.use(createBasicAuthGate({
+  user: process.env.SITE_USER || 'seren',
+  password: process.env.SITE_PASSWORD,
+  realm: 'Seren',
+}));
 
 // Webhook Resend : la vérification de signature Svix exige le corps BRUT (octet pour octet).
 // Monté ICI, sur le chemin exact, AVANT le express.json() global ci-dessous : body-parser
