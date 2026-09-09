@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { LETTER_TEMPLATES } from '../src/data/letter-templates'
+import { LETTER_TEMPLATES, editableVariableKeys, type LetterVariable } from '../src/data/letter-templates'
 // @ts-expect-error — module JS serveur
 import { LETTER_CHANNELS } from '../server/lib/letter-channels.js'
 
@@ -21,6 +21,51 @@ describe('letter templates — canal d\'envoi', () => {
     const emails = LETTER_TEMPLATES.filter((t) => t.channel === 'email').map((t) => t.id)
     expect(emails).toContain('employeur-notification')
     expect(emails).toContain('mutuelle-resiliation')
+  })
+})
+
+// Bug : un champ auto_filled resté vide (échec de l'auto-remplissage) doit rester éditable
+// pendant toute la saisie. Recalculer "faut-il l'afficher" à partir de la valeur COURANTE
+// (au lieu de la valeur au moment où le champ a été jugé nécessaire) fait disparaître le
+// champ du DOM dès la première lettre tapée — perte de focus, lettres suivantes perdues.
+describe('editableVariableKeys — champs auto_filled vides', () => {
+  const deceasedFirstname: LetterVariable = {
+    key: 'deceased_firstname',
+    label: 'Prénom du défunt',
+    type: 'text',
+    auto_filled: true,
+    required: true,
+  }
+  const city: LetterVariable = {
+    key: 'city',
+    label: 'Votre ville',
+    type: 'text',
+    auto_filled: false,
+    required: true,
+  }
+  const variables = [deceasedFirstname, city]
+
+  it('un champ auto_filled vide reste éditable après la 1ʳᵉ lettre tapée', () => {
+    const initialValues = { deceased_firstname: '', city: '' }
+    const keys = editableVariableKeys(variables, initialValues)
+
+    // Simule la saisie lettre par lettre : le SET de clés éditables ne doit jamais changer
+    // une fois calculé — sinon le champ sort du rendu en cours de frappe.
+    for (const partial of ['M', 'Ma', 'Mar', 'Mari', 'Marie']) {
+      expect(keys.has('deceased_firstname'), `après "${partial}"`).toBe(true)
+    }
+  })
+
+  it('un champ auto_filled déjà rempli au départ reste absent (pas besoin de saisie)', () => {
+    const initialValues = { deceased_firstname: 'Marie', city: '' }
+    const keys = editableVariableKeys(variables, initialValues)
+    expect(keys.has('deceased_firstname')).toBe(false)
+  })
+
+  it('un champ manuel (non auto_filled) reste toujours éditable', () => {
+    const initialValues = { deceased_firstname: '', city: 'Paris' }
+    const keys = editableVariableKeys(variables, initialValues)
+    expect(keys.has('city')).toBe(true)
   })
 })
 

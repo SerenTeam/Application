@@ -437,6 +437,19 @@ ${SIGNATURE}`,
   },
 ]
 
+// Clés des variables à faire saisir par l'utilisateur, figées à partir d'un instantané de
+// `values` (typiquement l'état initial post auto-remplissage). NE PAS rappeler cette fonction
+// à chaque frappe avec les valeurs courantes : un champ auto_filled resté vide sortirait du
+// set dès qu'il reçoit une valeur non vide, donc dès la 1ʳᵉ lettre tapée.
+export function editableVariableKeys(
+  variables: LetterVariable[],
+  values: Record<string, string>
+): Set<string> {
+  return new Set(
+    variables.filter((v) => !v.auto_filled || !values[v.key]?.trim()).map((v) => v.key)
+  )
+}
+
 export function getLetterTemplate(templateId: string): LetterTemplate | undefined {
   return LETTER_TEMPLATES.find((t) => t.id === templateId)
 }
