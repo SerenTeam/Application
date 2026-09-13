@@ -129,7 +129,11 @@ create index if not exists idx_organisations_network_dept on organisations(netwo
 
 **Files:** Create `supabase/migrations/20260914130000_attachments.sql` (table + bucket `documents` privé + policies storage par préfixe `user_id/`), Create `server/routes/attachments.js` (POST multipart via `multer` memoryStorage — NOUVELLE DÉPENDANCE actée, limite 5 Mo ; GET liste ; DELETE), Create `server/lib/mime-sniff.js` (magic bytes : `%PDF-`, `FFD8FF`, `89504E47` — refus sinon), Modify `server/server.js` (montage), Test `tests/attachments-routes.test.ts` (supertest, client Supabase mocké : upload OK/refusé par type/taille, isolation user)
 
+> Note : migration livrée sous `20260914160000_attachments.sql` (et non `…130000` — sans conséquence, l'ordre tient).
+
 - [ ] **6.1** TDD routes (mocks storage) → **6.2** implémentation (upload au client `getSupabaseClient(token)` — la RLS storage s'applique ; URLs signées 300 s générées serveur, jamais stockées) → **6.3** suite verte + tsc → **6.4** commit `feat(2a): coffre minimal — bucket privé, magic bytes, RLS par préfixe`
+
+> **Note post-revue (Tasks 5+6, 2026-09-13) :** approuvées après correctifs (revue combinée). Vigilances héritées : **Task 7** — les PJ peuvent être JPEG/PNG (photos de l'acte au téléphone, choix acté) or MySendingBox attend des PDF → l'adaptateur (ou la préparation d'envoi) **convertit les images en page PDF** (jspdf `addImage`, ajusté A4) avant `source_file_2..5` ; le fold n'émet `failed` depuis `sent` que sur `returned_to_sender` sans `wrong_address`. **Task 9** — dériver `hasPaid` de `getPaidPurchase` (forfait-only) dans `/api/payments/status` et non de `getLatestPurchase` (sinon un achat à l'acte ferait afficher « payé/1 inclus ») ; URLs signées des PJ générées ICI (déplacé de la Task 6, choix documenté). **Runbook/USER STEPS** — si `db push` échoue en `42501 must be owner of table objects` sur les policies storage : les créer via le dashboard Storage (plan B) ; symptôme d'un secret RPC désynchronisé côté webhook email : statuts figés en `sending` (no-op silencieux).
 
 ## Task 7 : Adaptateur MySendingBox + PDF postal
 
