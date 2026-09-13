@@ -32,13 +32,20 @@ async function callRpc(client, name, params) {
   if (error) throw new Error(`RPC ${name} impossible : ${error.message}`)
 }
 
-/** Achat encaissé et non remboursé — la seule chose dont le gate a besoin. `null` si aucun. */
+/** Achat encaissé et non remboursé DU FORFAIT — la seule chose dont le gate a besoin. `null` si
+ * aucun. Filtre `kind = 'forfait'` (chantier 2a, amendement AM-2) : un envoi supplémentaire
+ * (`kind = 'envoi_sup'`) est une ligne `purchases` normale, encaissée et non remboursée elle
+ * aussi — sans ce filtre, un utilisateur n'ayant acheté QU'un envoi à l'acte (jamais le forfait)
+ * ouvrirait le gate du produit entier au prix d'un timbre. `getLatestPurchase`, elle, reste
+ * volontairement sans filtre : l'écran de confirmation doit pouvoir afficher n'importe quel achat
+ * récent, forfait ou envoi supplémentaire. */
 export async function getPaidPurchase(client, userId) {
   const { data, error } = await client
     .from(TABLE)
     .select(PUBLIC_COLUMNS)
     .eq('user_id', userId)
     .eq('status', 'paid')
+    .eq('kind', 'forfait')
     .order('paid_at', { ascending: false })
     .limit(1)
     .maybeSingle()

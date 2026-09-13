@@ -9,6 +9,10 @@
 //      donc rejeu = 0 ligne, et un `completed` relivré après remboursement ne ressuscite rien ;
 //   4. mark_purchase_refunded : gardé par `status = 'paid'` ;
 //   5. expire_purchase : gardé par `status = 'pending'`.
+//   6. (chantier 2a) getPaidPurchase filtre EN PLUS `kind = 'forfait'` — un achat d'envoi
+//      supplémentaire (`kind = 'envoi_sup'`, facturation à l'acte) ne doit jamais, à lui seul,
+//      ouvrir le gate du produit (voir tests/purchases-store.test.ts pour le test unitaire du
+//      vrai store, et purchase-gate.test.ts pour la vérification de bout en bout).
 // Ce fichier n'est pas une suite de tests (include: tests/**/*.test.ts) — il n'est jamais
 // collecté par Vitest.
 
@@ -16,6 +20,7 @@ export type PurchaseRow = {
   id: string
   user_id: string
   status: 'pending' | 'paid' | 'refunded' | 'expired'
+  kind: 'forfait' | 'envoi_sup'
   amount_total: number | null
   currency: string | null
   stripe_session_id: string
@@ -39,6 +44,7 @@ export function makePurchasesStore(initial: Partial<PurchaseRow>[] = []) {
       id: `purchase-${++seq}`,
       user_id: 'user-1',
       status: 'pending',
+      kind: 'forfait',
       amount_total: null,
       currency: null,
       stripe_session_id: `cs_${seq}`,
@@ -66,7 +72,7 @@ export function makePurchasesStore(initial: Partial<PurchaseRow>[] = []) {
       if (store.failReads) throw new Error('lecture impossible (incident simulé)')
       return (
         rows
-          .filter((r) => r.user_id === userId && r.status === 'paid')
+          .filter((r) => r.user_id === userId && r.status === 'paid' && r.kind === 'forfait')
           .sort((a, b) => (b.paid_at ?? '').localeCompare(a.paid_at ?? ''))[0] ?? null
       )
     },
