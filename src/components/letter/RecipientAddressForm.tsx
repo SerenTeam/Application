@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -24,6 +24,11 @@ interface RecipientAddressFormProps {
   onDeceasedDepartmentResolved?: (department: string) => void
   value: RecipientAddress
   onChange: (value: RecipientAddress) => void
+  // Legs R2 étendu (revue finale, I4) : l'adresse entre dans le `dedup_key` (§M) au même titre
+  // que les PJ — un changement d'adresse sur une reprise crée en réalité une LIGNE DIFFÉRENTE,
+  // débitée séparément, pendant que l'originale garde son propre débit à jamais (jamais libéré
+  // puisqu'aucune erreur ne survient jamais sur elle). Figée exactement comme AttachmentPicker.
+  frozen: boolean
 }
 
 const LINE_MAX = 45
@@ -44,8 +49,13 @@ export function RecipientAddressForm({
   onDeceasedDepartmentResolved,
   value,
   onChange,
+  frozen,
 }: RecipientAddressFormProps) {
   const t = useT()
+  // Plusieurs panneaux papier peuvent coexister dans la même roadmap (un par étape dépliée) :
+  // des ids DOM statiques dupliqueraient les associations <label htmlFor> d'un panneau à
+  // l'autre (revue finale, mineur). `useId()` garantit un préfixe unique par instance.
+  const uid = useId()
   const [localDepartment, setLocalDepartment] = useState<string | undefined>(deceasedDepartment)
   const [departmentDraft, setDepartmentDraft] = useState('')
   const [orgs, setOrgs] = useState<Organisation[]>([])
@@ -115,15 +125,17 @@ export function RecipientAddressForm({
     <div className="space-y-3 rounded-xl border border-border-soft bg-surface p-3">
       <h4 className="font-body text-sm font-medium text-text">{t.paperSend.recipientTitle}</h4>
 
-      {network && departmentMissing && (
+      {frozen && <p className="text-xs italic text-text-muted">{t.paperSend.recipientFrozenNote}</p>}
+
+      {network && departmentMissing && !frozen && (
         <div className="space-y-1.5 rounded-lg border border-border-card bg-white p-3">
-          <Label htmlFor="recipient-department" className="text-sm">
+          <Label htmlFor={`${uid}-department`} className="text-sm">
             {t.paperSend.recipientDepartmentPrompt}
           </Label>
           <p className="text-xs text-text-muted">{t.paperSend.recipientDepartmentHint}</p>
           <div className="flex gap-2">
             <Input
-              id="recipient-department"
+              id={`${uid}-department`}
               value={departmentDraft}
               placeholder={t.paperSend.recipientDepartmentPlaceholder}
               maxLength={3}
@@ -142,7 +154,7 @@ export function RecipientAddressForm({
 
       {network && !departmentMissing && (
         <div className="space-y-1.5">
-          <Label htmlFor="recipient-org-picker" className="text-sm">
+          <Label htmlFor={`${uid}-org-picker`} className="text-sm">
             {t.paperSend.recipientPickerLabel}
           </Label>
           {loadingOrgs && <p className="text-xs text-text-muted">{t.paperSend.recipientPickerLoading}</p>}
@@ -150,10 +162,11 @@ export function RecipientAddressForm({
           {!loadingOrgs && !orgsError && (
             <>
               <select
-                id="recipient-org-picker"
+                id={`${uid}-org-picker`}
                 value={selectedOrgId}
                 onChange={(e) => handleSelectOrg(e.target.value)}
-                className="flex h-[52px] w-full rounded-2xl border border-border bg-white px-4 text-[16px] text-text transition-colors focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+                disabled={frozen}
+                className="flex h-[52px] w-full rounded-2xl border border-border bg-white px-4 text-[16px] text-text transition-colors focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="" disabled>
                   {t.paperSend.recipientPickerPlaceholder}
@@ -172,35 +185,53 @@ export function RecipientAddressForm({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="recipient-name" className="text-sm">
+          <Label htmlFor={`${uid}-name`} className="text-sm">
             {t.paperSend.recipientNameLabel}
           </Label>
-          <Input id="recipient-name" value={value.name} maxLength={LINE_MAX} onChange={set('name')} />
+          <Input id={`${uid}-name`} value={value.name} maxLength={LINE_MAX} onChange={set('name')} disabled={frozen} />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="recipient-address1" className="text-sm">
+          <Label htmlFor={`${uid}-address1`} className="text-sm">
             {t.paperSend.recipientAddressLine1Label}
           </Label>
-          <Input id="recipient-address1" value={value.address_line1} maxLength={LINE_MAX} onChange={set('address_line1')} />
+          <Input
+            id={`${uid}-address1`}
+            value={value.address_line1}
+            maxLength={LINE_MAX}
+            onChange={set('address_line1')}
+            disabled={frozen}
+          />
           <p className="text-xs text-text-muted">{fmt(t.paperSend.lineCounter, { count: value.address_line1.length })}</p>
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="recipient-address2" className="text-sm">
+          <Label htmlFor={`${uid}-address2`} className="text-sm">
             {t.paperSend.recipientAddressLine2Label}
           </Label>
-          <Input id="recipient-address2" value={value.address_line2 ?? ''} maxLength={LINE_MAX} onChange={set('address_line2')} />
+          <Input
+            id={`${uid}-address2`}
+            value={value.address_line2 ?? ''}
+            maxLength={LINE_MAX}
+            onChange={set('address_line2')}
+            disabled={frozen}
+          />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="recipient-postal-code" className="text-sm">
+          <Label htmlFor={`${uid}-postal-code`} className="text-sm">
             {t.paperSend.recipientPostalCodeLabel}
           </Label>
-          <Input id="recipient-postal-code" value={value.postal_code} maxLength={5} onChange={set('postal_code')} />
+          <Input
+            id={`${uid}-postal-code`}
+            value={value.postal_code}
+            maxLength={5}
+            onChange={set('postal_code')}
+            disabled={frozen}
+          />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="recipient-city" className="text-sm">
+          <Label htmlFor={`${uid}-city`} className="text-sm">
             {t.paperSend.recipientCityLabel}
           </Label>
-          <Input id="recipient-city" value={value.city} maxLength={LINE_MAX} onChange={set('city')} />
+          <Input id={`${uid}-city`} value={value.city} maxLength={LINE_MAX} onChange={set('city')} disabled={frozen} />
         </div>
       </div>
       {value.postal_code.length > 0 && !POSTAL_CODE_RE.test(value.postal_code.trim()) && (

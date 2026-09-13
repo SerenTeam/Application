@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -35,6 +35,10 @@ function emptyForm(): SenderProfile {
 // première utilisation (aucun profil) ou sur demande explicite une fois enregistré.
 export function SenderProfileForm({ userId, profile, onSaved }: SenderProfileFormProps) {
   const t = useT()
+  // Plusieurs panneaux papier peuvent coexister dans la roadmap (un par étape dépliée) : des ids
+  // DOM statiques dupliqueraient les associations <label htmlFor> d'un panneau à l'autre (revue
+  // finale, mineur). `useId()` garantit un préfixe unique par instance.
+  const uid = useId()
   const [editing, setEditing] = useState(!profile)
   const [form, setForm] = useState<SenderProfile>(() => (profile ? { ...profile } : emptyForm()))
   const [saving, setSaving] = useState(false)
@@ -111,44 +115,44 @@ export function SenderProfileForm({ userId, profile, onSaved }: SenderProfileFor
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="sender-full-name" className="text-sm">
+          <Label htmlFor={`${uid}-full-name`} className="text-sm">
             {t.paperSend.senderFullNameLabel}
           </Label>
-          <Input id="sender-full-name" value={form.full_name} maxLength={LINE_MAX} onChange={set('full_name')} />
+          <Input id={`${uid}-full-name`} value={form.full_name} maxLength={LINE_MAX} onChange={set('full_name')} />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="sender-address1" className="text-sm">
+          <Label htmlFor={`${uid}-address1`} className="text-sm">
             {t.paperSend.senderAddressLine1Label}
           </Label>
-          <Input id="sender-address1" value={form.address_line1} maxLength={LINE_MAX} onChange={set('address_line1')} />
+          <Input id={`${uid}-address1`} value={form.address_line1} maxLength={LINE_MAX} onChange={set('address_line1')} />
           <p className="text-xs text-text-muted">{fmt(t.paperSend.lineCounter, { count: form.address_line1.length })}</p>
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="sender-address2" className="text-sm">
+          <Label htmlFor={`${uid}-address2`} className="text-sm">
             {t.paperSend.senderAddressLine2Label}
           </Label>
-          <Input id="sender-address2" value={form.address_line2 ?? ''} maxLength={LINE_MAX} onChange={set('address_line2')} />
+          <Input id={`${uid}-address2`} value={form.address_line2 ?? ''} maxLength={LINE_MAX} onChange={set('address_line2')} />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="sender-postal-code" className="text-sm">
+          <Label htmlFor={`${uid}-postal-code`} className="text-sm">
             {t.paperSend.senderPostalCodeLabel}
           </Label>
-          <Input id="sender-postal-code" value={form.postal_code} maxLength={5} onChange={set('postal_code')} />
+          <Input id={`${uid}-postal-code`} value={form.postal_code} maxLength={5} onChange={set('postal_code')} />
           {form.postal_code.length > 0 && !POSTAL_CODE_RE.test(form.postal_code.trim()) && (
             <p className="text-xs text-warning">{t.paperSend.invalidPostalCode}</p>
           )}
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="sender-city" className="text-sm">
+          <Label htmlFor={`${uid}-city`} className="text-sm">
             {t.paperSend.senderCityLabel}
           </Label>
-          <Input id="sender-city" value={form.city} maxLength={LINE_MAX} onChange={set('city')} />
+          <Input id={`${uid}-city`} value={form.city} maxLength={LINE_MAX} onChange={set('city')} />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="sender-relationship" className="text-sm">
+          <Label htmlFor={`${uid}-relationship`} className="text-sm">
             {t.paperSend.senderRelationshipLabel}
           </Label>
-          <Input id="sender-relationship" value={form.relationship ?? ''} onChange={set('relationship')} />
+          <Input id={`${uid}-relationship`} value={form.relationship ?? ''} onChange={set('relationship')} />
         </div>
       </div>
       <Button size="sm" onClick={handleSave} disabled={!valid || saving} className="gap-2">

@@ -448,6 +448,17 @@ export function createLettersRouter({
         code: 'TOO_MANY_ATTACHMENTS',
       })
     }
+    // Doublon dans la sélection (revue finale, mineur) : sans cette garde, le contrôle RLS
+    // ci-dessous (byId.size !== new Set(...).size) ne le détecte PAS — un id répété reste un
+    // singleton dans les deux ensembles comparés — et la même pièce partirait deux fois dans la
+    // fusion provider (payload PDF gonflé, `attachment_ids` persisté avec le doublon).
+    if (new Set(attachmentIds).size !== attachmentIds.length) {
+      return res.status(400).json({
+        success: false,
+        error: msg(lang, 'attachments_duplicate'),
+        code: 'DUPLICATE_ATTACHMENTS',
+      })
+    }
     let attachments = []
     if (attachmentIds.length > 0) {
       // Un id mal formé n'existe par construction pas : 404 sans interroger la base (un uuid

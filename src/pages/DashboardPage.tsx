@@ -135,6 +135,12 @@ export function DashboardPage() {
   const [roadmapId, setRoadmapId] = useState<string | null>(null)
   const [questionnaireId, setQuestionnaireId] = useState<string | null>(null)
   const [questionnaireAnswers, setQuestionnaireAnswers] = useState<Record<string, unknown>>({})
+  // Miroir de `questionnaireAnswers`, tenu à jour à CHAQUE rendu (même patron que `tRef` ci-
+  // dessus) : lu par `handleDeceasedDepartmentResolved` pour construire l'écriture Supabase EN
+  // DEHORS de tout updater `setState` (React peut invoquer un updater deux fois en StrictMode
+  // pour vérifier sa pureté — une écriture réseau qui y vivrait partirait alors deux fois).
+  const questionnaireAnswersRef = useRef(questionnaireAnswers)
+  questionnaireAnswersRef.current = questionnaireAnswers
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -275,13 +281,13 @@ export function DashboardPage() {
   // dans l'arbre (RoadmapView ne reçoit qu'un sous-ensemble typé) écraserait le reste du JSON.
   const handleDeceasedDepartmentResolved = useCallback(
     (department: string) => {
-      setQuestionnaireAnswers((prev) => {
-        const next = { ...prev, deceased_department: department }
-        if (questionnaireId) {
-          void supabase.from('questionnaires').update({ answers: next }).eq('id', questionnaireId)
-        }
-        return next
-      })
+      const next = { ...questionnaireAnswersRef.current, deceased_department: department }
+      setQuestionnaireAnswers(next)
+      // Écriture Supabase HORS de l'updater setState ci-dessus (correctif revue finale) : un
+      // simple appel, jamais dupliqué par React.
+      if (questionnaireId) {
+        void supabase.from('questionnaires').update({ answers: next }).eq('id', questionnaireId)
+      }
     },
     [questionnaireId]
   )

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { PillBadge } from '@/components/ui/pill-badge'
@@ -31,6 +31,9 @@ const ACCEPT = 'application/pdf,image/jpeg,image/png'
 // courrier papier de déclaration de décès.
 export function AttachmentPicker({ selected, onChange, frozen }: AttachmentPickerProps) {
   const t = useT()
+  // Plusieurs panneaux papier peuvent coexister dans la roadmap (revue finale, mineur) : id
+  // unique par instance plutôt qu'une chaîne statique (même patron que les autres formulaires).
+  const uid = useId()
   const [attachments, setAttachments] = useState<AttachmentRow[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -155,7 +158,7 @@ export function AttachmentPicker({ selected, onChange, frozen }: AttachmentPicke
             type="file"
             accept={ACCEPT}
             className="hidden"
-            id="attachment-upload-input"
+            id={`${uid}-upload-input`}
             onChange={(e) => {
               const file = e.target.files?.[0]
               if (file) void handleUpload(file)

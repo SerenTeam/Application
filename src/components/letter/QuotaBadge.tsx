@@ -5,20 +5,20 @@ import { useT } from '@/i18n/useT'
 import { fmt } from '@/i18n'
 
 interface QuotaBadgeProps {
-  // Incrémenté par le parent après un envoi réussi ou un retour de Checkout : force une
-  // relecture du solde. Chaque panneau papier interroge son propre solde (pas de cache partagé
-  // entre lettres, contrairement à usePayments) — peu coûteux, les panneaux papier sont
-  // rarement plusieurs à être ouverts en même temps.
+  // Incrémenté par le parent après un envoi réussi, un 402 quota épuisé, ou un retour de
+  // Checkout : force une relecture du solde. Chaque panneau papier interroge son propre solde
+  // (pas de cache partagé entre lettres, contrairement à usePayments) — peu coûteux, les
+  // panneaux papier sont rarement plusieurs à être ouverts en même temps.
   refreshKey: number
-  // Le bouton d'achat à l'acte vit dans le parent (PaperSendPanel) : c'est LUI qui connaît la
-  // requête à rejouer au retour de Checkout (legs R1) — ce badge ne fait que remonter le solde
-  // pour que le parent décide d'afficher ce bouton, sans dupliquer la logique d'achat ici.
-  onBalanceChange?: (balance: number | null) => void
 }
 
-// Compteur de quota (chantier 2a, spec §4) — lecture seule. Purement informatif : ce badge
-// n'empêche jamais un envoi, le serveur reste seul juge du solde réel (garde 8 de POST /send).
-export function QuotaBadge({ refreshKey, onBalanceChange }: QuotaBadgeProps) {
+// Compteur de quota (chantier 2a, spec §4) — lecture seule, purement présentationnel. Le bouton
+// d'achat à l'acte vit dans le parent (PaperSendPanel, revue finale I3) : lui seul connaît le
+// contrat exact de son affichage (uniquement sur confirmation SERVEUR explicite via un 402
+// `extra_send_available`, jamais depuis ce solde local) et la requête à rejouer au retour de
+// Checkout (legs R1) — ce badge ne fait qu'informer, il n'empêche jamais un envoi (le serveur
+// reste seul juge du solde réel, garde 8 de POST /send).
+export function QuotaBadge({ refreshKey }: QuotaBadgeProps) {
   const t = useT()
   const [balance, setBalance] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
@@ -30,9 +30,7 @@ export function QuotaBadge({ refreshKey, onBalanceChange }: QuotaBadgeProps) {
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { balance?: number } | null) => {
         if (cancelled) return
-        const next = typeof data?.balance === 'number' ? data.balance : null
-        setBalance(next)
-        onBalanceChange?.(next)
+        setBalance(typeof data?.balance === 'number' ? data.balance : null)
       })
       .catch(() => {
         // Lecture non bloquante — le badge reste simplement absent, l'envoi n'en dépend pas.

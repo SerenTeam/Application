@@ -410,6 +410,8 @@ export const STRINGS_FR = {
     recipientDepartmentPlaceholder: 'Ex : 75',
     recipientDepartmentInvalid: 'Département invalide (ex : 75, 2A, 971)',
     recipientDepartmentConfirmCta: 'Valider',
+    recipientFrozenNote:
+      'L’adresse ne peut pas être modifiée lors de cette reprise : elle fait partie de l’identification de ce courrier.',
 
     // Partagés (profil expéditeur + destinataire)
     lineCounter: '{count}/45 caractères',
@@ -447,7 +449,7 @@ export const STRINGS_FR = {
     statusSubmitted: 'Pris en charge',
     statusSent: 'Expédié',
     statusFailedAddressTitle: 'Adresse non distribuable',
-    statusFailedAddressHint: 'Corrigez l’adresse ci-dessus, puis renvoyez ce courrier — ce renvoi est offert.',
+    statusFailedAddressHint: 'Corrigez l’adresse puis renvoyez ce courrier — ce renvoi est offert.',
     resendCta: 'Corriger l’adresse et renvoyer (offert)',
     statusFailed: 'L’envoi a échoué',
     retryableHint: 'Service momentanément indisponible, réessayez dans un instant.',

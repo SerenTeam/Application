@@ -410,6 +410,7 @@ export const STRINGS_EN: Strings = {
     recipientDepartmentPlaceholder: 'E.g. 75',
     recipientDepartmentInvalid: 'Invalid département (e.g. 75, 2A, 971)',
     recipientDepartmentConfirmCta: 'Confirm',
+    recipientFrozenNote: 'The address cannot be changed on this resume: it is part of this letter’s identification.',
 
     // Shared (sender + recipient forms)
     lineCounter: '{count}/45 characters',
@@ -447,7 +448,7 @@ export const STRINGS_EN: Strings = {
     statusSubmitted: 'Accepted',
     statusSent: 'Sent',
     statusFailedAddressTitle: 'Address could not be delivered',
-    statusFailedAddressHint: 'Correct the address above, then resend this letter — this resend is free.',
+    statusFailedAddressHint: 'Correct the address, then resend this letter — this resend is free.',
     resendCta: 'Correct the address and resend (free)',
     statusFailed: 'Sending failed',
     retryableHint: 'Service temporarily unavailable, please try again in a moment.',

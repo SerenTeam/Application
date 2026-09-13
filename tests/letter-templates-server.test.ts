@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { LETTER_TEMPLATES as FRONT_TEMPLATES } from '../src/data/letter-templates'
+import { LETTER_TEMPLATES as FRONT_TEMPLATES, getTemplateNetwork } from '../src/data/letter-templates'
 // @ts-expect-error — module JS serveur
 import { LETTER_TEMPLATES as SERVER_TEMPLATES } from '../server/lib/letter-templates.js'
 // @ts-expect-error — module JS serveur
@@ -89,6 +89,37 @@ describe('recipient_kind — destinataire réel de chaque template', () => {
   ])('%s → %s', (id, expected) => {
     const t = SERVER_TEMPLATES.find((tpl: { id: string }) => tpl.id === id)
     expect(t.recipient_kind).toBe(expected)
+  })
+})
+
+// Corrigé après la revue finale (Task 11) : le commentaire de NETWORK_RECIPIENT_TEMPLATES
+// promettait une vérification de parité qui n'existait nulle part — cette carte front (indice
+// d'UI : quel formulaire d'adresse afficher) doit rester synchronisée avec les VRAIS
+// `recipient_kind` serveur, sans quoi un template reclassé côté serveur (network ↔ user_specific)
+// afficherait le mauvais formulaire sans qu'aucun test ne le détecte.
+describe('parité NETWORK_RECIPIENT_TEMPLATES (front) ↔ recipient_kind serveur', () => {
+  it('un template network:X côté serveur → getTemplateNetwork(id) === X', () => {
+    for (const t of SERVER_TEMPLATES as Array<{ id: string; recipient_kind: string }>) {
+      if (!t.recipient_kind.startsWith('network:')) continue
+      const expected = t.recipient_kind.slice('network:'.length)
+      expect(getTemplateNetwork(t.id), `${t.id} : réseau attendu ${expected}`).toBe(expected)
+    }
+  })
+
+  it('un template user_specific ou portail côté serveur → getTemplateNetwork(id) === null', () => {
+    for (const t of SERVER_TEMPLATES as Array<{ id: string; recipient_kind: string }>) {
+      if (t.recipient_kind.startsWith('network:')) continue
+      expect(getTemplateNetwork(t.id), `${t.id} ne devrait pas avoir de réseau`).toBeNull()
+    }
+  })
+
+  it('aucune entrée orpheline dans NETWORK_RECIPIENT_TEMPLATES (id inconnu du catalogue serveur)', () => {
+    for (const t of FRONT_TEMPLATES) {
+      const network = getTemplateNetwork(t.id)
+      if (network === null) continue
+      const server = SERVER_TEMPLATES.find((s: { id: string }) => s.id === t.id)
+      expect(server?.recipient_kind, t.id).toBe(`network:${network}`)
+    }
   })
 })
 

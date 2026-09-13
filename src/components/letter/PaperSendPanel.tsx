@@ -46,6 +46,10 @@ interface PaperSendPanelProps {
 type Banner =
   | { kind: 'quota_exhausted'; extraSendAvailable: boolean }
   | { kind: 'in_progress' }
+  // Correctif C2 (revue finale) : fenêtre d'attente du webhook Stripe post-Checkout, ET le 402
+  // qui la suit immédiatement si le webhook est encore en retard — jamais confondu avec
+  // 'quota_exhausted' (qui, lui, propose l'achat).
+  | { kind: 'confirming_payment' }
   | { kind: 'retryable' }
   | { kind: 'error'; message: string }
 
@@ -55,6 +59,11 @@ const LINE_MAX = 45
 // Fenêtre par défaut de reprise (miroir de PAPER_STALE_SECONDS côté serveur, server/routes/letters.js)
 // — utilisée tant qu'un 402 QUOTA_EXHAUSTED n'a pas fourni sa propre valeur (legs R1).
 const DEFAULT_RETRY_AFTER_SECONDS = 120
+// Correctif C2 : patron EXACT de CheckoutReturnBanner.tsx (POLL_MS/MAX_ATTEMPTS) — poll de
+// GET /api/payments/status jusqu'à confirmation du webhook Stripe, avant de rejouer la requête
+// refusée en 402. ~20 s au total, comme pour la confirmation du forfait.
+const CONFIRM_POLL_MS = 2000
+const CONFIRM_POLL_MAX_ATTEMPTS = 10
 
 function recipientValid(r: RecipientAddress): boolean {
   return (
@@ -86,7 +95,7 @@ export function PaperSendPanel({
   const t = useT()
   const { lang } = useLang()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { extraPrice, startExtraSendCheckout } = usePayments()
+  const { extraPrice, startExtraSendCheckout, refresh: refreshPayments } = usePayments()
 
   const [senderProfile, setSenderProfile] = useState<SenderProfile | null>(null)
   const [senderLoading, setSenderLoading] = useState(true)
@@ -99,17 +108,25 @@ export function PaperSendPanel({
 
   const [sending, setSending] = useState(false)
   const [sendingLabel, setSendingLabel] = useState<'sending' | 'autoRetrying'>('sending')
+  // C2 : distinct de `sending` (qui ne couvre que la durée du POST lui-même) — englobe aussi la
+  // fenêtre de poll AVANT le rejeu, pendant laquelle aucune action manuelle ne doit être permise.
+  const [confirmingPayment, setConfirmingPayment] = useState(false)
   const [banner, setBanner] = useState<Banner | null>(null)
   const [quotaRefreshKey, setQuotaRefreshKey] = useState(0)
-  const [balance, setBalance] = useState<number | null>(null)
   const [buying, setBuying] = useState(false)
   const [buyError, setBuyError] = useState(false)
 
   const retryAfterSecondsRef = useRef(DEFAULT_RETRY_AFTER_SECONDS)
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // I5 (revue finale) : UN SEUL retry automatique par instance de panneau — sans cette garde, un
+  // rejeu auto qui retombe lui-même sur SEND_IN_PROGRESS reprogrammerait un timer indéfiniment
+  // (boucle, 429 auto-infligé par le limiteur 20/h). Au-delà, seul un clic manuel retente.
+  const autoRetryDoneRef = useRef(false)
   // Réf toujours à jour vers `performSend` : la reprise programmée (SEND_IN_PROGRESS) et l'effet
-  // de retour de Checkout l'appellent en dehors du cycle de rendu qui l'a créée.
-  const performSendRef = useRef<(payload: PaperSendPayload, opts?: { auto?: boolean }) => Promise<void>>(
+  // de retour de Checkout l'appellent en dehors du cycle de rendu qui l'a créée. Assignée dans un
+  // effet (pas au corps du rendu, revue finale mineur) : une mutation de ref reste un effet de
+  // bord, jamais un calcul de rendu.
+  const performSendRef = useRef<(payload: PaperSendPayload, opts?: { auto?: boolean; postResumeConfirm?: boolean }) => Promise<void>>(
     async () => {}
   )
 
@@ -165,15 +182,18 @@ export function PaperSendPanel({
     }
   }, [templateId, stepId])
 
-  // Legs R2 (revue Task 9) : une ligne `prepared`/`failed` SANS être passée par le rattrapage
-  // NPAI est une REPRISE — le serveur refuse tout changement de PJ (409 ATTACHMENTS_MISMATCH).
-  // L'UI n'autorise donc même pas la tentative.
+  // Legs R2 étendu (revue Task 9 + I4 de la revue finale) : une ligne `prepared`/`failed` SANS
+  // être passée par le rattrapage NPAI est une REPRISE — le serveur refuse tout changement de PJ
+  // (409 ATTACHMENTS_MISMATCH) ET l'adresse entre elle aussi dans le `dedup_key` (§M) : la
+  // corriger créerait une LIGNE DIFFÉRENTE, débitée séparément, pendant que l'originale garde
+  // son propre débit à jamais (aucune erreur ne survient plus jamais sur elle pour le libérer).
+  // L'UI fige donc les DEUX (RecipientAddressForm ET AttachmentPicker) à l'identique.
   const resumable = existing !== null && (existing.status === 'prepared' || existing.status === 'failed')
   const isFinal = existing?.status === 'submitted' || existing?.status === 'sent'
   const isResendFlow = resendOfId !== null
   const needsAddressFix = existing?.status === 'failed_address' && !isResendFlow
   const showComposeForm = !existing || resumable || isResendFlow
-  const frozenAttachments = resumable && !isResendFlow
+  const frozenForResume = resumable && !isResendFlow
 
   const buildPayload = useCallback(
     (): PaperSendPayload => ({
@@ -188,11 +208,11 @@ export function PaperSendPanel({
   )
 
   // Marque le courrier comme ayant désormais une ligne persistée EXACTEMENT dans l'état reçu
-  // (§M, RPC create_letter_send/mark_letter_result) — sans quoi `resumable`/`frozenAttachments`
+  // (§M, RPC create_letter_send/mark_letter_result) — sans quoi `resumable`/`frozenForResume`
   // resteraient calés sur l'instantané du montage, et une reprise ultérieure (bouton, ou retour
-  // de Checkout) pourrait renvoyer des PJ différentes de celles déjà persistées côté serveur
-  // → 409 ATTACHMENTS_MISMATCH (legs R2). `payload` est la source de vérité des PJ envoyées :
-  // le serveur ne renvoie pas toujours la ligne complète (402/503 n'incluent pas `send`).
+  // de Checkout) pourrait renvoyer des PJ/adresse différentes de celles déjà persistées côté
+  // serveur → 409 (legs R2). `payload` est la source de vérité de ce qui a été envoyé : le
+  // serveur ne renvoie pas toujours la ligne complète (402/503 n'incluent pas `send`).
   function freezeRow(status: 'prepared' | 'failed', payload: PaperSendPayload, error: string | null = null) {
     setExisting((prev) => ({
       id: prev?.id ?? '',
@@ -203,7 +223,7 @@ export function PaperSendPanel({
     }))
   }
 
-  async function performSend(payload: PaperSendPayload, opts: { auto?: boolean } = {}) {
+  async function performSend(payload: PaperSendPayload, opts: { auto?: boolean; postResumeConfirm?: boolean } = {}) {
     setSendingLabel(opts.auto ? 'autoRetrying' : 'sending')
     setSending(true)
     setBanner(null)
@@ -231,21 +251,42 @@ export function PaperSendPanel({
       const errorMessage = (data?.error as string) ?? t.lettersPage.send.networkError
 
       if (code === 'QUOTA_EXHAUSTED') {
-        // Ligne créée AVANT le refus du débit (garde 8, §M) : PJ déjà persistées telles quelles.
+        // Ligne créée AVANT le refus du débit (garde 8, §M) : PJ/adresse déjà persistées telles
+        // quelles. `quotaRefreshKey` bump (mineur) : le badge affichait sinon un solde périmé.
         retryAfterSecondsRef.current = (data?.retry_after_seconds as number) ?? DEFAULT_RETRY_AFTER_SECONDS
         freezeRow('prepared', payload)
-        setBanner({ kind: 'quota_exhausted', extraSendAvailable: Boolean(data?.extra_send_available) })
+        setQuotaRefreshKey((k) => k + 1)
+        if (opts.postResumeConfirm) {
+          // C2 : ce 402 suit IMMÉDIATEMENT une reprise post-Checkout — le webhook Stripe est
+          // simplement encore en retard au-delà de la fenêtre de poll (rare). JAMAIS l'offre
+          // d'achat ici : l'utilisateur vient potentiellement de payer à l'instant.
+          setBanner({ kind: 'confirming_payment' })
+        } else {
+          setBanner({ kind: 'quota_exhausted', extraSendAvailable: Boolean(data?.extra_send_available) })
+        }
         return
       }
       if (code === 'SEND_IN_PROGRESS') {
         // JAMAIS un état d'erreur (legs R1) : la ligne finalise ailleurs (webhook, autre onglet,
-        // achat encore en cours de confirmation) — on patiente puis on retente UNE fois, avec le
-        // MÊME payload déjà fermé sur ces variables (jamais reconstruit depuis l'état courant).
+        // achat encore en cours de confirmation) — ligne existante, figée comme les autres cas.
+        freezeRow('prepared', payload)
         setBanner({ kind: 'in_progress' })
+        if (opts.auto && autoRetryDoneRef.current) return // I5 : plus aucun retry auto au-delà du premier
+        autoRetryDoneRef.current = true
         if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
         retryTimerRef.current = setTimeout(() => {
-          void performSendRef.current(payload, { auto: true })
+          void performSendRef.current(payload, { auto: true, postResumeConfirm: opts.postResumeConfirm })
         }, retryAfterSecondsRef.current * 1000)
+        return
+      }
+      if (code === 'ATTACHMENTS_MISMATCH') {
+        // Ne devrait jamais survenir depuis CE panneau (les PJ sont gelées dès que `resumable`
+        // est vrai) — mais une ligne EXISTE bel et bien côté serveur. Limite connue : on ignore
+        // son contenu RÉEL (ce message signale justement qu'il diffère du nôtre) — figer sur le
+        // payload envoyé n'est qu'un pis-aller qui évite une répétition immédiate mal formée ;
+        // un rechargement de page récupère le VRAI contenu via le snapshot initial.
+        freezeRow('prepared', payload, errorMessage)
+        setBanner({ kind: 'error', message: errorMessage })
         return
       }
       if (code === 'SEND_ALREADY_EXISTS' && data?.send) {
@@ -290,12 +331,33 @@ export function PaperSendPanel({
       setSending(false)
     }
   }
-  performSendRef.current = performSend
 
-  // Retour de Stripe Checkout après achat d'un envoi à l'acte (legs R1) : reprise automatique
-  // UNE SEULE fois, avec EXACTEMENT la requête qui avait été refusée en 402 (mêmes PJ, sans quoi
-  // le serveur répondrait 409 ATTACHMENTS_MISMATCH). L'URL est nettoyée dans tous les cas —
-  // même patron que CheckoutReturnBanner (forfait), qui gère `checkout=success` séparément.
+  // Ref toujours à jour — assignation en effet, jamais au corps du rendu (revue finale, mineur).
+  useEffect(() => {
+    performSendRef.current = performSend
+  })
+
+  // Retour de Stripe Checkout après achat d'un envoi à l'acte (legs R1 + correctif C2 de la
+  // revue finale) : reprise automatique UNE SEULE fois, avec EXACTEMENT la requête qui avait été
+  // refusée en 402 (mêmes PJ ET même adresse — sans quoi le serveur répondrait 409, legs R2/I4).
+  // L'URL est nettoyée dans tous les cas — même patron que CheckoutReturnBanner (forfait), qui
+  // gère `checkout=success` séparément.
+  //
+  // C2 — LA COURSE POST-CHECKOUT : Stripe redirige dès le paiement confirmé par le NAVIGATEUR,
+  // mais le webhook (qui écrit purchases.status='paid', seule source de vérité du gate) peut
+  // arriver quelques centaines de ms à quelques secondes plus tard. Rejouer IMMÉDIATEMENT
+  // heurterait donc souvent un 402 alors que le paiement a réellement eu lieu — et réafficher
+  // l'offre d'achat à quelqu'un qui VIENT de payer ouvre un risque de double paiement (P11).
+  // Patron EXACT de CheckoutReturnBanner (poll GET /api/payments/status via usePayments().refresh,
+  // 2 s, borné à 10 tentatives ~20 s, jusqu'à purchase.status === 'paid'), réutilisé tel quel.
+  // Pendant cette fenêtre ET sur le 402 qui suit IMMÉDIATEMENT cette reprise (webhook encore en
+  // retard au-delà des 20 s — rare mais réel), le banner reste 'confirming_payment' (neutre) :
+  // JAMAIS l'offre d'achat (`showBuyExtraSend` exclut ce banner par construction, cf. le rendu).
+  //
+  // Aucun harnais de test front dans ce repo pour ce composant (CLAUDE.md, § Points d'attention :
+  // « les tests front n'existent pas dans ce repo, la vérif front = tsc + build ») — comportement
+  // vérifié par lecture croisée avec CheckoutReturnBanner.tsx (même mécanique, déjà éprouvée en
+  // usage réel au chantier 1) + boot check manuel.
   useEffect(() => {
     const checkoutParam = searchParams.get('checkout')
     if (!checkoutParam) return
@@ -306,7 +368,23 @@ export function PaperSendPanel({
     const pending = takePendingPaperSend(templateId, stepId, checkoutParam)
     if (!pending) return
     retryAfterSecondsRef.current = pending.retryAfterSeconds
-    void performSendRef.current(pending.payload, { auto: true })
+
+    setSendingLabel('autoRetrying')
+    setConfirmingPayment(true)
+    setBanner({ kind: 'confirming_payment' })
+
+    void (async () => {
+      let attempts = 0
+      while (attempts < CONFIRM_POLL_MAX_ATTEMPTS) {
+        const state = await refreshPayments()
+        if (state.purchase?.status === 'paid') break
+        attempts += 1
+        if (attempts >= CONFIRM_POLL_MAX_ATTEMPTS) break
+        await new Promise((resolve) => setTimeout(resolve, CONFIRM_POLL_MS))
+      }
+      await performSendRef.current(pending.payload, { auto: true, postResumeConfirm: true })
+      setConfirmingPayment(false)
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule fois, au montage
   }, [])
 
@@ -346,8 +424,13 @@ export function PaperSendPanel({
     return <p className="text-xs text-text-muted">{t.paperSend.panelLoading}</p>
   }
 
-  const canSend = isComplete && !!senderProfile && recipientValid(recipient) && !sending
-  const showBuyExtraSend = banner?.kind === 'quota_exhausted' || balance === 0
+  const busy = sending || confirmingPayment
+  const canSend = isComplete && !!senderProfile && recipientValid(recipient) && !busy
+  // I3 (revue finale) : jamais conditionné par le solde local seul — en prod par défaut
+  // (PAYMENTS_ENABLED non défini), tout le monde a un solde de 0 et le bouton mènerait à un 503
+  // (vente à l'acte fermée). Seule une confirmation SERVEUR explicite (le 402 lui-même porte
+  // `extra_send_available`) autorise l'affichage du bouton d'achat.
+  const showBuyExtraSend = banner?.kind === 'quota_exhausted' && banner.extraSendAvailable
   const formattedExtraPrice = formatPrice(extraPrice, lang)
   const sendCtaLabel = isResendFlow ? t.paperSend.resendCta : resumable ? t.paperSend.retryCta : t.paperSend.sendCta
 
@@ -388,14 +471,15 @@ export function PaperSendPanel({
             onDeceasedDepartmentResolved={onDeceasedDepartmentResolved}
             value={recipient}
             onChange={setRecipient}
+            frozen={frozenForResume}
           />
-          <AttachmentPicker selected={attachmentIds} onChange={setAttachmentIds} frozen={frozenAttachments} />
-          <QuotaBadge refreshKey={quotaRefreshKey} onBalanceChange={setBalance} />
+          <AttachmentPicker selected={attachmentIds} onChange={setAttachmentIds} frozen={frozenForResume} />
+          <QuotaBadge refreshKey={quotaRefreshKey} />
 
           <div className="flex flex-wrap items-center gap-3">
             <Button size="sm" onClick={handleSendClick} disabled={!canSend} className="gap-2">
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              {sending ? t.paperSend[sendingLabel] : sendCtaLabel}
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {busy ? t.paperSend[sendingLabel] : sendCtaLabel}
             </Button>
             {showBuyExtraSend && (
               <Button size="sm" variant="outline" onClick={() => void handleBuyExtraSend()} disabled={buying} className="gap-2">
@@ -411,7 +495,9 @@ export function PaperSendPanel({
 
           {!isComplete && <p className="text-xs text-text-muted">{t.paperSend.missingFieldsHint}</p>}
           {buyError && <p className="text-xs text-text-muted">{t.paperSend.quotaBuyError}</p>}
-          {banner?.kind === 'in_progress' && <p className="text-xs text-text-muted">{t.paperSend.finalizingPayment}</p>}
+          {(banner?.kind === 'in_progress' || banner?.kind === 'confirming_payment') && (
+            <p className="text-xs text-text-muted">{t.paperSend.finalizingPayment}</p>
+          )}
           {banner?.kind === 'retryable' && <p className="text-xs text-text-muted">{t.paperSend.retryableHint}</p>}
           {banner?.kind === 'error' && <p className="text-xs text-warning">{banner.message}</p>}
         </>

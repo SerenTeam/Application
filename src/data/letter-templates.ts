@@ -466,8 +466,10 @@ export function getLetterTemplateByStepId(stepId: string): LetterTemplate | unde
 // serveur. Cette carte est un simple indice d'UI (quel formulaire d'adresse afficher : annuaire
 // ou saisie libre) — jamais utilisée pour valider ou construire ce qui part réellement : le
 // serveur revalide entièrement l'adresse reçue (garde 4 de POST /api/letters/send), quel que
-// soit ce que le client croyait afficher. Les 4 templates réseau sont exactement les mêmes des
-// deux côtés (vérifié par `tests/letter-templates-server.test.ts`).
+// soit ce que le client croyait afficher. Parité avec les `recipient_kind` serveur (les 4
+// `network:*`) vérifiée par `tests/letter-templates-server.test.ts` (describe « parité
+// NETWORK_RECIPIENT_TEMPLATES ↔ recipient_kind serveur ») — corrigé après la revue finale, qui a
+// relevé que cette promesse n'était pas tenue par un test réel.
 export const NETWORK_RECIPIENT_TEMPLATES: Record<string, 'caf' | 'cpam' | 'carsat' | 'impots'> = {
   'caf-notification': 'caf',
   'cpam-notification': 'cpam',

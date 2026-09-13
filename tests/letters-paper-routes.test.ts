@@ -621,6 +621,20 @@ describe('POST /api/letters/send (papier) — garde 6 : pièces jointes', () => 
     expect(res.body.code).toBe('TOO_MANY_ATTACHMENTS')
   })
 
+  // Revue finale (mineur) : sans cette garde dédiée, un id répété passait inaperçu du contrôle
+  // RLS ci-dessous (byId.size === new Set(ids).size reste vrai pour un singleton dupliqué) et la
+  // même pièce partait deux fois dans la fusion provider.
+  it('pièce jointe en double dans la sélection : 400 DUPLICATE_ATTACHMENTS, rien créé', async () => {
+    const backend = readyBackend()
+    addAttachment(backend, { id: ATT_1 })
+    const { app, store, sender } = makeApp({ backend })
+    const res = await request(app).post('/api/letters/send').send(basePayload({ attachment_ids: [ATT_1, ATT_1] }))
+    expect(res.status).toBe(400)
+    expect(res.body.code).toBe('DUPLICATE_ATTACHMENTS')
+    expect(store.rows).toHaveLength(0)
+    expect(sender.calls).toHaveLength(0)
+  })
+
   it('pièces jointes valides : buffers transmis au provider, dans l’ordre demandé, via URL signée courte', async () => {
     const backend = readyBackend()
     addAttachment(backend, { id: ATT_1 })

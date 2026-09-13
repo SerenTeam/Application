@@ -102,7 +102,12 @@ export function takePendingPaperSend(
 ): PendingPaperSend | null {
   if (checkoutParam !== RESUME_CHECKOUT_VALUE) return null
   const pending = readPending()
-  if (!pending || pending.templateId !== templateId || pending.stepId !== stepId) return null
+  // Nettoyage SYSTÉMATIQUE dès qu'un retour 'extra_success' est observé (mineur, revue finale) :
+  // une reprise stale (mauvais gabarit/étape — ne devrait arriver que si l'auto-réouverture a
+  // par ailleurs échoué) ne doit jamais persister indéfiniment dans sessionStorage. Pour les
+  // autres valeurs de `checkout` (success/cancel du forfait), c'est CheckoutReturnBanner qui
+  // nettoie (il est toujours monté, contrairement à ce panneau) — voir ce composant.
   clearPendingPaperSend()
+  if (!pending || pending.templateId !== templateId || pending.stepId !== stepId) return null
   return pending
 }
