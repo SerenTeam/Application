@@ -30,6 +30,7 @@ function makeApp(opts: {
   store?: ReturnType<typeof makePurchasesStore>
   stripe?: ReturnType<typeof makeStripe> | null
   priceId?: string | undefined
+  extraPriceId?: string | undefined
   getPrice?: () => Promise<{ amount_total: number; currency: string } | null>
 } = {}) {
   const store = opts.store ?? makePurchasesStore()
@@ -49,6 +50,7 @@ function makeApp(opts: {
     getPrice: opts.getPrice ?? (async () => ({ amount_total: 14900, currency: 'eur' })),
     paymentsEnabled: opts.paymentsEnabled ?? true,
     priceId: 'priceId' in opts ? opts.priceId : 'price_test_123',
+    extraPriceId: 'extraPriceId' in opts ? opts.extraPriceId : 'price_extra_456',
     includedSends: 5,
     appUrl: 'https://app.seren-app.fr',
   }))
@@ -125,6 +127,71 @@ describe('POST /api/payments/checkout', () => {
   })
 })
 
+// Facturation à l'acte (chantier 2a, spec §4) : un « envoi supplémentaire » est une ligne
+// purchases normale (kind='envoi_sup', included_sends=1). Le garde-fou essentiel est qu'il EXIGE
+// un forfait payé — sans quoi acheter un timbre ouvrirait le produit payant entier (le gate lit
+// getPaidPurchase, filtré kind='forfait').
+describe('POST /api/payments/checkout-extra-send', () => {
+  it('sans forfait payé : 403, AUCUNE session Stripe créée', async () => {
+    const { app, stripe, store } = makeApp()
+    const res = await request(app).post('/api/payments/checkout-extra-send').send({})
+    expect(res.status).toBe(403)
+    expect(res.body.code).toBe('FORFAIT_REQUIRED')
+    expect(stripe!.created).toHaveLength(0)
+    expect(store.rows).toHaveLength(0)
+  })
+
+  it('forfait remboursé : 403 (le gate s’est refermé, l’achat à l’acte aussi)', async () => {
+    const store = makePurchasesStore([{ status: 'refunded', kind: 'forfait', paid_at: '2026-07-25T10:00:00.000Z' }])
+    const { app } = makeApp({ store })
+    expect((await request(app).post('/api/payments/checkout-extra-send').send({})).status).toBe(403)
+  })
+
+  it('achat d’envoi supplémentaire SEUL (sans forfait) : 403 — jamais d’escalade par un timbre', async () => {
+    const store = makePurchasesStore([{ status: 'paid', kind: 'envoi_sup', included_sends: 1, paid_at: '2026-09-13T10:00:00.000Z' }])
+    const { app } = makeApp({ store })
+    expect((await request(app).post('/api/payments/checkout-extra-send').send({})).status).toBe(403)
+  })
+
+  it('tarif « envoi supplémentaire » non configuré : 503 inerte (pattern Resend/Stripe)', async () => {
+    const store = makePurchasesStore([{ status: 'paid', kind: 'forfait', paid_at: '2026-07-25T10:00:00.000Z' }])
+    const { app, stripe } = makeApp({ store, extraPriceId: undefined })
+    expect((await request(app).post('/api/payments/checkout-extra-send').send({})).status).toBe(503)
+    expect(stripe!.created).toHaveLength(0)
+  })
+
+  it('vente fermée : 503', async () => {
+    const store = makePurchasesStore([{ status: 'paid', kind: 'forfait', paid_at: '2026-07-25T10:00:00.000Z' }])
+    const { app } = makeApp({ store, paymentsEnabled: false })
+    expect((await request(app).post('/api/payments/checkout-extra-send').send({})).status).toBe(503)
+  })
+
+  it('forfait payé : session créée avec metadata kind=envoi_sup et 1 envoi inclus, ligne pending marquée', async () => {
+    const store = makePurchasesStore([{ status: 'paid', kind: 'forfait', included_sends: 5, paid_at: '2026-07-25T10:00:00.000Z' }])
+    const { app, stripe } = makeApp({ store })
+    const res = await request(app).post('/api/payments/checkout-extra-send').send({})
+
+    expect(res.status).toBe(200)
+    expect(res.body.url).toContain('checkout.stripe.com')
+    const params = stripe!.created[0] as Record<string, any>
+    expect(params.mode).toBe('payment')
+    expect(params.line_items).toEqual([{ price: 'price_extra_456', quantity: 1 }])
+    expect(params.metadata).toEqual({ user_id: 'user-1', included_sends: '1', kind: 'envoi_sup' })
+
+    const pending = store.rows.find((r) => r.status === 'pending')!
+    expect(pending).toMatchObject({ kind: 'envoi_sup', included_sends: 1 })
+  })
+
+  it('achetable plusieurs fois (contrairement au forfait) : pas de no-op already_purchased', async () => {
+    const store = makePurchasesStore([{ status: 'paid', kind: 'forfait', paid_at: '2026-07-25T10:00:00.000Z' }])
+    const { app, stripe } = makeApp({ store })
+    await request(app).post('/api/payments/checkout-extra-send').send({})
+    const second = await request(app).post('/api/payments/checkout-extra-send').send({})
+    expect(second.status).toBe(200)
+    expect(stripe!.created).toHaveLength(2)
+  })
+})
+
 describe('GET /api/payments/status', () => {
   it('renvoie le prix LU DEPUIS STRIPE (jamais un montant en dur) et l’état de l’achat', async () => {
     const store = makePurchasesStore([{ status: 'paid', paid_at: '2026-07-25T10:00:00.000Z', included_sends: 5 }])
@@ -163,5 +230,30 @@ describe('GET /api/payments/status', () => {
     store.failReads = true
     const { app } = makeApp({ store })
     expect((await request(app).get('/api/payments/status')).status).toBe(500)
+  })
+
+  // Vigilance I4 (revue Tasks 5+6) : `has_paid` doit venir de getPaidPurchase (filtré
+  // kind='forfait'), JAMAIS du dernier achat — sinon un envoi supplémentaire à 1 € afficherait
+  // « forfait payé, 1 envoi inclus » et lèverait le paywall côté UI alors que le gate serveur,
+  // lui, resterait fermé.
+  it('has_paid vient du FORFAIT payé, pas du dernier achat', async () => {
+    const store = makePurchasesStore([{ status: 'paid', kind: 'forfait', included_sends: 5, paid_at: '2026-07-25T10:00:00.000Z' }])
+    const { app } = makeApp({ store })
+    const res = await request(app).get('/api/payments/status')
+    expect(res.body.has_paid).toBe(true)
+  })
+
+  it('achat d’envoi supplémentaire seul : has_paid false, mais l’achat reste affichable (écran de confirmation)', async () => {
+    const store = makePurchasesStore([{ status: 'paid', kind: 'envoi_sup', included_sends: 1, paid_at: '2026-09-13T10:00:00.000Z' }])
+    const { app } = makeApp({ store })
+    const res = await request(app).get('/api/payments/status')
+    expect(res.body.has_paid).toBe(false)
+    expect(res.body.purchase).toMatchObject({ status: 'paid', included_sends: 1 })
+  })
+
+  it('forfait remboursé : has_paid false', async () => {
+    const store = makePurchasesStore([{ status: 'refunded', kind: 'forfait', paid_at: '2026-07-25T10:00:00.000Z' }])
+    const { app } = makeApp({ store })
+    expect((await request(app).get('/api/payments/status')).body.has_paid).toBe(false)
   })
 })

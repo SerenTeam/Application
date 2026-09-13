@@ -86,16 +86,16 @@ export function makePurchasesStore(initial: Partial<PurchaseRow>[] = []) {
       )
     },
 
-    async createPending(_c: unknown, { userId, sessionId, includedSends }: { userId: string; sessionId: string; includedSends: number }) {
+    async createPending(_c: unknown, { userId, sessionId, includedSends, kind }: { userId: string; sessionId: string; includedSends: number; kind?: 'forfait' | 'envoi_sup' }) {
       requireSecret()
       if (rows.some((r) => r.stripe_session_id === sessionId)) return // on conflict do nothing
-      insert({ user_id: userId, status: 'pending', stripe_session_id: sessionId, included_sends: includedSends })
+      insert({ user_id: userId, status: 'pending', stripe_session_id: sessionId, included_sends: includedSends, kind: kind ?? 'forfait' })
     },
 
     async markPaid(
       _c: unknown,
-      { sessionId, userId, paymentIntent, amountTotal, currency, includedSends }:
-        { sessionId: string; userId: string; paymentIntent: string | null; amountTotal: number | null; currency: string | null; includedSends: number },
+      { sessionId, userId, paymentIntent, amountTotal, currency, includedSends, kind }:
+        { sessionId: string; userId: string; paymentIntent: string | null; amountTotal: number | null; currency: string | null; includedSends: number; kind?: 'forfait' | 'envoi_sup' },
     ) {
       requireSecret()
       const existing = rows.find((r) => r.stripe_session_id === sessionId)
@@ -108,11 +108,18 @@ export function makePurchasesStore(initial: Partial<PurchaseRow>[] = []) {
           amount_total: amountTotal,
           currency,
           included_sends: includedSends,
+          // `kind` écrit dans le MÊME insert que `status='paid'` (règle (b) de la Task 4 : jamais
+          // de fenêtre paid-puis-kind, qui ouvrirait le gate du produit entre les deux écritures).
+          kind: kind ?? 'forfait',
           paid_at: new Date().toISOString(),
         })
         return
       }
       if (existing.status !== 'pending') return // garde du DO UPDATE : rejeu = 0 ligne
+      // ⚠️ `kind` VOLONTAIREMENT NON RÉÉCRIT ici (règle (a) de la Task 4, migration
+      // 20260914150000_purchases_kind_writer.sql) : la ligne pending porte déjà la bonne valeur,
+      // et un appelant ancien rétrograderait un `envoi_sup` en `forfait` — le gate du produit
+      // entier s'ouvrirait au prix d'un timbre.
       existing.status = 'paid'
       existing.stripe_payment_intent = paymentIntent ?? existing.stripe_payment_intent
       existing.amount_total = amountTotal ?? existing.amount_total

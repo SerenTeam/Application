@@ -20,11 +20,17 @@ export interface PaymentsPurchase {
 interface PaymentsState {
   loading: boolean
   paymentsEnabled: boolean
+  // Forfait payé et non remboursé — dérivé CÔTÉ SERVEUR de `getPaidPurchase`, filtré
+  // `kind='forfait'` (chantier 2a, vigilance I4). Ne jamais le recalculer depuis `purchase` :
+  // celui-ci est le DERNIER achat, qui peut être un envoi supplémentaire à l'acte — le paywall
+  // se lèverait alors pour quelqu'un qui n'a acheté qu'un timbre, alors que le gate serveur,
+  // lui, resterait fermé (402 à la première action).
+  hasPaid: boolean
   purchase: PaymentsPurchase | null
   price: PaymentsPrice | null
 }
 
-const INITIAL: PaymentsState = { loading: true, paymentsEnabled: false, purchase: null, price: null }
+const INITIAL: PaymentsState = { loading: true, paymentsEnabled: false, hasPaid: false, purchase: null, price: null }
 
 // Cache au niveau du module : LetterSendPanel est monté UNE FOIS PAR COURRIER, et sans cache
 // chaque courrier affiché déclencherait sa propre requête de statut. Le premier montage paie la
@@ -52,6 +58,7 @@ async function fetchStatus(): Promise<PaymentsState> {
     return {
       loading: false,
       paymentsEnabled: Boolean(data.payments_enabled),
+      hasPaid: Boolean(data.has_paid),
       purchase: data.purchase ?? null,
       price: data.price ?? null,
     }
@@ -122,8 +129,7 @@ export function usePayments() {
   }, [refresh])
 
   return {
-    ...state,
-    hasPaid: state.purchase?.status === 'paid',
+    ...state, // `hasPaid` compris — il vient du serveur, jamais d'un calcul local (voir PaymentsState)
     refresh,
     startCheckout,
   }

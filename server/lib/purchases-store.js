@@ -66,15 +66,30 @@ export async function getLatestPurchase(client, userId) {
   return data ?? null
 }
 
-export async function createPending(client, { userId, sessionId, includedSends }) {
+// Nature de l'achat (chantier 2a) : 'forfait' (le produit) ou 'envoi_sup' (facturation à
+// l'acte, `included_sends = 1`). Normalisée ICI, avant tout appel : une valeur inattendue
+// violerait le CHECK `purchases_kind_check` et ferait échouer l'encaissement d'un paiement
+// pourtant réel. Le défaut retenu est 'forfait' — c'est la seule valeur qu'un appelant d'avant
+// le chantier 2a pouvait produire, et donc la seule compatible avec l'historique.
+function normalizeKind(kind) {
+  return kind === 'envoi_sup' ? 'envoi_sup' : 'forfait'
+}
+
+export async function createPending(client, { userId, sessionId, includedSends, kind }) {
   await callRpc(client, 'create_pending_purchase', {
     p_user_id: userId,
     p_session_id: sessionId,
     p_included_sends: includedSends ?? 0,
+    p_kind: normalizeKind(kind),
   })
 }
 
-export async function markPaid(client, { sessionId, userId, paymentIntent, amountTotal, currency, includedSends }) {
+// ⚠️ `kind` n'est écrit par la RPC que sur le chemin INSERT (webhook arrivé avant la ligne
+// d'attente), dans le MÊME ordre SQL que `status = 'paid'` ; sur la branche `on conflict do
+// update`, la valeur posée par createPending est conservée telle quelle. Voir les deux règles en
+// tête de supabase/migrations/20260914150000_purchases_kind_writer.sql : réécrire `kind` ici
+// rétrograderait un envoi supplémentaire en forfait et ouvrirait le gate du produit entier.
+export async function markPaid(client, { sessionId, userId, paymentIntent, amountTotal, currency, includedSends, kind }) {
   await callRpc(client, 'mark_purchase_paid', {
     p_session_id: sessionId,
     p_user_id: userId,
@@ -82,6 +97,7 @@ export async function markPaid(client, { sessionId, userId, paymentIntent, amoun
     p_amount_total: amountTotal ?? null,
     p_currency: currency ?? null,
     p_included_sends: includedSends ?? 0,
+    p_kind: normalizeKind(kind),
   })
 }
 

@@ -31,6 +31,9 @@ export function createPaymentsRouter({
   getPrice,
   paymentsEnabled,
   priceId,
+  // Tarif « envoi supplémentaire » (chantier 2a, facturation à l'acte) : tarif Stripe DISTINCT
+  // du forfait, absent → la route /checkout-extra-send est inerte en 503 (pattern maison).
+  extraPriceId,
   includedSends,
   appUrl,
 }) {
@@ -49,6 +52,9 @@ export function createPaymentsRouter({
   // conditions sont indissociables : un flag à true sans clé Stripe ne doit pas produire un
   // demi-état où le gate se ferme alors que personne ne peut acheter.
   const saleOpen = () => Boolean(paymentsEnabled && stripe && priceId)
+  // Même règle, appliquée au tarif à l'acte : un flag ouvert sans tarif « envoi supplémentaire »
+  // ne doit pas produire un demi-état (bouton d'achat qui mène à une erreur).
+  const extraSaleOpen = () => Boolean(paymentsEnabled && stripe && extraPriceId)
 
   router.post('/checkout', requireAuth, checkoutLimiter, async (req, res) => {
     const lang = reqLang(req)
@@ -93,16 +99,74 @@ export function createPaymentsRouter({
     }
   })
 
+  // Achat d'un envoi supplémentaire (chantier 2a, spec §4 — facturation à l'acte au-delà des
+  // envois inclus). Trois différences assumées avec /checkout :
+  //  • il EXIGE un forfait payé (403 sinon) — `getPaidPurchase` est filtré `kind='forfait'` :
+  //    sans cette garde, acheter un timbre à l'unité ouvrirait tout le produit payant, puisque
+  //    le gate cherche exactement « un achat payé » ;
+  //  • il est répétable (pas de no-op `already_purchased`) : on achète autant d'envois qu'on veut ;
+  //  • les metadata portent `kind: 'envoi_sup'` et `included_sends: '1'` — le webhook n'a rien à
+  //    deviner, et la RPC (migration 20260914150000) inscrit la bonne nature d'achat.
+  router.post('/checkout-extra-send', requireAuth, checkoutLimiter, async (req, res) => {
+    const lang = reqLang(req)
+    if (!extraSaleOpen()) {
+      return res.status(503).json({ success: false, error: msg(lang, 'payments_disabled') })
+    }
+
+    try {
+      const forfait = await store.getPaidPurchase(req.supabaseClient, req.user.id)
+      if (!forfait) {
+        return res.status(403).json({
+          success: false,
+          error: msg(lang, 'forfait_required'),
+          code: 'FORFAIT_REQUIRED',
+        })
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [{ price: extraPriceId, quantity: 1 }],
+        success_url: `${appUrl}/dashboard?checkout=extra_success`,
+        cancel_url: `${appUrl}/dashboard?checkout=cancel`,
+        client_reference_id: req.user.id,
+        customer_email: req.user.email,
+        metadata: { user_id: req.user.id, included_sends: '1', kind: 'envoi_sup' },
+      })
+
+      await store.createPending(publicClient, {
+        userId: req.user.id,
+        sessionId: session.id,
+        includedSends: 1,
+        kind: 'envoi_sup',
+      })
+
+      return res.json({ success: true, url: session.url })
+    } catch (error) {
+      console.error('❌ payments/checkout-extra-send :', error?.message ?? error)
+      Sentry.captureException(error)
+      return res.status(502).json({ success: false, error: msg(lang, 'checkout_failed') })
+    }
+  })
+
   router.get('/status', requireAuth, async (req, res) => {
     const lang = reqLang(req)
     try {
-      const [purchase, price] = await Promise.all([
+      // DEUX lectures volontairement distinctes (vigilance I4 de la revue Tasks 5+6) :
+      //  • `has_paid` vient de getPaidPurchase — filtré `kind='forfait'`, c'est EXACTEMENT ce que
+      //    vérifie le gate serveur. Le dériver du dernier achat ferait afficher « forfait payé »
+      //    à quelqu'un qui n'a acheté qu'un envoi supplémentaire (1 timbre), avec un paywall levé
+      //    côté UI et un 402 côté serveur à la première action.
+      //  • `purchase` reste le DERNIER achat, quel qu'il soit : c'est lui qu'affiche l'écran de
+      //    confirmation après un retour de Checkout (y compris pour un envoi supplémentaire).
+      const [purchase, forfait, price] = await Promise.all([
         store.getLatestPurchase(req.supabaseClient, req.user.id),
+        store.getPaidPurchase(req.supabaseClient, req.user.id),
         getPrice ? getPrice() : Promise.resolve(null),
       ])
       return res.json({
         success: true,
         payments_enabled: saleOpen(),
+        has_paid: Boolean(forfait),
         purchase: purchase
           ? { status: purchase.status, paid_at: purchase.paid_at, included_sends: purchase.included_sends }
           : null,
@@ -176,6 +240,12 @@ async function handleEvent({ event, store, publicClient }) {
       amountTotal: session.amount_total ?? null,
       currency: session.currency ?? null,
       includedSends: Number(session.metadata?.included_sends ?? 0) || 0,
+      // Nature de l'achat (chantier 2a) : posée par NOTRE serveur à la création de la session et
+      // revenue sous signature vérifiée. Elle ne sert qu'au chemin INSERT de la RPC (webhook plus
+      // rapide que la ligne d'attente) ; sur une ligne `pending` existante, le `kind` déjà écrit
+      // fait foi et n'est jamais réécrit. Toute valeur autre que 'envoi_sup' est ramenée à
+      // 'forfait' par le store — jamais d'échec d'encaissement pour une metadata inattendue.
+      kind: session.metadata?.kind,
     })
     return
   }

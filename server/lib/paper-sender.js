@@ -71,7 +71,13 @@ function checkLine(value, field, side) {
 // de sender_profiles/organisations, Task 1) est refusée ici, jamais tronquée. Shape interne
 // Seren (`{ name, address_line1, address_line2?, postal_code, city, country? }`), traduite en
 // shape API (`to`/`from`) par `toApiAddress` seulement après validation.
-function validateAddress(addr, side) {
+//
+// EXPORTÉE pour la route d'envoi (Task 9), qui doit refuser une adresse invalide AVANT de créer
+// la ligne d'envoi et surtout avant de débiter le quota : sans cet export, l'unique validation
+// serait celle de `send()`, déclenchée APRÈS le débit — il faudrait le libérer pour une simple
+// faute de frappe. La règle des 45 caractères vit ainsi à UN SEUL endroit, celui qui connaît la
+// contrainte du provider.
+export function validateAddress(addr, side) {
   if (!addr || typeof addr !== 'object') {
     throw new PaperSenderError('invalid_address', { field: side })
   }

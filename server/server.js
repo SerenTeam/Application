@@ -13,6 +13,7 @@ import { createPaymentsRouter } from './routes/payments.js';
 import { createAttachmentsRouter } from './routes/attachments.js';
 import { createBasicAuthGate } from './lib/basic-auth.js';
 import { createEmailSender } from './lib/email-sender.js';
+import { createPaperSender } from './lib/paper-sender.js';
 import { createStripeClient, createPriceReader } from './lib/stripe-client.js';
 import { createRequirePurchase } from './lib/require-purchase.js';
 import * as lettersStore from './lib/letters-store.js';
@@ -167,7 +168,11 @@ app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, mistral: 
 const paymentsEnabled = process.env.PAYMENTS_ENABLED === 'true';
 const stripeClient = createStripeClient();
 const stripePriceId = process.env.STRIPE_PRICE_ID;
-// Quota d'envois inclus dans le forfait : figé à l'achat (chantier 2 le consommera).
+// Tarif « envoi supplémentaire » (chantier 2a, facturation à l'acte) : tarif Stripe distinct du
+// forfait. Absent → POST /api/payments/checkout-extra-send répond 503 et le 402 de quota épuisé
+// n'affiche pas d'offre d'achat (extraSendAvailable ci-dessous).
+const stripeExtraSendPriceId = process.env.STRIPE_PRICE_ID_EXTRA_SEND;
+// Quota d'envois inclus dans le forfait : figé à l'achat (consommé par le canal papier, 2a).
 const forfaitIncludedSends = Number(process.env.FORFAIT_INCLUDED_SENDS ?? 5) || 0;
 
 app.use('/api/payments', createPaymentsRouter({
@@ -181,6 +186,7 @@ app.use('/api/payments', createPaymentsRouter({
   getPrice: createPriceReader({ stripe: stripeClient, priceId: stripePriceId }),
   paymentsEnabled,
   priceId: stripePriceId,
+  extraPriceId: stripeExtraSendPriceId,
   includedSends: forfaitIncludedSends,
   appUrl: process.env.APP_URL || 'http://localhost:5173',
 }));
@@ -201,6 +207,15 @@ app.use('/api/letters', createLettersRouter({
   // passe par ce client bare (clé publishable) et par la RPC security definer
   // update_letter_send_status pour mettre à jour un statut malgré la RLS — voir letters-store.js.
   publicClient: supabase,
+  // ── Canal papier (chantier 2a) ──
+  // Adaptateur MySendingBox : sans MYSENDINGBOX_API_KEY il lève `paper_not_configured` au premier
+  // envoi (503 propre) au lieu d'empêcher le démarrage — même discipline que Resend et Stripe.
+  // Le canal reste de toute façon fermé tant que PAPER_SENDS_ENABLED ≠ 'true' (kill switch lu à
+  // chaque requête dans la route, pas ici : le couper ne doit pas exiger un redéploiement).
+  paperSender: createPaperSender({ apiKey: process.env.MYSENDINGBOX_API_KEY }),
+  // Le 402 « quota épuisé » ne propose l'achat d'un envoi que si ce Checkout-là peut réellement
+  // s'ouvrir (vente ouverte + SDK + tarif dédié) — sinon le bouton mènerait droit à un 503.
+  extraSendAvailable: Boolean(paymentsEnabled && stripeClient && stripeExtraSendPriceId),
 }));
 
 // Coffre minimal — pièces jointes des envois papier (chantier 2a). Pas de dépendance
