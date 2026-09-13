@@ -5,6 +5,8 @@ import request from 'supertest'
 import { createQuestionnaireRouter } from '../server/routes/questionnaire.js'
 // @ts-expect-error — module JS serveur
 import { textIn } from '../server/lib/questions-catalog.js'
+// @ts-expect-error — module JS serveur
+import { DEPARTMENTS } from '../server/lib/departments.js'
 
 // ── Fakes ────────────────────────────────────────────────────────────────
 type Session = { id: string; user_id: string; answers: Record<string, unknown>; lang: 'fr' | 'en' }
@@ -49,7 +51,7 @@ function makeApp() {
 
 const CANNED: Record<string, unknown> = {
   relation: 'conjoint_marie', deceased_firstname: 'Pierre', deceased_lastname: 'Dupont',
-  deceased_dod: '2026-04-10', statut_professionnel: 'salarie', logement: 'locataire',
+  deceased_dod: '2026-04-10', deceased_department: '75', statut_professionnel: 'salarie', logement: 'locataire',
   enfants: 'aucun', has_notary: false, has_life_insurance: 'oui',
   has_joint_account: true, has_vehicle: false, has_credits: false,
   employait_aide_domicile: false, contrat_obseques: 'non', organismes_contactes: ['banque'],
@@ -84,7 +86,7 @@ describe('POST /api/questionnaire/start', () => {
     expect(q.options[0]).toEqual({ value: 'conjoint_marie', label: 'Mon époux / mon épouse' })
     expect(q.fallback_text).toBeUndefined()
     expect(q.writer_hints).toBeUndefined()
-    expect(q.progress).toEqual({ current: 0, total: 15 })
+    expect(q.progress).toEqual({ current: 0, total: 16 })
   })
   it('start avec lang:en → session en anglais, textes EN, resume conserve la langue', async () => {
     const { app } = makeApp()
@@ -119,7 +121,7 @@ describe('POST /api/questionnaire/answer', () => {
       .send({ session_id: sessionId, question_id: 'relation', value: 'conjoint_marie' })
     expect(res.status).toBe(200)
     expect(res.body.data.question_id).toBe('deceased_firstname')
-    expect(res.body.data.progress).toEqual({ current: 1, total: 15 }) // branche conjoint ouverte
+    expect(res.body.data.progress).toEqual({ current: 1, total: 16 }) // branche conjoint ouverte
     expect(sessions.get(sessionId)?.answers.relation).toBe('conjoint_marie') // persisté via saveAnswers, pas par aliasing
   })
   it('valeur hors options → 400 avec message du moteur (traduit FR)', async () => {
@@ -251,5 +253,74 @@ describe('parcours complet → récap → complete', () => {
     const { app } = makeApp()
     const res = await request(app).post('/api/questionnaire/resume').send({ session_id: 'sess-inexistante' })
     expect(res.status).toBe(404)
+  })
+})
+
+// chantier 2a : deceased_department est un select (type fermé, comme les autres questions dont
+// la dernière réponse est transmise au rédacteur pour la transition) mais reste une donnée
+// d'adressage — jamais envoyée à Mistral (docs/design-chantier-2a-envoi-papier.md §3.2).
+// Test négatif : on instrumente writeText pour capturer tous les contextes transmis au
+// rédacteur sur un parcours complet, et on vérifie qu'aucun ne porte trace du département.
+describe('PII : rédacteur Mistral (chantier 2a)', () => {
+  it('la réponse au département n\'apparaît jamais dans le contexte transmis au rédacteur', async () => {
+    const contexts: Array<Record<string, unknown>> = []
+    const sessions = new Map<string, Session>()
+    let seq = 0
+    const store = {
+      async createSession(_c: unknown, userId: string, lang: 'fr' | 'en' = 'fr') {
+        const s: Session = { id: `sess-${++seq}`, user_id: userId, answers: {}, lang }
+        sessions.set(s.id, s)
+        return s
+      },
+      async loadSession(_c: unknown, id: string) {
+        const s = sessions.get(id)
+        return s ? structuredClone(s) : null
+      },
+      async saveAnswers(_c: unknown, id: string, answers: Record<string, unknown>) {
+        const s = sessions.get(id)
+        if (s) s.answers = answers
+      },
+      async deleteSession(_c: unknown, id: string) {
+        sessions.delete(id)
+      },
+    }
+    const requireAuth = (req: express.Request & { user?: unknown; supabaseClient?: unknown }, _res: express.Response, next: express.NextFunction) => {
+      req.user = { id: 'user-1' }
+      req.supabaseClient = {}
+      next()
+    }
+    const writeText = async (
+      { spec, context, lang }: { spec: { fallback_text: { question: unknown; aide?: unknown } }; context: Record<string, unknown>; lang: 'fr' | 'en' }
+    ) => {
+      contexts.push(context)
+      return { question: textIn(spec.fallback_text.question, lang), aide: textIn(spec.fallback_text.aide, lang), source: 'fallback' as const }
+    }
+    const app = express()
+    app.use(express.json())
+    app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, store, writeText }))
+
+    const start = await request(app).post('/api/questionnaire/start')
+    const sessionId = start.body.session_id
+    let data = start.body.data
+    let guard = 0
+    while (data.action === 'question') {
+      const res = await request(app)
+        .post('/api/questionnaire/answer')
+        .send({ session_id: sessionId, question_id: data.question_id, value: CANNED[data.question_id] })
+      expect(res.status).toBe(200)
+      data = res.body.data
+      if (++guard > 20) throw new Error('boucle infinie')
+    }
+
+    expect(contexts.length).toBeGreaterThan(0) // sanity : le spy a bien été exercé
+    const deptCode = CANNED['deceased_department'] as string
+    const deptLabel = DEPARTMENTS.find((d: { value: string; label: string }) => d.value === deptCode)!.label
+    for (const ctx of contexts) {
+      expect(ctx.derniereReponse).not.toBe(deptLabel)
+      const dump = JSON.stringify(ctx)
+      expect(dump).not.toContain(deptLabel)
+      expect(dump).not.toContain(deptCode)
+      expect(dump).not.toContain('département') // ni le libellé de la question elle-même
+    }
   })
 })

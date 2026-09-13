@@ -25,6 +25,7 @@ export interface QuestionnaireAnswersV2 {
   deceased_firstname: string
   deceased_lastname: string
   deceased_dod: string // YYYY-MM-DD
+  deceased_department?: string // chantier 2a : donnée d'adressage (annuaire des organismes), absente des dossiers antérieurs
   statut_professionnel: StatutProfessionnel
   logement: Logement
   enfants: Enfants
