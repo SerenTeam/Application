@@ -556,6 +556,10 @@ create index if not exists send_debits_user_idx on send_debits (user_id);
 -- — pas de chaîne A→B→C→… de plis gratuits.
 -- Conséquence assumée : si le re-envoi offert repart lui aussi en NPAI, il n'y a pas de second
 -- geste — l'utilisateur peut toujours créer un envoi neuf, débité normalement.
+-- Convergence au rejeu (re-revue) : `if not exists` ne mettrait pas à jour un index homonyme
+-- au prédicat différent (poste de dev ayant appliqué une version antérieure du fichier).
+drop index if exists letter_sends_resend_of_idx;    -- retiré par la revue (redondant)
+drop index if exists letter_sends_resend_of_uniq;   -- prédicat changé : recréation propre
 create unique index if not exists letter_sends_resend_of_uniq
   on letter_sends (resend_of) where resend_of is not null and status <> 'failed';
 
