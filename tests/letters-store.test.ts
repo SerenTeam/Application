@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 vi.mock('@sentry/node', () => ({ captureException: vi.fn() }))
 
 // @ts-expect-error — module JS serveur
-import { createSend, listSends, updateSendByProviderRef, markSendResult, claimRetry, consumeSend, releaseDebit, recordProviderEvent, markProviderEventProcessed, checkSendLimits } from '../server/lib/letters-store.js'
+import { createSend, listSends, updateSendByProviderRef, markSendResult, claimRetry, consumeSend, releaseDebit, recordProviderEvent, markProviderEventProcessed, checkSendLimits, listSendsForResync } from '../server/lib/letters-store.js'
 import * as Sentry from '@sentry/node'
 
 /**
@@ -347,6 +347,37 @@ describe('letters-store', () => {
     })
   })
 
+  describe('listSendsForResync', () => {
+    it('passthrough du périmètre renvoyé par la RPC (id/provider_ref/status/channel), secret transmis', async () => {
+      const rows = [
+        { id: 's1', provider_ref: 'msb-1', status: 'submitted', channel: 'papier' },
+        { id: 's2', provider_ref: 'msb-2', status: 'sent', channel: 'papier' },
+      ]
+      const { client, calls } = fakeClient([{ data: rows, error: null }])
+      const result = await listSendsForResync(client)
+      expect(result).toEqual(rows)
+      const rpcCall = calls.find(([m]) => m === 'rpc')!
+      expect(rpcCall[1]).toEqual(['list_sends_for_resync', { p_secret: 'rpc-secret-test' }])
+    })
+
+    it('retourne un tableau vide si data est null', async () => {
+      const { client } = fakeClient([{ data: null, error: null }])
+      await expect(listSendsForResync(client)).resolves.toEqual([])
+    })
+
+    it('propage les erreurs Supabase non nommées', async () => {
+      const { client } = fakeClient([{ data: null, error: { message: 'boom' } }])
+      await expect(listSendsForResync(client)).rejects.toThrow(/boom/)
+    })
+
+    it('WEBHOOK_RPC_SECRET absent → lève AVANT tout appel RPC', async () => {
+      vi.stubEnv('WEBHOOK_RPC_SECRET', '')
+      const { client, calls } = fakeClient([{ data: [], error: null }])
+      await expect(listSendsForResync(client)).rejects.toThrow(/WEBHOOK_RPC_SECRET manquant/)
+      expect(calls).toHaveLength(0)
+    })
+  })
+
   describe('checkSendLimits', () => {
     it.each(['ok', 'user_daily_exceeded', 'global_daily_exceeded'])('%s renvoyé tel quel (pas une exception), RPC + paramètres vérifiés', async (status) => {
       const { client, calls } = fakeClient([{ data: status, error: null }])
@@ -370,6 +401,7 @@ describe('letters-store', () => {
       ['record_provider_event', (client) => recordProviderEvent(client, { id: 'evt1' })],
       ['mark_provider_event_processed', (client) => markProviderEventProcessed(client, 'evt1')],
       ['check_send_limits', (client) => checkSendLimits(client, 'u1')],
+      ['list_sends_for_resync', (client) => listSendsForResync(client)],
     ]
 
     it.each(cases)('%s', async (name, call) => {

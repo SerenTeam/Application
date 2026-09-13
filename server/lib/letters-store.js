@@ -233,6 +233,23 @@ export async function markProviderEventProcessed(client, id) {
   return Boolean(data)
 }
 
+// ─── list_sends_for_resync ───────────────────────────────────────────────────────────────────
+// Voie de lecture serveur pour la resynchronisation périodique (chantier 2a, Task 10,
+// server/lib/paper-resync.js) : le durcissement RLS du bloc 3 (migration 20260914120000) a
+// retiré tout SELECT sans token utilisateur sur letter_sends, un job serveur (rôle `anon`, pas de
+// session) ne peut donc plus lire les lignes à revérifier chez le provider par ce chemin — d'où
+// cette RPC à secret, calquée sur le patron des autres lectures internes (check_send_limits).
+// Passthrough intégral : id/provider_ref/status/channel des lignes du périmètre (submitted > 24h,
+// sent ≤ J+30, prepared avec provider_ref non nul — migration 20260914170000_resync_reader.sql),
+// zéro PII, zéro interprétation ici.
+export async function listSendsForResync(client) {
+  const { data, error } = await client.rpc('list_sends_for_resync', {
+    p_secret: requireSecret('lecture du périmètre de resynchronisation'),
+  })
+  if (error) throw translateRpcError(error, 'Lecture du périmètre de resynchronisation impossible', 'list_sends_for_resync')
+  return data ?? []
+}
+
 // ─── check_send_limits ───────────────────────────────────────────────────────────────────────
 // Façade du plafond (spec §5) : 'ok' | 'user_daily_exceeded' | 'global_daily_exceeded' — ce n'est
 // PAS une exception (create_letter_send, lui, lève ces mêmes noms en dernier ressort). La route

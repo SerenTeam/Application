@@ -11,9 +11,11 @@ import { createQuestionnaireRouter } from './routes/questionnaire.js';
 import { createLettersRouter } from './routes/letters.js';
 import { createPaymentsRouter } from './routes/payments.js';
 import { createAttachmentsRouter } from './routes/attachments.js';
+import { createProviderWebhookRouter } from './routes/provider-webhook.js';
 import { createBasicAuthGate } from './lib/basic-auth.js';
 import { createEmailSender } from './lib/email-sender.js';
 import { createPaperSender } from './lib/paper-sender.js';
+import { createPaperResync } from './lib/paper-resync.js';
 import { createStripeClient, createPriceReader } from './lib/stripe-client.js';
 import { createRequirePurchase } from './lib/require-purchase.js';
 import * as lettersStore from './lib/letters-store.js';
@@ -104,6 +106,12 @@ app.use('/api/letters/webhook', express.raw({ type: 'application/json' }));
 // Webhook Stripe : même contrainte de corps brut, même raison, même position (avant le
 // express.json() global) — la signature Stripe se vérifie octet pour octet.
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
+// Webhook MySendingBox (chantier 2a, Task 10) : ping non fiable, pas de signature documentée —
+// la garde est un secret d'URL (server/routes/provider-webhook.js), pas un HMAC sur le corps brut,
+// mais le même montage AVANT le express.json() global est conservé par cohérence avec les deux
+// webhooks ci-dessus (et pour que le corps reste un Buffer non reparsé, quel que soit le mécanisme
+// de vérification utilisé côté route).
+app.use('/api/letters/provider-webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 // Serve static files: prefer dist/ (built), fallback to public/
@@ -196,6 +204,14 @@ app.use('/api/payments', createPaymentsRouter({
 // emailSender.send() lève `email_not_configured` (503, message clair) au lieu de faire
 // planter le serveur au démarrage.
 const resendClient = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+// Adaptateur MySendingBox (chantier 2a) : UNE SEULE instance, partagée par la route d'envoi
+// (POST /api/letters/send), le webhook provider (Task 10, GET de vérification) et la
+// resynchronisation périodique (Task 10, même GET) — les trois parlent du même provider avec la
+// même clé. Sans MYSENDINGBOX_API_KEY, elle lève `paper_not_configured` au premier appel (503
+// propre côté route d'envoi) au lieu d'empêcher le démarrage — même discipline que Resend/Stripe ;
+// le webhook et la resync, eux, traitent cette même absence comme un GET en échec (événement
+// laissé non-processed / ligne resynchronisée au passage suivant).
+const paperSender = createPaperSender({ apiKey: process.env.MYSENDINGBOX_API_KEY });
 app.use('/api/letters', createLettersRouter({
   requireAuth,
   // Gate du forfait sur l'envoi (D1). Inerte tant que la vente est fermée.
@@ -208,11 +224,9 @@ app.use('/api/letters', createLettersRouter({
   // update_letter_send_status pour mettre à jour un statut malgré la RLS — voir letters-store.js.
   publicClient: supabase,
   // ── Canal papier (chantier 2a) ──
-  // Adaptateur MySendingBox : sans MYSENDINGBOX_API_KEY il lève `paper_not_configured` au premier
-  // envoi (503 propre) au lieu d'empêcher le démarrage — même discipline que Resend et Stripe.
   // Le canal reste de toute façon fermé tant que PAPER_SENDS_ENABLED ≠ 'true' (kill switch lu à
   // chaque requête dans la route, pas ici : le couper ne doit pas exiger un redéploiement).
-  paperSender: createPaperSender({ apiKey: process.env.MYSENDINGBOX_API_KEY }),
+  paperSender,
   // Le 402 « quota épuisé » ne propose l'achat d'un envoi que si ce Checkout-là peut réellement
   // s'ouvrir (vente ouverte + SDK + tarif dédié) — sinon le bouton mènerait droit à un 503.
   extraSendAvailable: Boolean(paymentsEnabled && stripeClient && stripeExtraSendPriceId),
@@ -223,6 +237,25 @@ app.use('/api/letters', createLettersRouter({
 // requireAuth), la RLS owner de la table `attachments` et du bucket `documents` suffit — voir
 // server/routes/attachments.js.
 app.use('/api/attachments', createAttachmentsRouter({ requireAuth }));
+
+// Webhook provider MySendingBox (chantier 2a, Task 10) : ping non fiable, gardé par un secret
+// d'URL (MSB_WEBHOOK_URL_SECRET) plutôt qu'une signature (non documentée côté MySendingBox) —
+// voir server/routes/provider-webhook.js pour le détail des trois garanties (secret temps
+// constant, persist avant ack, jamais d'écriture de statut depuis le payload). Route PUBLIQUE
+// (pas de requireAuth) : le même `supabase` bare que les deux autres webhooks, et les mêmes RPC
+// security definer à secret (record_provider_event, update_letter_send_status,
+// mark_provider_event_processed) pour écrire malgré la RLS.
+app.use('/api/letters/provider-webhook', createProviderWebhookRouter({
+  store: lettersStore,
+  paperSender,
+  publicClient: supabase,
+}));
+
+// Resynchronisation périodique du cycle papier (chantier 2a, Task 10 — timer serveur, PAS de
+// pg_cron/pg_net, décision actée). Démarrée APRÈS app.listen (voir plus bas) : `start()` porte
+// elle-même le garde-fou (désarmée sans MYSENDINGBOX_API_KEY, une ligne de log au boot, rien de
+// plus) — l'appeler inconditionnellement ici est donc sans risque tant que la clé est absente.
+const paperResync = createPaperResync({ store: lettersStore, paperSender, publicClient: supabase });
 
 // Helper pour créer un client Supabase avec contexte utilisateur authentifié
 function getSupabaseClient(accessToken) {
@@ -335,4 +368,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
   console.log(`📝 Rédacteur questionnaire v2 : ${MISTRAL_MODEL}`);
   console.log(`🗄️  Supabase URL: ${process.env.SUPABASE_URL ? 'Configuré' : 'Non configuré'}`);
+  // Chantier 2a, Task 10 : timer serveur (setInterval, PAS pg_cron/pg_net). `start()` se désarme
+  // elle-même sans MYSENDINGBOX_API_KEY (une ligne de log, rien de plus) — appel inconditionnel.
+  paperResync.start();
 });
