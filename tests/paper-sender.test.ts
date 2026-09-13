@@ -479,6 +479,14 @@ describe('createPaperSender', () => {
       const err = await sender.getLetter('msb-inconnu').catch((e: unknown) => e)
       expect((err as InstanceType<typeof PaperSenderError>).code).toBe('provider_rejected')
     })
+
+    it('getLetter sans providerRef (null/undefined) → invalid_provider_ref, AUCUN appel réseau (revue finale Task 10, mineur)', async () => {
+      const { fn, calls } = fakeFetch([{ status: 200, body: {} }])
+      const sender = createPaperSender({ apiKey: 'key', fetchImpl: fn })
+      const err = await sender.getLetter(undefined as unknown as string).catch((e: unknown) => e)
+      expect((err as InstanceType<typeof PaperSenderError>).code).toBe('invalid_provider_ref')
+      expect(calls).toHaveLength(0)
+    })
   })
 })
 

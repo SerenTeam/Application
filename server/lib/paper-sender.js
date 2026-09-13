@@ -295,9 +295,13 @@ export function createPaperSender({ apiKey, fetchImpl = fetch } = {}) {
       return { providerRef: data._id, status: 'submitted' }
     },
 
-    /** GET authentifié — renvoie le JSON brut, le fold est fait par msb-status.js (Task 7). */
+    /** GET authentifié — renvoie le JSON brut, le fold est fait par msb-status.js (Task 7).
+     * Garde défensive (revue finale Task 10, mineur) : sans `providerRef`, l'appelant (webhook ou
+     * resync) a un bug de corrélation en amont — mieux vaut un throw explicite ici qu'un GET
+     * `/letters/undefined` envoyé au provider. */
     async getLetter(providerRef) {
       ensureConfigured()
+      if (!providerRef) throw new PaperSenderError('invalid_provider_ref')
       const res = await callProvider(`${MSB_BASE_URL}${LETTERS_PATH}/${providerRef}`, {
         method: 'GET',
         headers: { Authorization: basicAuthHeader(apiKey) },

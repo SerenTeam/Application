@@ -15,8 +15,13 @@
 // supabase/migrations/20260914170000_resync_reader.sql, qui en sont la source de vérité) :
 //   • `submitted` depuis plus de 24 h, sans limite d'âge haute ;
 //   • `sent` depuis moins de 30 jours (couverture NPAI 5-10 j avec marge) ;
-//   • `prepared` porteur d'un `provider_ref` non nul (serveur mort entre le POST accepté par
-//     MySendingBox et l'écriture du résultat, revue Task 4).
+//   • `prepared` DÉBITÉ mais SANS provider_ref, depuis plus de 2 h (⚠️ revue finale Task 10, I1 —
+//     l'orphelin réel du régime incertain de la Task 9 : le débit a été pris, la soumission a
+//     peut-être abouti chez le provider, mais MÊME le `provider_ref` n'a jamais pu être écrit).
+//     Ces lignes n'ont RIEN à corréler côté provider par id : `resyncOne` les détecte (pas de
+//     `provider_ref`) et se contente de les SIGNALER (Sentry, tag `orphan_debited_send`) — aucun
+//     GET n'est tenté, aucune réparation automatique en 2a (backlog 2b : réconciliation par
+//     recherche metadata côté MySendingBox).
 // Le filtrage lui-même est fait EN BASE (RPC à secret, letter_sends reste illisible sans elle) :
 // ce module fait confiance aux lignes reçues, il ne refiltre rien.
 //
@@ -40,6 +45,20 @@ export function createPaperResync({ store, paperSender, publicClient, intervalMs
    * façon). Jamais de payload sensible dans les logs — seuls l'id interne et le provider_ref
    * (déjà connu du provider lui-même, pas une donnée personnelle) apparaissent. */
   async function resyncOne(row) {
+    // Orphelin débité sans provider_ref (revue finale Task 10, I1) : rien à corréler côté
+    // provider par id — un GET ici enverrait `/letters/undefined` (paper-sender.js le refuse déjà
+    // en garde défensive, mais autant ne jamais le tenter). On se contente de le SIGNALER : sans
+    // cette alerte, un tel orphelin resterait invisible pour toujours (aucun autre mécanisme 2a
+    // ne le détecte — la réconciliation par recherche metadata côté MySendingBox est backlog 2b).
+    if (!row.provider_ref) {
+      const orphanError = new Error(
+        `send papier orphelin (send ${row.id}) : débité mais jamais soumis avec un provider_ref connu — réconciliation manuelle requise (backlog 2b)`
+      )
+      console.error(`⚠️ paper-resync — ${orphanError.message}`)
+      Sentry.captureException(orphanError, { tags: { stage: 'paper_resync', reason: 'orphan_debited_send', send_id: row.id } })
+      return
+    }
+
     let remote
     try {
       remote = await paperSender.getLetter(row.provider_ref)

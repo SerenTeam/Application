@@ -73,7 +73,15 @@ function translateRpcError(error, fallbackMessage, rpcName) {
     }
     return appError
   }
-  return new Error(`${fallbackMessage} : ${error?.message ?? 'réponse vide'}`)
+  const genericError = new Error(`${fallbackMessage} : ${error?.message ?? 'réponse vide'}`)
+  // Code Postgres BRUT (SQLSTATE — '23503' violation de clé étrangère, '22P02' syntaxe invalide…),
+  // préservé pour les appelants qui doivent distinguer un incident générique d'une anomalie de
+  // données CONNUE (revue finale Task 10, C1 : `record_provider_event` avec un `send_id` orphelin
+  // — uuid syntaxiquement valide mais qui ne référence aucune ligne `letter_sends`, provoquant une
+  // 23503 sur l'INSERT). Jamais utilisé pour du contrôle métier fin ailleurs — un seul appelant en
+  // a besoin aujourd'hui (server/routes/provider-webhook.js).
+  if (error?.code) genericError.pgCode = error.code
+  return genericError
 }
 
 // ─── create_letter_send ──────────────────────────────────────────────────────────────────────
@@ -210,8 +218,11 @@ export async function releaseDebit(client, sendId, userId) {
 // ─── record_provider_event / mark_provider_event_processed ─────────────────────────────────
 // Le webhook MySendingBox est un ping non fiable (pas de signature documentée, spec §6) : on
 // persiste l'événement brut avant tout traitement, PUIS on vérifie l'état par un GET provider.
-// `recordProviderEvent` renvoie true pour un événement NOUVEAU (à traiter), false pour un rejeu
-// déjà connu (idempotent par id provider) — ni l'un ni l'autre n'est une erreur.
+// `recordProviderEvent` renvoie true pour un événement NOUVEAU **OU** pour un rejeu d'un événement
+// déjà persisté mais JAMAIS MARQUÉ TRAITÉ (`processed_at is null` — GET précédent en échec, ou
+// serveur mort avant `mark_provider_event_processed`, revue finale Task 10 I2) : dans les deux cas
+// il y a quelque chose à (re)traiter. `false` = rejeu d'un événement déjà traité avec succès —
+// rien à refaire. Ni l'un ni l'autre n'est une erreur.
 export async function recordProviderEvent(client, { id, sendId = null, eventType = null, payload = null }) {
   const { data, error } = await client.rpc('record_provider_event', {
     p_secret: requireSecret('enregistrement de l’événement provider'),

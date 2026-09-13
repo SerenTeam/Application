@@ -31,12 +31,32 @@
 // exactement comme le webhook Resend v1). `letter.metadata.seren_send_id` (echo de la métadonnée
 // posée au POST, cf. paper-sender.js `buildLetterPayload`) n'est qu'un FALLBACK DE CORRÉLATION :
 // il alimente uniquement la colonne `provider_events.send_id` (jointure de confort pour le
-// débogage), jamais requis pour la transition elle-même — absent, `null` est transmis, jamais une
-// exception.
+// débogage), jamais requis pour la transition elle-même.
+//
+// ⚠️ REVUE FINALE (C1, critique) : `seren_send_id` vient du provider — un tiers qui n'offre AUCUNE
+// garantie sur ce champ (echo fidèle, mais rien n'empêche une valeur corrompue ou une ligne
+// entretemps supprimée côté Seren). `provider_events.send_id` est une colonne `uuid` avec une
+// contrainte de clé étrangère vers `letter_sends(id)` : une chaîne non-uuid ferait échouer le CAST
+// au moment même de l'appel RPC (SQLSTATE 22P02) et un uuid syntaxiquement valide mais orphelin
+// ferait échouer l'INSERT (23503 — violation de clé étrangère) — dans les deux cas, SANS cette
+// garde, `record_provider_event` lèverait, la route répondrait 500 AVANT tout ack, et MySendingBox
+// relivrerait indéfiniment un événement qui ne serait JAMAIS persisté. Double filet :
+//   1. validation de FORME ici (UUID_RE) — élimine 22P02 avant même l'appel ;
+//   2. `persistEvent()` retente SANS corrélation si l'appel échoue malgré tout avec le code
+//      Postgres 23503 (send_id syntaxiquement valide mais introuvable) — élimine le 500 résiduel.
 import express, { Router } from 'express'
 import crypto from 'crypto'
 import * as Sentry from '@sentry/node'
 import { foldMsbStatus } from '../lib/msb-status.js'
+
+// Dupliqué de server/routes/letters.js (ligne ~39) plutôt qu'importé : ce fichier ne doit pas
+// dépendre d'un autre router en cours d'évolution parallèle (revue finale, périmètre de la
+// Task 10 strictement limité à ce fichier + paper-sender.js + paper-resync.js + letters-store.js).
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// SQLSTATE Postgres d'une violation de clé étrangère (cf. server/lib/letters-store.js
+// `translateRpcError`, qui préserve `error.code` sous `.pgCode` sur toute erreur RPC générique).
+const FOREIGN_KEY_VIOLATION = '23503'
 
 /** Comparaison en temps constant, insensible à la longueur (hash avant comparaison) — même
  * technique que server/lib/basic-auth.js (dupliquée ici plutôt qu'importée : il s'agit d'un
@@ -87,7 +107,10 @@ export function createProviderWebhookRouter({ store, paperSender, publicClient }
     }
 
     const letter = payload?.letter && typeof payload.letter === 'object' ? payload.letter : null
-    const sendIdHint = typeof letter?.metadata?.seren_send_id === 'string' ? letter.metadata.seren_send_id : null
+    // Validation de FORME (C1, 1er filet) : une chaîne qui n'a pas la forme d'un uuid n'est même
+    // pas tentée — `null` transmis directement, jamais de risque de 22P02 côté RPC.
+    const rawSendIdHint = letter?.metadata?.seren_send_id
+    const sendIdHint = typeof rawSendIdHint === 'string' && UUID_RE.test(rawSendIdHint) ? rawSendIdHint : null
     const eventType = typeof payload?.event?.name === 'string' ? payload.event.name : null
 
     // ── 3. Persist AVANT ack ───────────────────────────────────────────────────────────────
@@ -95,25 +118,46 @@ export function createProviderWebhookRouter({ store, paperSender, publicClient }
     // Resend (signature déjà vérifiée, donc authentique), un ping MySendingBox non acquitté sera
     // relivré par le provider — c'est le comportement voulu, pas un incident à masquer par un
     // faux 200.
-    let isNew
+    //
+    // `shouldProcess` : renvoyé par `recordProviderEvent` — true pour un événement NOUVEAU **ou**
+    // pour un rejeu d'un événement déjà persisté mais JAMAIS marqué traité (I2, revue finale —
+    // `processed_at is null`, ex. un GET précédent en échec) ; false seulement pour un rejeu d'un
+    // événement déjà traité avec succès, rien à refaire.
+    let shouldProcess
     try {
-      isNew = await store.recordProviderEvent(publicClient, {
+      shouldProcess = await store.recordProviderEvent(publicClient, {
         id: eventId,
         sendId: sendIdHint,
         eventType,
         payload,
       })
     } catch (error) {
-      console.error('❌ provider-webhook — persistance impossible :', error?.message ?? error)
-      Sentry.captureException(error, { tags: { stage: 'provider_webhook_persist' } })
-      return res.status(500).json({ success: false, error: 'persist_failed' })
+      // C1 (2e filet) : send_id syntaxiquement valide mais introuvable en base (ligne supprimée
+      // entretemps, désynchronisation quelconque) → violation de clé étrangère sur l'INSERT. On
+      // retente IMMÉDIATEMENT sans corrélation plutôt que de renvoyer 500 : sans ce filet, cet
+      // événement ne serait JAMAIS persisté (MySendingBox relivrerait indéfiniment un ping qui
+      // échouerait de la même façon à chaque tentative).
+      if (error?.pgCode === FOREIGN_KEY_VIOLATION && sendIdHint) {
+        console.warn(`⚠️ provider-webhook — send_id orphelin pour l'événement ${eventId}, retenté sans corrélation`)
+        try {
+          shouldProcess = await store.recordProviderEvent(publicClient, { id: eventId, sendId: null, eventType, payload })
+        } catch (retryError) {
+          console.error('❌ provider-webhook — persistance impossible (retry sans send_id) :', retryError?.message ?? retryError)
+          Sentry.captureException(retryError, { tags: { stage: 'provider_webhook_persist' } })
+          return res.status(500).json({ success: false, error: 'persist_failed' })
+        }
+      } else {
+        console.error('❌ provider-webhook — persistance impossible :', error?.message ?? error)
+        Sentry.captureException(error, { tags: { stage: 'provider_webhook_persist' } })
+        return res.status(500).json({ success: false, error: 'persist_failed' })
+      }
     }
 
     // ── 4. ACK 200 IMMÉDIAT ────────────────────────────────────────────────────────────────
     res.status(200).json({ success: true })
 
-    // Doublon (déjà connu, idempotence par PK) : ack sans retraitement, rien de plus à faire.
-    if (!isNew) return
+    // Doublon déjà traité (idempotence par PK, I2) : ack sans retraitement, rien de plus à faire.
+    if (!shouldProcess) return
 
     // ── 5. Traitement post-ack, asynchrone, MÊME PROCESS — jamais awaité par la requête ────
     // Ne doit JAMAIS rejeter au niveau de l'appelant : chaque étape interne est déjà protégée,
@@ -132,11 +176,18 @@ export function createProviderWebhookRouter({ store, paperSender, publicClient }
   async function processEvent({ eventId, letter }) {
     const providerRef = typeof letter?._id === 'string' ? letter._id : null
     if (!providerRef) {
-      console.error(`⚠️ provider-webhook — événement ${eventId} sans letter._id exploitable, laissé non-processed`)
+      // Événement ABANDONNÉ (revue finale, mineur) : rien à corréler, aucune resynchronisation ne
+      // le rattrapera jamais par elle-même (elle opère par ligne letter_sends, pas par événement)
+      // — signal Sentry dédié pour que ce cas reste VISIBLE plutôt que noyé dans les logs.
+      const error = new Error(`provider-webhook — événement ${eventId} sans letter._id exploitable, abandonné`)
+      console.error(`⚠️ ${error.message}`)
+      Sentry.captureException(error, { tags: { stage: 'provider_webhook_process', reason: 'provider_event_abandoned', event_id: eventId } })
       return
     }
     if (!paperSender) {
-      console.error(`⚠️ provider-webhook — événement ${eventId} : adaptateur MySendingBox absent, laissé non-processed`)
+      const error = new Error(`provider-webhook — événement ${eventId} : adaptateur MySendingBox absent, abandonné`)
+      console.error(`⚠️ ${error.message}`)
+      Sentry.captureException(error, { tags: { stage: 'provider_webhook_process', reason: 'provider_event_abandoned', event_id: eventId } })
       return
     }
 
@@ -152,16 +203,23 @@ export function createProviderWebhookRouter({ store, paperSender, publicClient }
     }
 
     const { status } = foldMsbStatus(remote?.events)
-    try {
-      // `updateSendByProviderRef` applique elle-même la matrice forward-only (RPC
-      // `update_letter_send_status`) : un statut inchangé ou une transition non autorisée est un
-      // no-op silencieux côté base, jamais une erreur — pas besoin de relire le statut courant
-      // avant d'appeler cette fonction.
-      await store.updateSendByProviderRef(publicClient, providerRef, { status })
-    } catch (error) {
-      console.error(`❌ provider-webhook — écriture du statut en échec (event ${eventId}) : ${error?.message ?? error}`)
-      Sentry.captureException(error, { tags: { stage: 'provider_webhook_update', event_id: eventId } })
-      return
+    // Alignement avec la resync (revue finale, mineur) : le webhook ne connaît pas le statut
+    // COURANT de la ligne (pas de lecture ici, seulement une écriture par provider_ref), mais
+    // `foldMsbStatus` renvoie 'prepared' précisément quand `remote.events` ne contient AUCUN
+    // événement actionnable — dans ce cas `update_letter_send_status` ferait de toute façon un
+    // no-op forward-only (aucune transition ne mène VERS 'prepared'), autant s'épargner l'aller-
+    // retour RPC.
+    if (status !== 'prepared') {
+      try {
+        // `updateSendByProviderRef` applique elle-même la matrice forward-only (RPC
+        // `update_letter_send_status`) : un statut inchangé ou une transition non autorisée est un
+        // no-op silencieux côté base, jamais une erreur.
+        await store.updateSendByProviderRef(publicClient, providerRef, { status })
+      } catch (error) {
+        console.error(`❌ provider-webhook — écriture du statut en échec (event ${eventId}) : ${error?.message ?? error}`)
+        Sentry.captureException(error, { tags: { stage: 'provider_webhook_update', event_id: eventId } })
+        return
+      }
     }
 
     await store.markProviderEventProcessed(publicClient, eventId).catch((error) => {
