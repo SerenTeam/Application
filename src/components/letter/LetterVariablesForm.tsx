@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useT } from '@/i18n/useT'
-import type { LetterVariable } from '@/data/letter-templates'
+import { editableVariableKeys, type LetterVariable } from '@/data/letter-templates'
 
 interface LetterVariablesFormProps {
   variables: LetterVariable[]
@@ -11,8 +12,11 @@ interface LetterVariablesFormProps {
 
 export function LetterVariablesForm({ variables, values, onVariableChange }: LetterVariablesFormProps) {
   const t = useT()
-  // Only show variables that need user input (not auto-filled or empty auto-filled)
-  const editableVariables = variables.filter((v) => !v.auto_filled || !values[v.key]?.trim())
+  // Figé au montage (état initial post auto-remplissage) : recalculer à chaque frappe avec
+  // `values` courant ferait sortir un champ auto_filled du DOM dès sa 1ʳᵉ lettre tapée (il
+  // devient alors "rempli"), ce qui lui fait perdre le focus et perdre les lettres suivantes.
+  const [visibleKeys] = useState(() => editableVariableKeys(variables, values))
+  const editableVariables = variables.filter((v) => visibleKeys.has(v.key))
 
   if (editableVariables.length === 0) return null
 
