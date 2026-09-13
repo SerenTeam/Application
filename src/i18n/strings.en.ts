@@ -372,4 +372,18 @@ export const STRINGS_EN: Strings = {
       'Confirmation may take a minute. Feel free to carry on — your plan will activate on its own.',
     confirmed: 'Your Seren plan is active.',
   },
+
+  // Partner space (v0 demo, docs/design-pf-dashboard-demo.md) — URL-only access, page outside
+  // the shared navigation.
+  partner: {
+    title: 'Partner space',
+    rateLabel: 'Commission rate: {rate}',
+    tiles: {
+      attributed: 'Cases supported',
+      paid: 'Cases paid',
+      revenue: 'Revenue generated',
+      commission: 'Your commission',
+    },
+    previewNotice: 'Preview — full partner program coming soon',
+  },
 }

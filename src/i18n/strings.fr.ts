@@ -372,6 +372,20 @@ export const STRINGS_FR = {
       'La confirmation peut prendre une minute. Vous pouvez continuer, votre forfait s’activera tout seul.',
     confirmed: 'Votre forfait Seren est actif.',
   },
+
+  // Espace partenaire PF (v0-démo, docs/design-pf-dashboard-demo.md) — accès par URL uniquement,
+  // page hors navigation partagée.
+  partner: {
+    title: 'Espace partenaire',
+    rateLabel: 'Taux de commission : {rate}',
+    tiles: {
+      attributed: 'Dossiers accompagnés',
+      paid: 'Dossiers ayant payé',
+      revenue: 'CA généré',
+      commission: 'Votre commission',
+    },
+    previewNotice: 'Préversion — dispositif partenaire complet à venir',
+  },
 }
 
 export type Strings = typeof STRINGS_FR
