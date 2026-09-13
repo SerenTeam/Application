@@ -28,9 +28,20 @@ interface PaymentsState {
   hasPaid: boolean
   purchase: PaymentsPurchase | null
   price: PaymentsPrice | null
+  // Prix de l'envoi supplémentaire (chantier 2a, facturation à l'acte) — même provenance que
+  // `price` (Stripe, jamais un montant en dur) : `null` si le tarif n'est pas configuré, le
+  // bouton d'achat s'affiche alors sans montant plutôt que d'inventer un chiffre.
+  extraPrice: PaymentsPrice | null
 }
 
-const INITIAL: PaymentsState = { loading: true, paymentsEnabled: false, hasPaid: false, purchase: null, price: null }
+const INITIAL: PaymentsState = {
+  loading: true,
+  paymentsEnabled: false,
+  hasPaid: false,
+  purchase: null,
+  price: null,
+  extraPrice: null,
+}
 
 // Cache au niveau du module : LetterSendPanel est monté UNE FOIS PAR COURRIER, et sans cache
 // chaque courrier affiché déclencherait sa propre requête de statut. Le premier montage paie la
@@ -61,6 +72,7 @@ async function fetchStatus(): Promise<PaymentsState> {
       hasPaid: Boolean(data.has_paid),
       purchase: data.purchase ?? null,
       price: data.price ?? null,
+      extraPrice: data.extra_price ?? null,
     }
   } catch {
     return { ...INITIAL, loading: false }
@@ -128,9 +140,32 @@ export function usePayments() {
     }
   }, [refresh])
 
+  /** Ouvre la page de paiement Stripe pour UN envoi supplémentaire (chantier 2a, facturation à
+   * l'acte — 402 QUOTA_EXHAUSTED du panneau papier). Contrairement à `startCheckout`, cette
+   * route est répétable (pas de no-op « already_purchased » : on peut acheter plusieurs envois
+   * à l'acte) et exige un forfait payé (403 FORFAIT_REQUIRED) — l'appelant distingue ce cas via
+   * le code retourné plutôt qu'un simple booléen. */
+  const startExtraSendCheckout = useCallback(async (lang: Lang): Promise<{ ok: boolean; code?: string }> => {
+    try {
+      const res = await apiFetch('/api/payments/checkout-extra-send', {
+        method: 'POST',
+        body: JSON.stringify({ lang }),
+      })
+      const data = await res.json().catch(() => null)
+      if (res.ok && data?.url) {
+        window.location.href = data.url
+        return { ok: true }
+      }
+      return { ok: false, code: data?.code }
+    } catch {
+      return { ok: false }
+    }
+  }, [])
+
   return {
     ...state, // `hasPaid` compris — il vient du serveur, jamais d'un calcul local (voir PaymentsState)
     refresh,
     startCheckout,
+    startExtraSendCheckout,
   }
 }

@@ -35,10 +35,10 @@ import { makePurchasesStore } from './helpers/purchases-fake'
 // avec le token utilisateur (sender_profiles, attachments, purchases, send_debits), policies
 // Storage par préfixe `user_id/`. Aucun appel réseau : le fetch des URLs signées est injecté.
 
-// Le canal réel de ce template est encore 'lre' — sa requalification en 'papier' est la Task 11
-// (le test de parité des jumeaux la verrouille). La carte des canaux étant une DÉPENDANCE
-// INJECTÉE du router, on la surcharge ici : la route est ainsi prête et testée AVANT la
-// requalification, exactement comme le demande le plan.
+// Depuis la Task 11, ce template est réellement 'papier' dans LETTER_CHANNELS (requalification
+// des 5 anciens 'lre'). Le spread + override explicite ne change donc plus rien de facto — la
+// carte des canaux reste une DÉPENDANCE INJECTÉE du router, ce test n'a jamais dépendu de l'ordre
+// d'exécution des tasks.
 const PAPER_CHANNELS = { ...LETTER_CHANNELS, 'banque-declaration-deces': 'papier' }
 const TEMPLATE_ID = 'banque-declaration-deces'
 
@@ -810,6 +810,50 @@ describe('POST /api/letters/send (papier) — garde 7 bis : reprise', () => {
     expect(sender.calls).toHaveLength(1)
   })
 
+  // Legs R2 (revue Task 9) : la reprise réutilise la MÊME ligne — les pièces jointes qui y sont
+  // persistées font foi. Un client qui en enverrait d'autres (UI compromise, rejeu manuel d'une
+  // requête modifiée…) ne doit jamais réussir à faire poster un dossier différent de celui déjà
+  // engagé : c'est un 409 sec, jamais une soumission avec les nouvelles PJ ni un silencieux
+  // retour aux anciennes.
+  it('(d) legs R2 : reprise avec des PJ différentes de celles persistées → 409 ATTACHMENTS_MISMATCH, aucun claim ni pli', async () => {
+    const backend = readyBackend()
+    addAttachment(backend, { id: ATT_1 })
+    addAttachment(backend, { id: ATT_2, mime: 'image/png', bytes: PNG_1PX, filename: 'acte.png' })
+    const store = makeLettersStore()
+    store.consumeError = 'quota_exhausted'
+    const { app, sender } = makeApp({ backend, store })
+
+    const refused = await request(app).post('/api/letters/send').send(basePayload({ attachment_ids: [ATT_1] }))
+    expect(refused.status).toBe(402)
+
+    store.consumeError = null
+    ageSend(store.rows[0])
+
+    const retry = await request(app).post('/api/letters/send').send(basePayload({ attachment_ids: [ATT_2] }))
+    expect(retry.status).toBe(409)
+    expect(retry.body.code).toBe('ATTACHMENTS_MISMATCH')
+    expect(store.claims).toHaveLength(0)
+    expect(sender.calls).toHaveLength(0)
+    expect(store.rows).toHaveLength(1)
+  })
+
+  it('(e) legs R2 : reprise avec le MÊME ensemble de PJ dans un ORDRE différent : autorisée (comparaison en ensemble)', async () => {
+    const backend = readyBackend()
+    addAttachment(backend, { id: ATT_1 })
+    addAttachment(backend, { id: ATT_2, mime: 'image/png', bytes: PNG_1PX, filename: 'acte.png' })
+    const store = makeLettersStore()
+    store.consumeError = 'quota_exhausted'
+    const { app } = makeApp({ backend, store })
+
+    await request(app).post('/api/letters/send').send(basePayload({ attachment_ids: [ATT_1, ATT_2] }))
+    store.consumeError = null
+    ageSend(store.rows[0])
+
+    const retry = await request(app).post('/api/letters/send').send(basePayload({ attachment_ids: [ATT_2, ATT_1] }))
+    expect(retry.status).toBe(202)
+    expect(store.rows).toHaveLength(1)
+  })
+
   it('(c) deux reprises concurrentes : une seule gagne le claim, l’autre 409 SEND_IN_PROGRESS', async () => {
     const sender = makePaperSender('ok')
     const { app, store } = makeApp({ backend: readyBackend(), sender })
@@ -864,6 +908,19 @@ describe('POST /api/letters/send (papier) — garde 8 : débit du quota', () => 
     // les plafonds, cf. send_limits_status).
     expect(store.rows[0].status).toBe('prepared')
     expect(store.rows[0].provider_ref).toBeNull()
+  })
+
+  // Legs R1 (revue Task 9) : le front retente automatiquement au retour du Checkout à l'acte —
+  // il a besoin de savoir combien de temps la ligne reste claimable (garde 7 bis) plutôt que
+  // d'attendre une durée arbitraire ou de retenter trop tôt (claim refusé, ligne pas encore
+  // périmée aux yeux de la RPC).
+  it('legs R1 : 402 quota épuisé porte retry_after_seconds = 120 (fenêtre du claim de reprise)', async () => {
+    const store = makeLettersStore()
+    store.consumeError = 'quota_exhausted'
+    const { app } = makeApp({ backend: readyBackend(), store })
+    const res = await request(app).post('/api/letters/send').send(basePayload())
+    expect(res.status).toBe(402)
+    expect(res.body.retry_after_seconds).toBe(120)
   })
 
   it('vente à l’acte indisponible (tarif non configuré) : 402 avec extra_send_available = false', async () => {

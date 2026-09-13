@@ -3,6 +3,8 @@ import { cn } from '@/lib/utils'
 import { useT } from '@/i18n/useT'
 import { fmt } from '@/i18n'
 import { useLetterGenerator } from '@/hooks/useLetterGenerator'
+import { getTemplateNetwork } from '@/data/letter-templates'
+import { shouldAutoResumePaperSend } from '@/lib/paper-send-resume'
 import { Button } from '@/components/ui/button'
 import { SectionHeading } from '@/components/ui/section-heading'
 import { PillBadge } from '@/components/ui/pill-badge'
@@ -18,6 +20,10 @@ interface QuestionnaireData {
   deceased_firstname?: string
   deceased_lastname?: string
   deceased_dod?: string
+  // Chantier 2a : donnée d'adressage (jamais transmise au rédacteur Mistral) — résout
+  // l'organisme local via l'annuaire (network + département). Absente sur les dossiers
+  // antérieurs à la Task 3 : le panneau d'envoi papier la demande alors à la volée.
+  deceased_department?: string
 }
 
 interface RoadmapViewProps {
@@ -29,6 +35,10 @@ interface RoadmapViewProps {
   onScrollComplete: () => void
   userId?: string
   questionnaireData?: QuestionnaireData
+  // Persistance chantier 2a : le département résolu à la volée dans le panneau papier remonte
+  // jusqu'à DashboardPage, seul endroit qui connaît le questionnaire ENTIER (cette vue ne reçoit
+  // qu'un sous-ensemble de `QuestionnaireAnswersV2` — un merge partiel ici écraserait le reste).
+  onDeceasedDepartmentResolved?: (department: string) => void
 }
 
 export function RoadmapView({
@@ -40,6 +50,7 @@ export function RoadmapView({
   onScrollComplete,
   userId,
   questionnaireData,
+  onDeceasedDepartmentResolved,
 }: RoadmapViewProps) {
   const t = useT()
   return (
@@ -66,6 +77,7 @@ export function RoadmapView({
                 onScrollComplete={onScrollComplete}
                 userId={userId}
                 questionnaireData={questionnaireData}
+                onDeceasedDepartmentResolved={onDeceasedDepartmentResolved}
               />
             ))}
           </div>
@@ -88,6 +100,7 @@ interface StepItemProps {
   onScrollComplete: () => void
   userId?: string
   questionnaireData?: QuestionnaireData
+  onDeceasedDepartmentResolved?: (department: string) => void
 }
 
 function StepItem({
@@ -101,9 +114,17 @@ function StepItem({
   onScrollComplete,
   userId,
   questionnaireData,
+  onDeceasedDepartmentResolved,
 }: StepItemProps) {
   const t = useT()
-  const [detailsOpen, setDetailsOpen] = useState(false)
+  // Rouvert automatiquement au retour de Stripe Checkout (achat d'un envoi papier à l'acte,
+  // legs R1) : sans quoi PaperSendPanel — qui porte la reprise automatique — ne serait jamais
+  // remonté (la section est repliée par défaut). Vérifié UNIQUEMENT à l'initialisation (lazy
+  // useState) : ni le pli/dépli manuel de l'utilisateur ensuite, ni un re-render, ne doivent le
+  // redéclencher.
+  const [detailsOpen, setDetailsOpen] = useState(
+    () => !!step.letterTemplateId && shouldAutoResumePaperSend(step.letterTemplateId, step.stepDbId ?? '')
+  )
   const ref = useRef<HTMLDivElement>(null)
   const [highlight, setHighlight] = useState(false)
 
@@ -195,6 +216,7 @@ function StepItem({
               stepDbId={step.stepDbId}
               userId={userId}
               questionnaireData={questionnaireData}
+              onDeceasedDepartmentResolved={onDeceasedDepartmentResolved}
             />
           )}
 
@@ -226,6 +248,7 @@ interface StepLetterSectionProps {
   stepDbId: string
   userId: string
   questionnaireData?: QuestionnaireData
+  onDeceasedDepartmentResolved?: (department: string) => void
 }
 
 function StepLetterSection({
@@ -233,9 +256,12 @@ function StepLetterSection({
   stepDbId,
   userId,
   questionnaireData,
+  onDeceasedDepartmentResolved,
 }: StepLetterSectionProps) {
   const t = useT()
-  const [showLetter, setShowLetter] = useState(false)
+  // Même logique que `detailsOpen` de StepItem (voir ce commentaire) : rouvert au retour de
+  // Checkout pour que PaperSendPanel remonte et consomme la reprise automatique (legs R1).
+  const [showLetter, setShowLetter] = useState(() => shouldAutoResumePaperSend(templateId, stepDbId))
   const [sentRefresh, setSentRefresh] = useState(0)
 
   const {
@@ -296,14 +322,20 @@ function StepLetterSection({
       {/* Preview */}
       <LetterPreview content={resolvedLetter} notes={template.notes} />
 
-      {/* Envoi 1 clic — canal email uniquement (employeur, mutuelle) */}
-      {template.channel === 'email' && (
+      {/* Envoi — canal email (1 clic, employeur/mutuelle) ou papier (chantier 2a) */}
+      {(template.channel === 'email' || template.channel === 'papier') && (
         <LetterSendPanel
           templateId={template.id}
           stepId={stepDbId}
           subject={resolvedSubject}
           body={resolvedLetter}
           isComplete={isComplete}
+          channel={template.channel}
+          variables={values}
+          recipientNetwork={getTemplateNetwork(template.id)}
+          deceasedDepartment={questionnaireData?.deceased_department}
+          onDeceasedDepartmentResolved={onDeceasedDepartmentResolved}
+          userId={userId}
         />
       )}
 

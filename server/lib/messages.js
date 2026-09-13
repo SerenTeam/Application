@@ -57,6 +57,7 @@ export const MESSAGES = {
     letters_quota_error: 'Erreur lors de la lecture de votre solde d’envois',
     invalid_network: 'Réseau d’organismes inconnu',
     organisations_error: 'Erreur lors de la recherche de l’organisme',
+    attachments_mismatch: 'Les pièces jointes ne peuvent pas être modifiées lors d’une reprise d’envoi',
     // Coffre minimal — pièces jointes (server/routes/attachments.js)
     attachments_missing_file: 'Aucun fichier reçu',
     attachments_invalid_kind: 'Type de pièce jointe invalide',
@@ -127,6 +128,7 @@ export const MESSAGES = {
     letters_quota_error: 'Error while reading your send balance',
     invalid_network: 'Unknown organisation network',
     organisations_error: 'Error while looking up the organisation',
+    attachments_mismatch: 'Attachments cannot be changed when resuming a send',
     // Attachments vault (server/routes/attachments.js)
     attachments_missing_file: 'No file received',
     attachments_invalid_kind: 'Invalid attachment kind',

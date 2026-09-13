@@ -34,6 +34,11 @@ export function createPaymentsRouter({
   // Tarif « envoi supplémentaire » (chantier 2a, facturation à l'acte) : tarif Stripe DISTINCT
   // du forfait, absent → la route /checkout-extra-send est inerte en 503 (pattern maison).
   extraPriceId,
+  // Lecteur du MONTANT de ce même tarif (chantier 2a, Task 11) : le panneau d'envoi papier
+  // affiche le prix AVANT le clic d'achat (spec §8 — pas de dark pattern), exactement comme le
+  // forfait. Optionnel : absent → `extra_price` reste `null`, le front affiche le bouton sans
+  // montant plutôt que de deviner un chiffre (patron de `getPrice`).
+  getExtraPrice,
   includedSends,
   appUrl,
 }) {
@@ -158,10 +163,11 @@ export function createPaymentsRouter({
       //    côté UI et un 402 côté serveur à la première action.
       //  • `purchase` reste le DERNIER achat, quel qu'il soit : c'est lui qu'affiche l'écran de
       //    confirmation après un retour de Checkout (y compris pour un envoi supplémentaire).
-      const [purchase, forfait, price] = await Promise.all([
+      const [purchase, forfait, price, extraPrice] = await Promise.all([
         store.getLatestPurchase(req.supabaseClient, req.user.id),
         store.getPaidPurchase(req.supabaseClient, req.user.id),
         getPrice ? getPrice() : Promise.resolve(null),
+        getExtraPrice ? getExtraPrice() : Promise.resolve(null),
       ])
 
       // Détection d'anomalie (correctif M1 de la revue Task 9) : un envoi supplémentaire encaissé
@@ -192,6 +198,9 @@ export function createPaymentsRouter({
           ? { status: purchase.status, paid_at: purchase.paid_at, included_sends: purchase.included_sends }
           : null,
         price: price ?? null,
+        // Prix de l'envoi supplémentaire (chantier 2a) — même forme que `price`, `null` si le
+        // tarif n'est pas configuré (l'offre d'achat à l'acte s'affiche alors sans montant).
+        extra_price: extraPrice ?? null,
       })
     } catch (error) {
       console.error('❌ payments/status :', error?.message ?? error)

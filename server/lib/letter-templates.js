@@ -7,9 +7,8 @@
 // que `server/lib/letter-channels.js` ↔ `tests/letter-templates.test.ts`. Toute dérive entre les
 // deux fichiers fait échouer `npm test`.
 //
-// NE PAS toucher aux `channel` dans ce lot : la requalification des 5 `lre` → `papier` est la
-// Task 11 (le test de parité de `letter-channels.js` la verrouille). Ce fichier reprend les
-// canaux ACTUELS du front à l'identique.
+// Requalification Task 11 : les 5 templates `lre` (recommandé + AR — jamais implémenté, lot 2c)
+// sont devenus `papier` (courrier simple, MySendingBox, chantier 2a), en miroir strict du front.
 //
 // `variables` est DÉRIVÉ automatiquement des `{{clés}}` réellement présentes dans le texte de
 // chaque template (subject + recipient_label + body), jamais recopié à la main — une divergence
@@ -46,7 +45,7 @@ const RAW_TEMPLATES = [
   // 1. Banque — Déclaration de décès
   {
     id: 'banque-declaration-deces',
-    channel: 'lre',
+    channel: 'papier',
     // Banque du défunt/de l'utilisateur : relation privée propre au dossier, aucun annuaire
     // réseau possible → adresse toujours saisie par l'utilisateur.
     recipient_kind: 'user_specific',
@@ -70,7 +69,7 @@ ${SIGNATURE}`,
   // 2. Assurance — Déclaration de décès
   {
     id: 'assurance-declaration-deces',
-    channel: 'lre',
+    channel: 'papier',
     // Assureur propre à l'utilisateur (contrat privé) : pas d'annuaire réseau.
     recipient_kind: 'user_specific',
     subject: 'Déclaration de décès — Contrats de {{deceased_firstname}} {{deceased_lastname}}',
@@ -95,7 +94,7 @@ ${SIGNATURE}`,
   // 3. Assurance Vie — Demande de versement
   {
     id: 'assurance-vie-demande',
-    channel: 'lre',
+    channel: 'papier',
     // Assureur vie propre à l'utilisateur (contrat privé) : pas d'annuaire réseau.
     recipient_kind: 'user_specific',
     subject: 'Demande de versement du capital — Contrat de {{deceased_firstname}} {{deceased_lastname}}',
@@ -173,7 +172,7 @@ ${SIGNATURE}`,
   // 6. CARSAT — Notification
   {
     id: 'carsat-notification',
-    channel: 'lre',
+    channel: 'papier',
     // Organisme du réseau CARSAT : résolution par annuaire (network + département du défunt).
     recipient_kind: 'network:carsat',
     subject: 'Déclaration de décès — {{deceased_firstname}} {{deceased_lastname}}',
@@ -219,7 +218,7 @@ ${SIGNATURE}`,
   // 8. Bailleur — Notification
   {
     id: 'bailleur-notification',
-    channel: 'lre',
+    channel: 'papier',
     // Bailleur propre à l'utilisateur/au défunt (bail privé) : pas d'annuaire réseau.
     recipient_kind: 'user_specific',
     subject: 'Résiliation de bail pour décès — {{deceased_firstname}} {{deceased_lastname}}',

@@ -38,6 +38,7 @@ function makeApp(opts: {
   priceId?: string | undefined
   extraPriceId?: string | undefined
   getPrice?: () => Promise<{ amount_total: number; currency: string } | null>
+  getExtraPrice?: () => Promise<{ amount_total: number; currency: string } | null>
 } = {}) {
   const store = opts.store ?? makePurchasesStore()
   const stripe = opts.stripe === undefined ? makeStripe() : opts.stripe
@@ -54,6 +55,7 @@ function makeApp(opts: {
     stripe,
     publicClient: {},
     getPrice: opts.getPrice ?? (async () => ({ amount_total: 14900, currency: 'eur' })),
+    getExtraPrice: opts.getExtraPrice ?? (async () => ({ amount_total: 990, currency: 'eur' })),
     paymentsEnabled: opts.paymentsEnabled ?? true,
     priceId: 'priceId' in opts ? opts.priceId : 'price_test_123',
     extraPriceId: 'extraPriceId' in opts ? opts.extraPriceId : 'price_extra_456',
@@ -223,6 +225,19 @@ describe('GET /api/payments/status', () => {
     const res = await request(app).get('/api/payments/status')
     expect(res.status).toBe(200)
     expect(res.body.price).toBeNull()
+  })
+
+  it('expose aussi le prix de l’envoi supplémentaire (chantier 2a) — jamais un montant en dur', async () => {
+    const { app } = makeApp()
+    const res = await request(app).get('/api/payments/status')
+    expect(res.body.extra_price).toEqual({ amount_total: 990, currency: 'eur' })
+  })
+
+  it('tarif envoi supplémentaire non configuré : extra_price null (dégrade, ne casse pas)', async () => {
+    const { app } = makeApp({ getExtraPrice: async () => null })
+    const res = await request(app).get('/api/payments/status')
+    expect(res.status).toBe(200)
+    expect(res.body.extra_price).toBeNull()
   })
 
   it('vente fermée : payments_enabled false, aucun achat', async () => {

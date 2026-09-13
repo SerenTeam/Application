@@ -192,6 +192,9 @@ app.use('/api/payments', createPaymentsRouter({
   // purchases pour écrire malgré la RLS — voir purchases-store.js.
   publicClient: supabase,
   getPrice: createPriceReader({ stripe: stripeClient, priceId: stripePriceId }),
+  // Montant de l'envoi supplémentaire (chantier 2a, Task 11) — affiché AVANT le clic d'achat
+  // dans le panneau d'envoi papier (spec §8, pas de dark pattern), même mécanique que le forfait.
+  getExtraPrice: createPriceReader({ stripe: stripeClient, priceId: stripeExtraSendPriceId }),
   paymentsEnabled,
   priceId: stripePriceId,
   extraPriceId: stripeExtraSendPriceId,

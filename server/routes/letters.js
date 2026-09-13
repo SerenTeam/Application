@@ -95,6 +95,19 @@ function pickRecipientAddress(input) {
   return address
 }
 
+/** Ensemble de pièces jointes comparé ORDRE-INSENSIBLE (legs R2 de la revue Task 9) : sur une
+ * reprise, l'ensemble des `attachment_ids` du body doit être EXACTEMENT celui persisté sur la
+ * ligne d'origine (`null`/absent traité comme un ensemble vide) — la traçabilité de « ce qui a
+ * été posté » prime sur toute commodité UI. L'ordre, lui, ne compte pas ici (il ne conditionne
+ * que la fusion provider, pas l'identité du dossier joint). */
+function sameAttachmentIdSet(requested, persisted) {
+  const a = new Set(Array.isArray(requested) ? requested : [])
+  const b = new Set(Array.isArray(persisted) ? persisted : [])
+  if (a.size !== b.size) return false
+  for (const id of a) if (!b.has(id)) return false
+  return true
+}
+
 /** Forme comparable d'une adresse pour l'idempotence : casse, espaces multiples et espaces de
  * bord neutralisés — « 12 RUE du Marché  » et « 12 rue du Marché » sont le même destinataire,
  * et ne doivent pas produire deux plis. */
@@ -541,6 +554,19 @@ export function createLettersRouter({
           send: created.send,
         })
       }
+      // ── Legs R2 (revue Task 9) : PJ figées sur une reprise ────────────────────────────────
+      // Le dedup_key protège la reprise d'un envoi bloqué, mais une reprise n'est PAS une
+      // occasion de changer ce qui a été (ou sera) posté : si les `attachment_ids` du body
+      // diffèrent de ceux persistés sur la ligne d'origine, on refuse AVANT tout claim — la
+      // traçabilité de « ce qui a été posté » prime sur une commodité UI. Comparaison en
+      // ENSEMBLE (ordre insensible) : seule l'identité du dossier joint compte ici.
+      if (!sameAttachmentIdSet(attachmentIds, created.send.attachment_ids)) {
+        return res.status(409).json({
+          success: false,
+          error: msg(lang, 'attachments_mismatch'),
+          code: 'ATTACHMENTS_MISMATCH',
+        })
+      }
       // `prepared` = statut initial du canal : la ligne n'est claimable que si elle est PÉRIMÉE
       // (une autre requête est peut-être en train de soumettre en ce moment même). `failed` =
       // tentative constatée close : claim immédiat.
@@ -569,6 +595,11 @@ export function createLettersRouter({
           error: msg(lang, 'quota_exhausted'),
           code: 'QUOTA_EXHAUSTED',
           extra_send_available: Boolean(extraSendAvailable),
+          // Legs R1 (revue Task 9) : la fenêtre pendant laquelle un retry post-achat reprend LA
+          // MÊME ligne (garde 7 bis) sans qu'elle soit jugée périmée. Le front l'utilise pour
+          // patienter avant de retenter automatiquement au retour du Checkout à l'acte, plutôt
+          // que d'attendre une durée arbitraire.
+          retry_after_seconds: PAPER_STALE_SECONDS,
         })
       }
       throw error
