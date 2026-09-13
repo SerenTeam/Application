@@ -62,11 +62,8 @@ export function AppHeader({ variant = 'default', showEmail = true, children }: A
   return (
     <header className="sticky top-0 z-50 flex h-[82px] items-center bg-white/80 shadow-card-border backdrop-blur-[16px]">
       <div className="flex w-full items-center justify-between gap-3 px-4 sm:px-6 md:px-8">
-        <Link
-          to="/"
-          className="shrink-0 font-display text-2xl font-medium tracking-wide text-primary"
-        >
-          Seren<span className="italic font-normal">.</span>
+        <Link to="/" className="shrink-0">
+          <img src="/seren-logo.svg" alt="Seren" className="h-8 w-auto" />
         </Link>
 
         {variant === 'minimal' ? (
