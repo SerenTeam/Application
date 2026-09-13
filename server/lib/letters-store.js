@@ -60,14 +60,16 @@ export class LetterStoreError extends Error {
 // impossible> : <détail>"). invalid_secret déclenche systématiquement une capture Sentry — un
 // secret invalide présenté à une RPC security definer qui débite de l'argent réel (consume_send)
 // ou écrit un statut probant est un signal fort à lui seul, pas besoin d'un compteur de rafale
-// ici : le dashboard Sentry montre la rafale telle quelle. Les autres exceptions nommées (ex.
-// quota_exhausted) sont des flux utilisateur normaux, pas des incidents — aucune capture.
-function translateRpcError(error, fallbackMessage) {
+// ici : le dashboard Sentry montre la rafale telle quelle. `rpcName` est posé en tag (jamais dans
+// le message) pour distinguer les issues Sentry par RPC plutôt que de tout regrouper sous un seul
+// groupe « invalid_secret ». Les autres exceptions nommées (ex. quota_exhausted) sont des flux
+// utilisateur normaux, pas des incidents — aucune capture.
+function translateRpcError(error, fallbackMessage, rpcName) {
   const code = typeof error?.message === 'string' ? error.message.trim() : null
   if (code && NAMED_RPC_ERRORS.has(code)) {
     const appError = new LetterStoreError(code)
     if (code === 'invalid_secret') {
-      Sentry.captureException(appError)
+      Sentry.captureException(appError, { tags: { rpc: rpcName } })
     }
     return appError
   }
@@ -95,7 +97,11 @@ export async function createSend(client, fields) {
     p_attachment_ids: fields.attachment_ids ?? null,
     p_cost_cents: fields.cost_cents ?? null,
   })
-  if (error) throw translateRpcError(error, 'Création de l’envoi impossible')
+  if (error) throw translateRpcError(error, 'Création de l’envoi impossible', 'create_letter_send')
+  // Garde défensive (revue 5+6, M1) : sans elle, un `data` malformé (RPC muette, réponse vide
+  // sans erreur) se propagerait tel quel jusqu'à un `.send.id` en aval, avec un TypeError opaque
+  // loin de sa cause réelle — l'anomalie est signalée ICI, à la frontière du store.
+  if (!data?.send) throw new Error('Création de l’envoi impossible : réponse RPC invalide (send manquant)')
   return data
 }
 
@@ -112,7 +118,7 @@ export async function claimRetry(client, id, { allowStaleSending = false, staleS
   }
   if (staleSeconds !== undefined) params.p_stale_seconds = staleSeconds
   const { data, error } = await client.rpc('claim_letter_retry', params)
-  if (error) throw translateRpcError(error, 'Claim du retry impossible')
+  if (error) throw translateRpcError(error, 'Claim du retry impossible', 'claim_letter_retry')
   return data ?? null
 }
 
@@ -132,7 +138,11 @@ export async function markSendResult(client, id, patch) {
     p_error: patch.error ?? null,
     p_cost_cents: patch.cost_cents ?? null,
   })
-  if (error) throw translateRpcError(error, 'Mise à jour du résultat d’envoi impossible')
+  if (error) throw translateRpcError(error, 'Mise à jour du résultat d’envoi impossible', 'mark_letter_result')
+  // Garde défensive (revue 5+6, M1) : `data.send` était déréférencé sans garde — une réponse RPC
+  // malformée (sans erreur mais sans `send`) levait un TypeError opaque au lieu d'un message
+  // exploitable. L'anomalie est signalée ICI, à la frontière du store.
+  if (!data?.send) throw new Error('Mise à jour du résultat d’envoi impossible : réponse RPC invalide (send manquant)')
   return { ...data.send, transition_applied: data.transition_applied }
 }
 
@@ -171,23 +181,29 @@ export async function consumeSend(client, sendId, userId) {
     p_send_id: sendId,
     p_user_id: userId,
   })
-  if (error) throw translateRpcError(error, 'Débit du quota impossible')
+  if (error) throw translateRpcError(error, 'Débit du quota impossible', 'consume_send')
   return data
 }
 
 // ─── release_debit ───────────────────────────────────────────────────────────────────────────
 // DELETE compensatoire, appelé quand la soumission au provider échoue APRÈS un débit réussi.
-// `userId` est OBLIGATOIRE (garde d'appartenance côté RPC) : cette fonction rend de l'argent,
-// elle ne doit jamais pouvoir libérer le débit d'un tiers — TOUJOURS l'appeler avec le user_id de
-// la requête en cours. `false` = rien à libérer (débit inexistant, ou envoi déjà engagé chez le
-// provider) : ce n'est PAS une erreur, l'appelant n'a rien à rattraper.
+// `userId` est OBLIGATOIRE (garde d'appartenance) : cette fonction rend de l'argent, elle ne doit
+// jamais pouvoir libérer le débit d'un tiers — TOUJOURS l'appeler avec le user_id de la requête
+// en cours. `false` = rien à libérer (débit inexistant, ou envoi déjà engagé chez le provider) :
+// ce n'est PAS une erreur, l'appelant n'a rien à rattraper.
+// ⚠️ Revue 5+6 (I3) : la garde d'appartenance ne peut PAS reposer sur le seul `default null` côté
+// SQL — un `userId` JS `undefined` disparaît silencieusement de l'objet envoyé à `client.rpc`
+// (JSON ne sait pas sérialiser `undefined`), PostgREST retombe alors sur le défaut de la RPC et
+// la clause d'appartenance devient vraie pour N'IMPORTE QUEL appelant. La garde est donc imposée
+// ICI, en JS, avant tout appel réseau — pas seulement documentée en commentaire.
 export async function releaseDebit(client, sendId, userId) {
+  if (!userId) throw new Error('releaseDebit : user_id obligatoire (garde d’appartenance)')
   const { data, error } = await client.rpc('release_debit', {
     p_secret: requireSecret('libération du débit'),
     p_send_id: sendId,
     p_user_id: userId,
   })
-  if (error) throw translateRpcError(error, 'Libération du débit impossible')
+  if (error) throw translateRpcError(error, 'Libération du débit impossible', 'release_debit')
   return Boolean(data)
 }
 
@@ -204,7 +220,7 @@ export async function recordProviderEvent(client, { id, sendId = null, eventType
     p_event_type: eventType,
     p_payload: payload,
   })
-  if (error) throw translateRpcError(error, 'Enregistrement de l’événement provider impossible')
+  if (error) throw translateRpcError(error, 'Enregistrement de l’événement provider impossible', 'record_provider_event')
   return Boolean(data)
 }
 
@@ -213,7 +229,7 @@ export async function markProviderEventProcessed(client, id) {
     p_secret: requireSecret('marquage de l’événement provider comme traité'),
     p_id: id,
   })
-  if (error) throw translateRpcError(error, 'Marquage de l’événement provider impossible')
+  if (error) throw translateRpcError(error, 'Marquage de l’événement provider impossible', 'mark_provider_event_processed')
   return Boolean(data)
 }
 
@@ -226,6 +242,6 @@ export async function checkSendLimits(client, userId) {
     p_secret: requireSecret('vérification des plafonds'),
     p_user_id: userId,
   })
-  if (error) throw translateRpcError(error, 'Vérification des plafonds impossible')
+  if (error) throw translateRpcError(error, 'Vérification des plafonds impossible', 'check_send_limits')
   return data
 }

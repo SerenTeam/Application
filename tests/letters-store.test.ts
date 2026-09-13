@@ -115,6 +115,11 @@ describe('letters-store', () => {
       await expect(createSend(client, { user_id: 'u1', template_id: 't', channel: 'email', dedup_key: 'k4' })).rejects.toThrow(/boom/)
     })
 
+    it('réponse RPC sans erreur mais sans `send` (anomalie) → exception lisible, pas un TypeError opaque (revue 5+6, M1)', async () => {
+      const { client } = fakeClient([{ data: null, error: null }])
+      await expect(createSend(client, { user_id: 'u1', template_id: 't', channel: 'email', dedup_key: 'k9' })).rejects.toThrow(/send manquant/)
+    })
+
     it('WEBHOOK_RPC_SECRET absent → lève AVANT tout appel RPC', async () => {
       vi.unstubAllEnvs()
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -183,6 +188,11 @@ describe('letters-store', () => {
     it('propage les erreurs Supabase non nommées en exceptions lisibles', async () => {
       const { client } = fakeClient([{ data: null, error: { message: 'boom' } }])
       await expect(markSendResult(client, 's1', { status: 'failed', error: 'boom' })).rejects.toThrow(/boom/)
+    })
+
+    it('réponse RPC sans erreur mais sans `send` (anomalie) → exception lisible, pas un TypeError sur .send (revue 5+6, M1)', async () => {
+      const { client } = fakeClient([{ data: null, error: null }])
+      await expect(markSendResult(client, 's1', { status: 'sent' })).rejects.toThrow(/send manquant/)
     })
   })
 
@@ -299,6 +309,15 @@ describe('letters-store', () => {
       const { client } = fakeClient([{ data: null, error: { message: 'boom' } }])
       await expect(releaseDebit(client, 'send-1', 'user-1')).rejects.toThrow(/boom/)
     })
+
+    // I3 (revue 5+6) : un userId JS `undefined` disparaît de l'objet JSON envoyé à client.rpc —
+    // PostgREST retomberait alors sur le `default null` de la RPC SQL et la garde d'appartenance
+    // deviendrait vraie pour n'importe qui. La garde doit donc être imposée EN JS, avant tout appel.
+    it.each([undefined, null, ''])('userId manquant/falsy (%s) → lève AVANT tout appel RPC, garde d’appartenance imposée en JS', async (badUserId) => {
+      const { client, calls } = fakeClient([{ data: true, error: null }])
+      await expect(releaseDebit(client, 'send-1', badUserId as unknown as string)).rejects.toThrow(/user_id obligatoire/)
+      expect(calls.filter(([m]) => m === 'rpc')).toHaveLength(0)
+    })
   })
 
   describe('recordProviderEvent', () => {
@@ -329,9 +348,12 @@ describe('letters-store', () => {
   })
 
   describe('checkSendLimits', () => {
-    it.each(['ok', 'user_daily_exceeded', 'global_daily_exceeded'])('%s renvoyé tel quel (pas une exception)', async (status) => {
-      const { client } = fakeClient([{ data: status, error: null }])
-      expect(await checkSendLimits(client, 'user-1')).toBe(status)
+    it.each(['ok', 'user_daily_exceeded', 'global_daily_exceeded'])('%s renvoyé tel quel (pas une exception), RPC + paramètres vérifiés', async (status) => {
+      const { client, calls } = fakeClient([{ data: status, error: null }])
+      const result = await checkSendLimits(client, 'user-1')
+      expect(result).toBe(status)
+      const rpcCall = calls.find(([m]) => m === 'rpc')!
+      expect(rpcCall[1]).toEqual(['check_send_limits', { p_secret: 'rpc-secret-test', p_user_id: 'user-1' }])
     })
   })
 
@@ -350,10 +372,16 @@ describe('letters-store', () => {
       ['check_send_limits', (client) => checkSendLimits(client, 'u1')],
     ]
 
-    it.each(cases)('%s', async (_name, call) => {
+    it.each(cases)('%s', async (name, call) => {
       const { client } = fakeClient([{ data: null, error: { message: 'invalid_secret' } }])
       await expect(call(client)).rejects.toMatchObject({ code: 'invalid_secret', name: 'LetterStoreError' })
       expect(Sentry.captureException).toHaveBeenCalledTimes(1)
+      // M3 (revue 5+6) : la RPC en cause est posée en tag (jamais dans le message) pour distinguer
+      // les issues Sentry par RPC plutôt qu'un unique groupement « invalid_secret ».
+      expect(Sentry.captureException).toHaveBeenCalledWith(
+        expect.objectContaining({ code: 'invalid_secret' }),
+        { tags: { rpc: name } },
+      )
     })
   })
 })
