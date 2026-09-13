@@ -98,6 +98,8 @@ create index if not exists idx_organisations_network_dept on organisations(netwo
 - [ ] **3.2** Implémenter : question `deceased_department` (type `select`, bloc identité, options depuis `server/lib/departments.js`, textes `{fr,en}`) ; champ optionnel dans `QuestionnaireAnswersV2` (`deceased_department?: string`) ; les vieux dossiers sans département : le panneau d'envoi le demandera (Task 9), aucune migration de données.
 - [ ] **3.3** `npx vitest run` → suite verte (nouveaux tests inclus) ; `npx tsc --noEmit`. Commit : `feat(2a): question département du défunt — donnée d'adressage, exclue du rédacteur (invariants à jour)`
 
+> **Note post-revue (Task 3, 2026-09-13) :** question insérée en `order: 5` (fin du bloc identité), 16 questions au total, 201 tests. **Découverte importante** : un `select` entre dans `CLOSED_TYPES` → sans garde, le libellé du département aurait été écho-transmis au rédacteur Mistral via `derniereReponse` (violation directe de la spec). Correctif : `WRITER_EXCLUDED_IDS = ['deceased_department']` dans la route `/answer` + test négatif PII qui reproduit la fuite (rouge avant correctif, vérifié). Toute future question de données de type fermé DOIT être ajoutée à cette liste.
+
 ## Task 4 : Migration cycle papier + débits + durcissement RLS
 
 **Files:** Create `supabase/migrations/20260914120000_letter_sends_papier.sql`
