@@ -17,6 +17,7 @@ import { QuestionnairePage } from '@/pages/QuestionnairePage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { AccessPage } from '@/pages/AccessPage'
 import { DocumentsPage } from '@/pages/DocumentsPage'
+import { PartnerDashboardPage } from '@/pages/PartnerDashboardPage'
 import { NotFoundPage } from '@/pages/errors/NotFoundPage'
 import { ErrorPage } from '@/pages/errors/ErrorPage'
 import { MaintenancePage } from '@/pages/errors/MaintenancePage'
@@ -72,6 +73,8 @@ export default function App() {
               <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
               <Route path="/documents" element={<ProtectedRoute><DocumentsPage /></ProtectedRoute>} />
+              {/* Espace partenaire (v0-démo) : accès par URL uniquement, aucun lien de nav partagée. */}
+              <Route path="/partenaire" element={<ProtectedRoute><PartnerDashboardPage /></ProtectedRoute>} />
 
               {/* 404 catch-all */}
               <Route path="*" element={<NotFoundPage />} />
