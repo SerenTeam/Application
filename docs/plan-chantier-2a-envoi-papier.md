@@ -88,6 +88,8 @@ create index if not exists idx_organisations_network_dept on organisations(netwo
 - [ ] **2.3** Exécuter le script → migration générée ; vérifier : `grep -c "insert into organisations" | wc` cohérent (~360-404), spot-check manuel de 3 entrées (CPAM 75, CAF 33, SIP 69) contre lannuaire.service-public.fr.
 - [ ] **2.4** `npx vitest run` (non-régression) ; commit script + migration : `feat(2a): annuaire organisations — import DILA (4 réseaux × départements, seed versionné)`
 
+> **Note post-revue (Task 2, 2026-09-13) :** import DILA livré — 321 lignes (caf 100, cpam 99, impots/SIP 102, carsat 20). Deux réalités du terrain actées : (1) **CARSAT = 20 caisses régionales** (`department = null`, slug par région) — la résolution `network+department` de la Task 9 ne s'applique pas à elles ; décision : en 2a, le panneau (Task 11) propose pour la CARSAT un **choix parmi les 20 caisses par nom de région** (l'utilisateur connaît sa région — aucun mapping inventé). (2) **SIP : une adresse représentative par département** (le 69 en compte 10) — mitigé par l'adresse toujours éditable (spec §7) ; granularité plus fine = amélioration produit ultérieure.
+
 ## Task 3 : Question « département du défunt »
 
 **Files:** Modify `server/lib/questions-catalog.js`, `src/types/questionnaire.ts`, `tests/invariants.test.ts:14` (allowlist `IDENTITY_FIELDS`), tests moteur/catalogue concernés ; Create `server/lib/departments.js` (liste 01→976, labels FR=EN « 75 — Paris »)
