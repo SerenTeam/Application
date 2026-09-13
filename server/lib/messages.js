@@ -38,6 +38,15 @@ export const MESSAGES = {
     send_failed: 'Échec de l’envoi du courrier',
     send_error: 'Erreur lors de l’envoi du courrier',
     letters_list_error: 'Erreur lors de la récupération des envois',
+    // Coffre minimal — pièces jointes (server/routes/attachments.js)
+    attachments_missing_file: 'Aucun fichier reçu',
+    attachments_invalid_kind: 'Type de pièce jointe invalide',
+    attachments_invalid_type: 'Ce fichier n’est ni un PDF, ni une image JPEG ou PNG valide',
+    attachments_too_large: 'Le fichier dépasse la taille maximale autorisée (5 Mo)',
+    attachments_upload_error: 'Erreur lors de l’enregistrement de la pièce jointe',
+    attachments_not_found: 'Pièce jointe introuvable',
+    attachments_list_error: 'Erreur lors de la récupération des pièces jointes',
+    attachments_delete_error: 'Erreur lors de la suppression de la pièce jointe',
     // Paiement — forfait Stripe (server/routes/payments.js, server/lib/require-purchase.js)
     payments_disabled: 'Le paiement n’est pas encore ouvert',
     checkout_failed: 'Impossible d’ouvrir la page de paiement, réessayez dans un instant',
@@ -78,6 +87,15 @@ export const MESSAGES = {
     send_failed: 'Failed to send the letter',
     send_error: 'Error while sending the letter',
     letters_list_error: 'Error while fetching sends',
+    // Attachments vault (server/routes/attachments.js)
+    attachments_missing_file: 'No file received',
+    attachments_invalid_kind: 'Invalid attachment kind',
+    attachments_invalid_type: 'This file is not a valid PDF, JPEG, or PNG',
+    attachments_too_large: 'The file exceeds the maximum allowed size (5 MB)',
+    attachments_upload_error: 'Error while saving the attachment',
+    attachments_not_found: 'Attachment not found',
+    attachments_list_error: 'Error while fetching attachments',
+    attachments_delete_error: 'Error while deleting the attachment',
     // Payments — Seren plan (server/routes/payments.js, server/lib/require-purchase.js)
     payments_disabled: 'Payment is not open yet',
     checkout_failed: 'Unable to open the payment page, please try again in a moment',

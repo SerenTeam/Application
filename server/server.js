@@ -10,6 +10,7 @@ import * as Sentry from '@sentry/node';
 import { createQuestionnaireRouter } from './routes/questionnaire.js';
 import { createLettersRouter } from './routes/letters.js';
 import { createPaymentsRouter } from './routes/payments.js';
+import { createAttachmentsRouter } from './routes/attachments.js';
 import { createBasicAuthGate } from './lib/basic-auth.js';
 import { createEmailSender } from './lib/email-sender.js';
 import { createStripeClient, createPriceReader } from './lib/stripe-client.js';
@@ -201,6 +202,12 @@ app.use('/api/letters', createLettersRouter({
   // update_letter_send_status pour mettre à jour un statut malgré la RLS — voir letters-store.js.
   publicClient: supabase,
 }));
+
+// Coffre minimal — pièces jointes des envois papier (chantier 2a). Pas de dépendance
+// supplémentaire à injecter : le router lit/écrit directement via req.supabaseClient (posé par
+// requireAuth), la RLS owner de la table `attachments` et du bucket `documents` suffit — voir
+// server/routes/attachments.js.
+app.use('/api/attachments', createAttachmentsRouter({ requireAuth }));
 
 // Helper pour créer un client Supabase avec contexte utilisateur authentifié
 function getSupabaseClient(accessToken) {
