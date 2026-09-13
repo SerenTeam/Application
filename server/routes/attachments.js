@@ -16,12 +16,21 @@ import multer from 'multer'
 import * as Sentry from '@sentry/node'
 import { sniffMime } from '../lib/mime-sniff.js'
 import { msg } from '../lib/messages.js'
+import { createUserRateLimiter } from '../lib/rate-limit.js'
 
 const BUCKET = 'documents'
 // Miroir du CHECK size_bytes <= 5242880 de la migration : on veut un 413 propre AVANT toute
 // écriture Storage/BDD, pas une exception SQL tardive.
 const MAX_SIZE_BYTES = 5 * 1024 * 1024
 const KINDS = new Set(['acte_deces', 'justificatif'])
+// Plafond de pièces jointes par utilisateur (revue Task 5+6, I2) : un coffre n'est pas illimité,
+// même borné en taille unitaire — 20 couvre largement acte de décès + justificatifs d'un dossier.
+const MAX_ATTACHMENTS_PER_USER = 20
+// Format uuid v4 (et plus largement RFC 4122) attendu pour :id — vérifié AVANT toute requête
+// (revue Task 5+6, M5) : un id mal formé ferait sinon échouer la requête Postgres avec
+// `invalid input syntax for type uuid`, remontée en 500 alors que c'est un 404 tout simple
+// (l'id n'existe pas, quelle que soit sa forme).
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 // Extension dérivée du mime CANONIQUE (détecté par magic bytes), jamais du nom de fichier fourni
 // par le client — ceinture et bretelles avec le sniff lui-même.
 const EXT_BY_MIME = {
@@ -48,7 +57,10 @@ function sanitizeFilename(name) {
 
 const uploadSingle = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_SIZE_BYTES },
+  // files/fields : un seul fichier, une poignée de champs (kind, lang…) — ferme la porte à un
+  // client qui tenterait de faire bufferiser plusieurs fichiers ou un déluge de champs avant
+  // même que le handler applicatif ne s'exécute (revue Task 5+6, I2).
+  limits: { fileSize: MAX_SIZE_BYTES, files: 1, fields: 5 },
 }).single('file')
 
 /** Multer lève ses erreurs (taille, champ inattendu…) de façon synchrone dans son callback,
@@ -61,6 +73,12 @@ function handleUpload(req, res, next) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json({ success: false, error: msg(lang, 'attachments_too_large') })
     }
+    if (typeof err.code === 'string' && err.code.startsWith('LIMIT_')) {
+      // Autres limites multer (trop de fichiers/champs, champ inattendu…) : erreur CLIENT
+      // (requête mal formée), jamais un incident serveur — pas de bruit Sentry pour ça
+      // (revue Task 5+6, M4).
+      return res.status(400).json({ success: false, error: msg(lang, 'attachments_upload_error') })
+    }
     console.error('❌ attachments/upload — multer :', err)
     Sentry.captureException(err)
     return res.status(400).json({ success: false, error: msg(lang, 'attachments_upload_error') })
@@ -70,7 +88,18 @@ function handleUpload(req, res, next) {
 export function createAttachmentsRouter({ requireAuth }) {
   const router = Router()
 
-  router.post('/', requireAuth, handleUpload, async (req, res) => {
+  // 30/h par utilisateur : un dépôt de pièce jointe est un geste ponctuel (acte de décès,
+  // justificatif), jamais un flux automatisé — large marge pour un dossier complet en une
+  // session, coupe court à un abus (bufferisation répétée en mémoire). Monté APRÈS requireAuth
+  // (dépend de req.user.id) et AVANT handleUpload : une requête qu'on va refuser ne doit jamais
+  // faire bufferiser son fichier en mémoire au préalable (revue Task 5+6, I2).
+  const uploadLimiter = createUserRateLimiter({
+    max: 30,
+    windowMs: 60 * 60 * 1000,
+    message: (req) => msg(bodyLang(req), 'too_many_requests'),
+  })
+
+  router.post('/', requireAuth, uploadLimiter, handleUpload, async (req, res) => {
     const lang = bodyLang(req)
     try {
       const file = req.file
@@ -87,6 +116,22 @@ export function createAttachmentsRouter({ requireAuth }) {
       const mime = sniffMime(file.buffer)
       if (!mime) {
         return res.status(415).json({ success: false, error: msg(lang, 'attachments_invalid_type') })
+      }
+
+      // Plafond de pièces jointes (revue Task 5+6, I2) : vérifié APRÈS la validation du fichier
+      // (pas la peine de compter pour un fichier de toute façon refusé) mais AVANT tout upload
+      // Storage — un compte au-delà du plafond ne doit jamais atteindre le bucket.
+      const { count, error: countError } = await req.supabaseClient
+        .from('attachments')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', req.user.id)
+      if (countError) {
+        console.error('❌ attachments/upload — comptage :', countError)
+        Sentry.captureException(countError)
+        return res.status(500).json({ success: false, error: msg(lang, 'attachments_upload_error') })
+      }
+      if ((count ?? 0) >= MAX_ATTACHMENTS_PER_USER) {
+        return res.status(409).json({ success: false, error: msg(lang, 'attachments_quota_reached') })
       }
 
       const safeFilename = sanitizeFilename(file.originalname)
@@ -155,6 +200,12 @@ export function createAttachmentsRouter({ requireAuth }) {
   router.delete('/:id', requireAuth, async (req, res) => {
     const lang = bodyLang(req)
     try {
+      if (!UUID_RE.test(req.params.id)) {
+        // Jamais interrogé en base : un id mal formé n'existe par construction pas — 404
+        // directement plutôt qu'une erreur Postgres `invalid input syntax for type uuid`
+        // remontée en 500 (revue Task 5+6, M5).
+        return res.status(404).json({ success: false, error: msg(lang, 'attachments_not_found') })
+      }
       const { data: row, error: fetchError } = await req.supabaseClient
         .from('attachments')
         .select('id, storage_path, user_id')

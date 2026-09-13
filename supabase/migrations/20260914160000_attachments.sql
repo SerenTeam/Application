@@ -26,7 +26,10 @@ create table if not exists attachments (
   id           uuid primary key default gen_random_uuid(),
   user_id      uuid not null references auth.users(id) on delete cascade,
   kind         text not null check (kind in ('acte_deces','justificatif')),
-  storage_path text not null,
+  -- Le préfixe du chemin Storage doit être celui du propriétaire : une ligne forgée via
+  -- PostgREST (token valide mais storage_path bricolé) ne peut plus pointer vers l'objet d'un
+  -- tiers, même en cas d'erreur applicative côté serveur (revue Task 5+6, I7).
+  storage_path text not null check (storage_path like user_id::text || '/%'),
   filename     text not null,
   mime         text not null,
   size_bytes   integer not null check (size_bytes <= 5242880),
@@ -63,10 +66,14 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 values ('documents', 'documents', false, 5242880, array['application/pdf','image/jpeg','image/png'])
 on conflict (id) do nothing;
 
--- storage.objects porte déjà RLS activée par défaut sur Supabase ; réaffirmé ici pour que la
--- migration reste correcte rejouée sur une base vierge où l'extension Storage viendrait tout
--- juste d'être installée (idempotent : `enable row level security` ne fait rien si déjà actif).
-alter table storage.objects enable row level security;
+-- storage.objects porte DÉJÀ RLS activée par défaut sur tout projet Supabase (table gérée par
+-- l'extension Storage) : pas de `alter table storage.objects enable row level security` ici —
+-- ce ré-affirmatif ne changerait rien mais exige des droits d'OWNER sur la table que le rôle de
+-- migration n'a pas forcément selon le projet, et ferait échouer tout le `db push` en
+-- `42501 must be owner of table objects` (revue Task 5+6, I1). Seules les policies ci-dessous,
+-- elles, sont bien de notre ressort. Plan B si leur CREATE échouait pour la même raison sur un
+-- projet donné : les créer via le dashboard Storage (Supabase Studio → Storage → Policies),
+-- cf. note post-revue du plan.
 
 -- Policies par préfixe : un objet du bucket `documents` n'est visible/écrivable/supprimable
 -- que par l'utilisateur dont l'uid est le PREMIER segment du chemin (storage_path serveur :

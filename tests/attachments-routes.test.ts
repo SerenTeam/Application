@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import express from 'express'
 import request from 'supertest'
+import crypto from 'crypto'
 // @ts-expect-error — module JS serveur
 import { createAttachmentsRouter } from '../server/routes/attachments.js'
 
@@ -23,12 +24,16 @@ type AttachmentRow = {
   created_at: string
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 function makeBackend() {
-  let seq = 0
   return {
     rows: [] as AttachmentRow[],
     objects: new Map<string, Buffer>(),
-    nextId: () => `att-${++seq}`,
+    // Un vrai format uuid : le router (M5) refuse désormais tout :id qui n'en a pas la forme
+    // avant même d'interroger la base — un id de fake du genre "att-1" ferait échouer les DELETE
+    // légitimes des autres tests avec un faux-négatif 404.
+    nextId: () => crypto.randomUUID(),
   }
 }
 
@@ -58,15 +63,32 @@ function makeClientFor(userId: string, backend: Backend, opts: { uploadError?: u
     from(table: string): any {
       if (table !== 'attachments') throw new Error(`table inattendue dans ce fake : ${table}`)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const state: any = { op: null, payload: null, filters: [] as Array<[string, unknown]> }
+      const state: any = { op: null, payload: null, filters: [] as Array<[string, unknown]>, countOpts: null }
 
       function execSelect(mode: 'list' | 'single' | 'maybeSingle') {
+        // Reproduit le typage strict de Postgres : `id` est une colonne uuid, une valeur qui n'a
+        // pas cette forme échoue AVANT tout filtrage RLS (`invalid input syntax for type uuid`) —
+        // exactement le piège que corrige le garde-fou M5 du router (format vérifié avant requête).
+        const idFilter = state.filters.find(([col]: [string, unknown]) => col === 'id')
+        if (idFilter && typeof idFilter[1] === 'string' && !UUID_RE.test(idFilter[1])) {
+          return Promise.resolve({
+            data: null,
+            error: { message: `invalid input syntax for type uuid: "${idFilter[1]}"`, code: '22P02' },
+          })
+        }
+
         // RLS : jamais une ligne d'un autre utilisateur, quels que soient les filtres demandés.
         let filtered = rows.filter((r) => r.user_id === userId)
         for (const [col, val] of state.filters) {
           filtered = filtered.filter((r) => (r as unknown as Record<string, unknown>)[col] === val)
         }
         filtered = [...filtered].sort((a, b) => b.created_at.localeCompare(a.created_at))
+
+        // `.select(cols, { count: 'exact', head: true })` — patron du comptage de quota (I2) :
+        // pas de lignes renvoyées, seulement le compte.
+        if (state.countOpts?.count === 'exact') {
+          return Promise.resolve({ data: state.countOpts.head ? null : filtered, count: filtered.length, error: null })
+        }
         if (mode === 'list') return Promise.resolve({ data: filtered, error: null })
         if (mode === 'maybeSingle') return Promise.resolve({ data: filtered[0] ?? null, error: null })
         if (filtered.length === 0) return Promise.resolve({ data: null, error: { message: 'no rows' } })
@@ -107,8 +129,9 @@ function makeClientFor(userId: string, backend: Backend, opts: { uploadError?: u
           state.payload = payload
           return builder
         },
-        select() {
+        select(_cols?: string, opts?: { count?: 'exact'; head?: boolean }) {
           state.op = state.op ?? 'select'
+          state.countOpts = opts ?? null
           return builder
         },
         delete() {
@@ -263,6 +286,70 @@ describe('POST /api/attachments', () => {
     const res = await request(app).post('/api/attachments').field('kind', 'acte_deces').attach('file', PDF_BYTES, 'acte.pdf')
     expect(res.status).toBe(401)
   })
+
+  it("échec de l'upload Storage → 500, AUCUNE ligne insérée ni objet Storage conservé (revue 5+6, I5)", async () => {
+    const { app, backend } = makeApp({ storageOpts: { uploadError: { message: 'storage indisponible' } } })
+    const res = await request(app)
+      .post('/api/attachments')
+      .set('Authorization', 'Bearer user-1')
+      .field('kind', 'acte_deces')
+      .attach('file', PDF_BYTES, 'acte.pdf')
+
+    expect(res.status).toBe(500)
+    expect(res.body.success).toBe(false)
+    expect(backend.rows).toHaveLength(0)
+    expect(backend.objects.size).toBe(0)
+  })
+
+  it('plafond de 20 pièces atteint → 409, rien persisté (revue 5+6, I2)', async () => {
+    const backend = makeBackend()
+    const { app } = makeApp({ backend })
+    for (let i = 0; i < 20; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      const res = await request(app)
+        .post('/api/attachments')
+        .set('Authorization', 'Bearer user-1')
+        .field('kind', 'acte_deces')
+        .attach('file', PDF_BYTES, `piece-${i}.pdf`)
+      expect(res.status).toBe(201)
+    }
+    expect(backend.rows).toHaveLength(20)
+
+    const res = await request(app)
+      .post('/api/attachments')
+      .set('Authorization', 'Bearer user-1')
+      .field('kind', 'acte_deces')
+      .attach('file', PDF_BYTES, 'piece-21.pdf')
+
+    expect(res.status).toBe(409)
+    expect(backend.rows).toHaveLength(20)
+  })
+
+  it("sanitizeFilename : neutralise un traversal, ne garde que le basename (revue 5+6, M8)", async () => {
+    const { app } = makeApp()
+    const res = await request(app)
+      .post('/api/attachments')
+      .set('Authorization', 'Bearer user-1')
+      .field('kind', 'acte_deces')
+      .attach('file', PDF_BYTES, '../../etc/passwd')
+
+    expect(res.status).toBe(201)
+    expect(res.body.attachment.filename).not.toMatch(/\.\.|\//)
+    expect(res.body.attachment.filename).toBe('passwd')
+  })
+
+  it('sanitizeFilename : tronque un nom trop long à 150 caractères (revue 5+6, M8)', async () => {
+    const { app } = makeApp()
+    const longName = `${'a'.repeat(200)}.pdf`
+    const res = await request(app)
+      .post('/api/attachments')
+      .set('Authorization', 'Bearer user-1')
+      .field('kind', 'acte_deces')
+      .attach('file', PDF_BYTES, longName)
+
+    expect(res.status).toBe(201)
+    expect(res.body.attachment.filename.length).toBeLessThanOrEqual(150)
+  })
 })
 
 describe('GET /api/attachments', () => {
@@ -325,6 +412,29 @@ describe('DELETE /api/attachments/:id', () => {
     const { app } = makeApp()
     const res = await request(app).delete('/api/attachments/00000000-0000-0000-0000-000000000000').set('Authorization', 'Bearer user-1')
     expect(res.status).toBe(404)
+  })
+
+  it('id au format invalide (pas un uuid) → 404, jamais un 500 (revue 5+6, M5)', async () => {
+    const { app } = makeApp()
+    const res = await request(app).delete('/api/attachments/pas-un-uuid').set('Authorization', 'Bearer user-1')
+    expect(res.status).toBe(404)
+  })
+
+  it("échec de la suppression Storage → 500 ET la ligne est CONSERVÉE (ordre Storage puis BDD, revue 5+6, I5)", async () => {
+    const backend = makeBackend()
+    const { app: writerApp } = makeApp({ backend })
+    const created = await request(writerApp)
+      .post('/api/attachments')
+      .set('Authorization', 'Bearer user-1')
+      .field('kind', 'acte_deces')
+      .attach('file', PDF_BYTES, 'a.pdf')
+    const id = created.body.attachment.id
+
+    const { app: failingApp } = makeApp({ backend, storageOpts: { removeError: { message: 'storage indisponible' } } })
+    const res = await request(failingApp).delete(`/api/attachments/${id}`).set('Authorization', 'Bearer user-1')
+
+    expect(res.status).toBe(500)
+    expect(backend.rows).toHaveLength(1)
   })
 
   it('sans auth → 401', async () => {

@@ -47,6 +47,7 @@ export const MESSAGES = {
     attachments_not_found: 'Pièce jointe introuvable',
     attachments_list_error: 'Erreur lors de la récupération des pièces jointes',
     attachments_delete_error: 'Erreur lors de la suppression de la pièce jointe',
+    attachments_quota_reached: 'Vous avez atteint la limite de 20 pièces jointes, supprimez-en une avant d’en ajouter une nouvelle',
     // Paiement — forfait Stripe (server/routes/payments.js, server/lib/require-purchase.js)
     payments_disabled: 'Le paiement n’est pas encore ouvert',
     checkout_failed: 'Impossible d’ouvrir la page de paiement, réessayez dans un instant',
@@ -96,6 +97,7 @@ export const MESSAGES = {
     attachments_not_found: 'Attachment not found',
     attachments_list_error: 'Error while fetching attachments',
     attachments_delete_error: 'Error while deleting the attachment',
+    attachments_quota_reached: 'You have reached the 20-attachment limit, delete one before adding a new one',
     // Payments — Seren plan (server/routes/payments.js, server/lib/require-purchase.js)
     payments_disabled: 'Payment is not open yet',
     checkout_failed: 'Unable to open the payment page, please try again in a moment',
