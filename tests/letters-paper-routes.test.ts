@@ -220,8 +220,11 @@ function makeLettersStore() {
     consumeError: null as string | null,
     consumeResult: { debited: true, already_debited: false, source: 'included', free_resend: false, balance_after: 4 },
     releaseResult: true,
+    markError: null as string | null, // échec d'écriture du résultat APRÈS un envoi réussi
+    debits: new Set<string>(), // état réel du registre send_debits (PK send_id)
     consumed: [] as Array<{ sendId: string; userId: string }>,
     released: [] as Array<{ sendId: string; userId: string }>,
+    claims: [] as Array<{ id: string; options: Row }>,
     marks: [] as Array<{ id: string; patch: Row }>,
 
     async checkSendLimits(_c: unknown, _userId: string) {
@@ -244,9 +247,16 @@ function makeLettersStore() {
       rows.push(row)
       return { duplicate: false, send: row }
     },
+    // Idempotence PAR CONSTRUCTION du vrai débit (send_debits.send_id est la clé primaire) : un
+    // second appel sur le même envoi ne débite pas une seconde fois. Après une libération, en
+    // revanche, un nouveau débit est légitime — d'où un vrai état, pas un simple compteur d'appels.
     async consumeSend(_c: unknown, sendId: string, userId: string) {
       if (store.consumeError) throw storeError(store.consumeError)
       store.consumed.push({ sendId, userId })
+      if (store.debits.has(sendId)) {
+        return { ...store.consumeResult, debited: false, already_debited: true }
+      }
+      store.debits.add(sendId)
       return store.consumeResult
     },
     // Garde d'appartenance du vrai store (letters-store.js) : `user_id` obligatoire, sans quoi la
@@ -254,17 +264,40 @@ function makeLettersStore() {
     async releaseDebit(_c: unknown, sendId: string, userId: string) {
       if (!userId) throw new Error('releaseDebit : user_id obligatoire (garde d’appartenance)')
       store.released.push({ sendId, userId })
-      return store.releaseResult
+      const had = store.debits.delete(sendId)
+      return store.releaseResult && had
     },
     async markSendResult(_c: unknown, id: string, patch: Row) {
       store.marks.push({ id, patch })
+      if (store.markError && patch.status === 'submitted') throw new Error(store.markError)
       const row = rows.find((r) => r.id === id)
       if (!row) throw new Error(`send ${id} introuvable`)
       Object.assign(row, patch)
       return row
     },
-    async claimRetry() {
-      return null
+    // Reproduction FIDÈLE de claim_letter_retry (migration Task 4, bloc 4) — c'est la garde qui
+    // rend la reprise sûre, elle ne doit surtout pas être simplifiée ici :
+    //  • garde d'argent : jamais de claim si provider_ref existe (canaux papier) ;
+    //  • p_allow_stale = false → seule une ligne 'failed' est claimable ;
+    //  • p_allow_stale = true  → la ligne 'prepared' n'est claimable que si elle est PÉRIMÉE
+    //    (updated_at plus vieux que max(staleSeconds, 30) — plancher de la RPC) ;
+    //  • le claim est ATOMIQUE : il remet la ligne au statut initial et rafraîchit updated_at,
+    //    donc un second claim concurrent repart bredouille (null → 409 côté route).
+    async claimRetry(_c: unknown, id: string, options: { allowStaleSending?: boolean; staleSeconds?: number } = {}) {
+      store.claims.push({ id, options })
+      const row = rows.find((r) => r.id === id)
+      if (!row) return null
+      if (row.provider_ref) return null
+      const staleMs = Math.max(options.staleSeconds ?? 60, 30) * 1000
+      if (options.allowStaleSending) {
+        if (row.status !== 'prepared') return null
+        if (Date.parse(String(row.updated_at)) >= Date.now() - staleMs) return null
+      } else if (row.status !== 'failed') {
+        return null
+      }
+      row.status = 'prepared'
+      row.updated_at = new Date().toISOString()
+      return row
     },
     async listSends(_c: unknown, userId: string) {
       return rows.filter((r) => r.user_id === userId)
@@ -274,12 +307,16 @@ function makeLettersStore() {
 }
 
 // ── Adaptateur papier simulé ──────────────────────────────────────────────────────────────────
-type PaperBehavior = 'ok' | 'not_configured' | 'unavailable' | 'rejected'
+// Les erreurs reproduisent EXACTEMENT celles de server/lib/paper-sender.js, `status` compris :
+// c'est sa présence qui distingue un échec CERTAIN (la requête a atteint le provider, qui a
+// répondu) d'un résultat INCERTAIN (fetch rejeté — le POST a peut-être été reçu et accepté).
+type PaperBehavior = 'ok' | 'not_configured' | 'unavailable_network' | 'unavailable_5xx' | 'rejected'
 
-function paperError(code: string) {
-  const err = new Error(code) as Error & { code: string }
+function paperError(code: string, extra: Record<string, unknown> = {}) {
+  const err = new Error(code) as Error & { code: string; status?: number }
   err.name = 'PaperSenderError'
   err.code = code
+  Object.assign(err, extra)
   return err
 }
 
@@ -288,11 +325,17 @@ function makePaperSender(behavior: PaperBehavior = 'ok') {
   const sender = {
     behavior,
     calls,
+    // Permet de figer une soumission « en vol » pour tester une reprise concurrente.
+    hold: null as Promise<void> | null,
     async send(args: Row) {
       calls.push(args)
+      if (sender.hold) await sender.hold
       if (sender.behavior === 'not_configured') throw new Error('paper_not_configured')
-      if (sender.behavior === 'unavailable') throw paperError('provider_unavailable')
-      if (sender.behavior === 'rejected') throw paperError('provider_rejected')
+      // Rejet du fetch lui-même (DNS, TCP, timeout) : AUCUN status — sort du pli inconnu.
+      if (sender.behavior === 'unavailable_network') throw paperError('provider_unavailable')
+      // 5xx : la requête a bien atteint MySendingBox, qui a échoué — rien n'a été créé.
+      if (sender.behavior === 'unavailable_5xx') throw paperError('provider_unavailable', { status: 503 })
+      if (sender.behavior === 'rejected') throw paperError('provider_rejected', { status: 400, detail: { message: 'adresse refusée' } })
       return { providerRef: `msb-${calls.length}`, status: 'submitted' as const }
     },
     async getLetter() {
@@ -300,6 +343,13 @@ function makePaperSender(behavior: PaperBehavior = 'ok') {
     },
   }
   return sender
+}
+
+/** Vieillit une ligne d'envoi pour simuler le temps écoulé (la fenêtre de fraîcheur du claim est
+ * de 120 s côté route). Dans la vraie vie, ce temps passe tout seul : un aller-retour par le
+ * Checkout Stripe, ou simplement l'utilisateur qui revient sur son écran. */
+function ageSend(row: Row, seconds = 300) {
+  row.updated_at = new Date(Date.now() - seconds * 1000).toISOString()
 }
 
 // ── Application de test ───────────────────────────────────────────────────────────────────────
@@ -420,6 +470,17 @@ describe('POST /api/letters/send (papier) — garde 2 : kill switch', () => {
     const res = await request(app).post('/api/letters/send').send(basePayload())
     expect(res.status).toBe(503)
     expect(res.body.code).toBe('PAPER_DISABLED')
+  })
+
+  // Correctif M5 de la revue : une coupure de canal ne doit pas grignoter le quota horaire.
+  it('un 503 de coupure ne consomme pas le quota horaire (25 refus, toujours 503, jamais 429)', async () => {
+    vi.stubEnv('PAPER_SENDS_ENABLED', '')
+    const { app } = makeApp({ backend: readyBackend() })
+    for (let i = 0; i < 25; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      const res = await request(app).post('/api/letters/send').send(basePayload())
+      expect(res.status).toBe(503)
+    }
   })
 })
 
@@ -582,6 +643,22 @@ describe('POST /api/letters/send (papier) — garde 6 : pièces jointes', () => 
     expect(store.rows[0].attachment_ids).toEqual([ATT_2, ATT_1])
   })
 
+  it('pièce jointe d’un type non imprimable : 400 ATTACHMENT_INVALID_TYPE, AVANT tout débit', async () => {
+    // Le coffre n'accepte que PDF/JPEG/PNG (magic bytes) : une ligne d'un autre type ne peut
+    // venir que d'une évolution future ou d'une anomalie — elle doit être refusée ICI, pas
+    // découverte par l'adaptateur après que le quota a été débité.
+    const backend = readyBackend()
+    addAttachment(backend, { id: ATT_1 })
+    backend.attachments[0].mime = 'application/zip'
+    const { app, store, sender } = makeApp({ backend })
+    const res = await request(app).post('/api/letters/send').send(basePayload({ attachment_ids: [ATT_1] }))
+    expect(res.status).toBe(400)
+    expect(res.body.code).toBe('ATTACHMENT_INVALID_TYPE')
+    expect(store.rows).toHaveLength(0)
+    expect(store.consumed).toHaveLength(0)
+    expect(sender.calls).toHaveLength(0)
+  })
+
   it('échec de téléchargement Storage : 500, rien créé (l’incident précède toute écriture)', async () => {
     const backend = readyBackend()
     addAttachment(backend, { id: ATT_1 })
@@ -625,7 +702,7 @@ describe('POST /api/letters/send (papier) — garde 7 : plafonds et création', 
     expect(Sentry.captureException).toHaveBeenCalled()
   })
 
-  it('duplicata (même dedup_key) : 409, aucun second débit ni second pli', async () => {
+  it('duplicata d’un envoi DÉJÀ SOUMIS : 409, aucun second débit ni second pli', async () => {
     const { app, store, sender } = makeApp({ backend: readyBackend() })
     expect((await request(app).post('/api/letters/send').send(basePayload())).status).toBe(202)
     const res = await request(app).post('/api/letters/send').send(basePayload())
@@ -634,6 +711,8 @@ describe('POST /api/letters/send (papier) — garde 7 : plafonds et création', 
     expect(store.rows).toHaveLength(1)
     expect(store.consumed).toHaveLength(1)
     expect(sender.calls).toHaveLength(1)
+    // La reprise n'est même pas TENTÉE : la garde de route s'arrête au provider_ref (verrou 1).
+    expect(store.claims).toHaveLength(0)
   })
 
   it('dedup_key papier : sha256 déterministe de user|template|adresse normalisée|resend_of', async () => {
@@ -670,6 +749,103 @@ describe('POST /api/letters/send (papier) — garde 7 : plafonds et création', 
     const res = await request(app).post('/api/letters/send').send(basePayload({ resend_of: ATT_1 }))
     expect(res.status).toBe(409)
     expect(res.body.code).toBe('RESEND_ALREADY_EXISTS')
+  })
+})
+
+// ── Garde 7 bis : reprise d'un envoi bloqué (correctif C1 de la revue) ────────────────────────
+// Sans elle, le dedup_key transformait tout échec en cul-de-sac définitif : l'utilisateur avait
+// payé un envoi qu'il ne pouvait plus jamais faire partir. Trois verrous la rendent sûre — route
+// (provider_ref), base (claim atomique), provider (Idempotency-Key dérivée de l'id d'envoi).
+describe('POST /api/letters/send (papier) — garde 7 bis : reprise', () => {
+  it('(a) quota épuisé → achat d’un envoi → reprise : 202, UNE seule ligne, UN seul pli, MÊME clé d’idempotence', async () => {
+    const store = makeLettersStore()
+    store.consumeError = 'quota_exhausted'
+    const { app, sender } = makeApp({ backend: readyBackend(), store })
+
+    const refused = await request(app).post('/api/letters/send').send(basePayload())
+    expect(refused.status).toBe(402)
+    expect(sender.calls).toHaveLength(0)
+
+    // L'utilisateur achète un envoi supplémentaire : aller-retour par le Checkout Stripe, donc
+    // bien plus que la fenêtre de fraîcheur de 120 s — on l'atteste en vieillissant la ligne.
+    store.consumeError = null
+    ageSend(store.rows[0])
+
+    const retry = await request(app).post('/api/letters/send').send(basePayload())
+    expect(retry.status).toBe(202)
+    expect(retry.body.send.status).toBe('submitted')
+    expect(store.rows).toHaveLength(1) // la MÊME ligne, reprise
+    expect(sender.calls).toHaveLength(1) // un seul pli, malgré deux requêtes
+    expect(store.claims[0].options).toMatchObject({ allowStaleSending: true, staleSeconds: 120 })
+  })
+
+  it('(a bis) reprise après un échec provider constaté : ligne failed reclaimée, re-débitée, 202', async () => {
+    const sender = makePaperSender('rejected')
+    const { app, store } = makeApp({ backend: readyBackend(), sender })
+    expect((await request(app).post('/api/letters/send').send(basePayload())).status).toBe(502)
+    expect(store.rows[0].status).toBe('failed')
+    expect(store.debits.has(String(store.rows[0].id))).toBe(false) // débit libéré
+
+    sender.behavior = 'ok'
+    const retry = await request(app).post('/api/letters/send').send(basePayload())
+    expect(retry.status).toBe(202)
+    // Une ligne 'failed' est claimable IMMÉDIATEMENT (pas de fenêtre de fraîcheur à attendre).
+    expect(store.claims[0].options).toMatchObject({ allowStaleSending: false })
+    expect(store.debits.has(String(store.rows[0].id))).toBe(true) // re-débité, une seule fois
+    expect(sender.calls[0].idempotencyKey).toBe(sender.calls[1].idempotencyKey)
+  })
+
+  it('(b) reprise REFUSÉE dès qu’un provider_ref existe : 409, claim jamais tenté, aucun second pli', async () => {
+    const { app, store, sender } = makeApp({ backend: readyBackend() })
+    await request(app).post('/api/letters/send').send(basePayload())
+    // Cas le plus dangereux : la ligne a échoué APRÈS avoir été référencée chez le provider (le
+    // pli existe, il est peut-être déjà posté). Elle ne doit JAMAIS repartir.
+    store.rows[0].status = 'failed'
+    ageSend(store.rows[0])
+
+    const res = await request(app).post('/api/letters/send').send(basePayload())
+    expect(res.status).toBe(409)
+    expect(res.body.code).toBe('SEND_ALREADY_EXISTS')
+    expect(store.claims).toHaveLength(0)
+    expect(sender.calls).toHaveLength(1)
+  })
+
+  it('(c) deux reprises concurrentes : une seule gagne le claim, l’autre 409 SEND_IN_PROGRESS', async () => {
+    const sender = makePaperSender('ok')
+    const { app, store } = makeApp({ backend: readyBackend(), sender })
+
+    // Première tentative laissée en plan (résultat incertain) puis périmée.
+    sender.behavior = 'unavailable_network'
+    await request(app).post('/api/letters/send').send(basePayload())
+    ageSend(store.rows[0])
+    sender.behavior = 'ok'
+
+    // Reprise n°1 : bloquée À L'INTÉRIEUR de la soumission provider (elle « possède » la ligne).
+    let release = () => {}
+    sender.hold = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    // `.then()` explicite : un Test supertest est paresseux, il ne part qu'une fois consommé —
+    // sans cela la « requête concurrente » ne serait jamais émise.
+    const first = request(app).post('/api/letters/send').send(basePayload()).then((r) => r)
+    for (let i = 0; i < 50 && sender.calls.length < 2; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => setTimeout(resolve, 5))
+    }
+    expect(sender.calls).toHaveLength(2) // la reprise n°1 est bien en vol
+
+    // Reprise n°2 pendant que la n°1 est en vol : la ligne vient d'être claimée (updated_at
+    // rafraîchi), elle n'est donc plus périmée → claim perdu.
+    const second = await request(app).post('/api/letters/send').send(basePayload())
+    expect(second.status).toBe(409)
+    expect(second.body.code).toBe('SEND_IN_PROGRESS')
+
+    release()
+    sender.hold = null
+    const firstRes = await first
+    expect(firstRes.status).toBe(202)
+    expect(sender.calls).toHaveLength(2) // la n°2 n'a jamais atteint le provider
+    expect(store.rows).toHaveLength(1)
   })
 })
 
@@ -729,13 +905,46 @@ describe('POST /api/letters/send (papier) — garde 9 : soumission au provider',
     expect(store.rows[0].error).toBeTruthy()
   })
 
-  it('provider injoignable (5xx/réseau) : 503, débit libéré, ligne failed', async () => {
-    const { app, store } = makeApp({ backend: readyBackend(), sender: makePaperSender('unavailable') })
+  it('provider en 5xx (échec CERTAIN, la requête a bien été reçue) : 503, débit libéré, ligne failed', async () => {
+    const { app, store } = makeApp({ backend: readyBackend(), sender: makePaperSender('unavailable_5xx') })
     const res = await request(app).post('/api/letters/send').send(basePayload())
     expect(res.status).toBe(503)
     expect(res.body.code).toBe('PROVIDER_UNAVAILABLE')
     expect(store.released).toHaveLength(1)
     expect(store.rows[0].status).toBe('failed')
+  })
+
+  // Correctif I1 de la revue : le seul cas où l'on ne sait PAS si un pli a été créé.
+  it('fetch rejeté sans réponse (résultat INCERTAIN) : 503 retryable, débit CONSERVÉ, ligne laissée prepared', async () => {
+    const { app, store } = makeApp({ backend: readyBackend(), sender: makePaperSender('unavailable_network') })
+    const res = await request(app).post('/api/letters/send').send(basePayload())
+    expect(res.status).toBe(503)
+    expect(res.body.code).toBe('PROVIDER_UNAVAILABLE')
+    expect(res.body.retryable).toBe(true)
+    // Libérer le crédit offrirait un courrier peut-être réellement affranchi ; le marquer failed
+    // fermerait une ligne qui a peut-être abouti. On ne touche à rien : la reprise réconciliera.
+    expect(store.released).toHaveLength(0)
+    expect(store.rows[0].status).toBe('prepared')
+    expect(store.rows[0].provider_ref).toBeNull()
+    expect(store.marks).toHaveLength(0)
+  })
+
+  it('résultat incertain puis reprise : MÊME ligne, MÊME Idempotency-Key, aucun second débit', async () => {
+    const sender = makePaperSender('unavailable_network')
+    const { app, store } = makeApp({ backend: readyBackend(), sender })
+    expect((await request(app).post('/api/letters/send').send(basePayload())).status).toBe(503)
+
+    // Le temps passe (la ligne sort de la fenêtre de fraîcheur), le réseau revient.
+    ageSend(store.rows[0])
+    sender.behavior = 'ok'
+    const retry = await request(app).post('/api/letters/send').send(basePayload())
+
+    expect(retry.status).toBe(202)
+    expect(store.rows).toHaveLength(1)
+    expect(sender.calls[0].idempotencyKey).toBe(sender.calls[1].idempotencyKey)
+    // Débit déjà pris et jamais libéré : consume_send est idempotent (PK send_id), pas de double.
+    expect(store.released).toHaveLength(0)
+    expect(store.debits.has(String(store.rows[0].id))).toBe(true)
   })
 
   it('service non configuré (pas de clé MySendingBox) : 503, débit libéré, ligne laissée prepared', async () => {
@@ -798,10 +1007,31 @@ describe('POST /api/letters/send (papier) — garde 10 : envoi nominal', () => {
     expect((sender.calls[0] as Row).idempotencyKey).not.toBe((sender.calls[1] as Row).idempotencyKey)
   })
 
+  // Correctif M4 de la revue : le pli EST parti, l'écriture du résultat a échoué. C'est le
+  // scénario où un release serait catastrophique (courrier offert), et il le devient encore plus
+  // depuis que la reprise existe : la ligne ne doit pas non plus finir `failed`.
+  it('pli soumis mais résultat non enregistré : 202 quand même, AUCUNE libération de débit', async () => {
+    const store = makeLettersStore()
+    store.markError = 'base indisponible'
+    const { app, sender } = makeApp({ backend: readyBackend(), store })
+    const res = await request(app).post('/api/letters/send').send(basePayload())
+
+    expect(res.status).toBe(202)
+    expect(res.body.send.status).toBe('submitted')
+    expect(res.body.send.provider_ref).toBe('msb-1')
+    expect(sender.calls).toHaveLength(1)
+    expect(store.released).toHaveLength(0)
+    expect(store.debits.has(String(store.rows[0].id))).toBe(true)
+    expect(Sentry.captureException).toHaveBeenCalled()
+  })
+
   it('canal portail (CAF) : 400 channel_not_available — jamais d’envoi papier concurrent d’un portail', async () => {
     const { app, store } = makeApp({ backend: readyBackend() })
     const res = await request(app).post('/api/letters/send').send(basePayload({ template_id: 'caf-notification' }))
     expect(res.status).toBe(400)
+    // Correctif M3 : la VRAIE raison, pas « champs requis manquants » (le payload papier n'a ni
+    // sujet ni corps, il tombait auparavant dans le contrôle de la branche email).
+    expect(res.body.code).toBe('CHANNEL_NOT_AVAILABLE')
     expect(store.rows).toHaveLength(0)
   })
 

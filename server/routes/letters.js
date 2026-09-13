@@ -42,6 +42,12 @@ const NETWORKS = new Set(['caf', 'cpam', 'carsat', 'impots'])
 // Débits comptés dans le solde : 'offert' (re-envoi NPAI) est un marqueur, pas une consommation
 // — miroir exact de send_balance() dans la migration Task 4.
 const BILLABLE_DEBIT_SOURCES = new Set(['included', 'extra'])
+// Fenêtre de fraîcheur du claim de reprise pour une ligne papier restée `prepared` (correctif C1
+// de la revue Task 9). 120 s, contre 60 s par défaut pour l'email : un POST papier porte un PDF
+// et jusqu'à 4 pièces jointes, il est structurellement plus lent — déclarer « périmée » une
+// soumission simplement longue la ferait reprendre pendant qu'elle aboutit. La RPC applique de
+// toute façon son propre plancher de 30 s et refuse tout claim dès qu'un provider_ref existe.
+const PAPER_STALE_SECONDS = 120
 
 // Événements Resend gérés par le webhook → statut letter_sends. Les autres types (opened,
 // clicked, complained, etc.) sont ignorés (200 silencieux, voir POST /webhook).
@@ -52,10 +58,13 @@ const RESEND_EVENT_STATUS = {
 }
 
 /** Langue de la requête : la route n'a pas de session (contrairement au questionnaire v2), le
- * corps est donc la seule source. Repli 'fr' — comportement identique à bodyLang() dans
- * server/routes/questionnaire.js. */
+ * corps ET la query sont donc les seules sources. Repli 'fr'. La query est lue depuis le
+ * chantier 2a (correctif M2 de la revue Task 9) : les routes de LECTURE ajoutées ici (GET /quota,
+ * GET /organisations) n'ont pas de corps du tout — sans elle, leurs messages d'erreur étaient
+ * toujours en français, même pour un utilisateur anglophone. Aligné sur reqLang() de
+ * server/routes/payments.js, qui lit déjà les deux. */
 function bodyLang(req) {
-  return req.body?.lang === 'en' ? 'en' : 'fr'
+  return req.body?.lang === 'en' || req.query?.lang === 'en' ? 'en' : 'fr'
 }
 
 // Gate du forfait par défaut : passe-plat. Un router construit sans `requirePurchase` (tests
@@ -149,9 +158,25 @@ export function createLettersRouter({
     message: (req) => msg(bodyLang(req), 'too_many_requests'),
   })
 
-  // Ordre voulu : le gate AVANT le limiteur — une requête qui sera refusée en 402 ne doit pas
-  // consommer le quota horaire d'envois de l'utilisateur.
-  router.post('/send', requireAuth, requirePurchase, sendLimiter, async (req, res) => {
+  // Kill switch du canal papier, EN MIDDLEWARE et AVANT le limiteur (correctif M5 de la revue
+  // Task 9) : couper le canal est un geste d'exploitation, il ne doit pas grignoter le quota
+  // horaire des utilisateurs — sinon, une coupure d'une heure laisse derrière elle des comptes
+  // bloqués en 429 alors qu'ils n'ont rien envoyé. Même logique que le gate forfait, monté lui
+  // aussi avant le limiteur. Lu à CHAQUE requête (jamais figé au démarrage) : rouvrir ou fermer
+  // le canal ne doit pas exiger un redéploiement.
+  const paperKillSwitch = (req, res, next) => {
+    if (channels[req.body?.template_id] !== PAPER_CHANNEL) return next()
+    if (process.env.PAPER_SENDS_ENABLED === 'true') return next()
+    return res.status(503).json({
+      success: false,
+      error: msg(bodyLang(req), 'paper_disabled'),
+      code: 'PAPER_DISABLED',
+    })
+  }
+
+  // Ordre voulu : le gate ET le kill switch AVANT le limiteur — une requête qui sera refusée en
+  // 402 ou en 503 ne doit pas consommer le quota horaire d'envois de l'utilisateur.
+  router.post('/send', requireAuth, requirePurchase, paperKillSwitch, sendLimiter, async (req, res) => {
     const lang = bodyLang(req)
     try {
       // Aiguillage par canal AVANT toute autre lecture du corps : la branche papier n'a pas le
@@ -163,11 +188,23 @@ export function createLettersRouter({
       // de la vraie raison. Un payload sans template_id du tout continue de tomber, lui, dans le
       // 400 « champs requis manquants » de la branche email.
       const requestedTemplate = req.body?.template_id
-      if (requestedTemplate && !channels[requestedTemplate]) {
+      const requestedChannel = channels[requestedTemplate]
+      if (requestedTemplate && !requestedChannel) {
         return res.status(404).json({ success: false, error: msg(lang, 'unknown_template') })
       }
-      if (channels[requestedTemplate] === PAPER_CHANNEL) {
+      if (requestedChannel === PAPER_CHANNEL) {
         return await sendPaperLetter(req, res, lang)
+      }
+      // Canal ni email ni papier (portail, lre/lrar du lot 2c) : tranché ICI (correctif M3 de la
+      // revue Task 9). Auparavant ce refus vivait plus bas, APRÈS le contrôle des champs de la
+      // branche email — un payload papier, qui n'a ni sujet ni corps libre, recevait donc
+      // « champs requis manquants » au lieu de la vraie raison : ce canal ne s'envoie pas.
+      if (requestedChannel && requestedChannel !== 'email') {
+        return res.status(400).json({
+          success: false,
+          error: msg(lang, 'channel_not_available'),
+          code: 'CHANNEL_NOT_AVAILABLE',
+        })
       }
 
       const { template_id, step_id, subject, resolved_body, recipient_email } = req.body ?? {}
@@ -180,7 +217,8 @@ export function createLettersRouter({
         return res.status(404).json({ success: false, error: msg(lang, 'unknown_template') })
       }
       if (channel !== 'email') {
-        return res.status(400).json({ success: false, error: msg(lang, 'channel_not_available') })
+        // Défense en profondeur : le cas est déjà tranché par l'aiguillage ci-dessus (M3).
+        return res.status(400).json({ success: false, error: msg(lang, 'channel_not_available'), code: 'CHANNEL_NOT_AVAILABLE' })
       }
       if (!EMAIL_RE.test(recipient_email)) {
         return res.status(400).json({ success: false, error: msg(lang, 'invalid_recipient_email') })
@@ -275,7 +313,7 @@ export function createLettersRouter({
   // et posté — de l'argent réel. Chaque garde est numérotée ci-dessous et testée dans cet ordre
   // (tests/letters-paper-routes.test.ts) :
   //   1. requireAuth + requirePurchase (middlewares de la route, déjà passés ici)
-  //   2. kill switch PAPER_SENDS_ENABLED                     → 503
+  //   2. kill switch PAPER_SENDS_ENABLED (middleware paperKillSwitch, avant le limiteur) → 503
   //   3. profil expéditeur présent ET postalement exploitable → 400
   //   4. adresse destinataire valide (≤45/ligne, CP 5 chiffres, jamais tronquée) → 400
   //   5. corps REGÉNÉRÉ côté serveur depuis le template      → 400 si variables manquantes
@@ -293,11 +331,8 @@ export function createLettersRouter({
     const templateId = req.body.template_id
 
     // ── 2. Kill switch du canal ───────────────────────────────────────────────────────────
-    // Lu à CHAQUE requête (pas au démarrage) : couper le canal est un geste d'urgence, il ne
-    // doit pas attendre un redéploiement. Défaut FERMÉ, indépendamment de PAYMENTS_ENABLED.
-    if (process.env.PAPER_SENDS_ENABLED !== 'true') {
-      return res.status(503).json({ success: false, error: msg(lang, 'paper_disabled'), code: 'PAPER_DISABLED' })
-    }
+    // Déjà appliqué par le middleware `paperKillSwitch` (monté avant le limiteur) : arriver ici
+    // signifie que PAPER_SENDS_ENABLED vaut exactement 'true'.
     if (!paperSender) {
       // Router construit sans adaptateur (usage isolé) : même verdict que l'absence de clé API.
       return res.status(503).json({ success: false, error: msg(lang, 'paper_not_configured'), code: 'PAPER_NOT_CONFIGURED' })
@@ -477,21 +512,49 @@ export function createLettersRouter({
       throw error
     }
 
+    // ── 7 bis. Reprise d'un envoi bloqué (correctif C1 de la revue Task 9) ────────────────
+    // Le dedup_key protège d'un second pli, mais il ne doit pas transformer un échec en cul-de-sac
+    // définitif : sans reprise, un courrier refusé pour quota épuisé (402) ou par une panne du
+    // provider restait bloqué POUR TOUJOURS — l'utilisateur avait payé un envoi qu'il ne pouvait
+    // plus faire partir, et rien dans l'UI ne pouvait l'en sortir.
+    //
+    // TROIS VERROUS rendent la reprise sûre, et aucun ne dépend des deux autres :
+    //  (1) ROUTE : on ne reprend QUE `prepared`/`failed` SANS provider_ref. Dès qu'une référence
+    //      existe, le pli EXISTE chez MySendingBox (peut-être déjà imprimé, affranchi, posté) —
+    //      c'est un 409 sec, jamais une nouvelle soumission ;
+    //  (2) BASE : `claim_letter_retry` refait le test (`channel = 'email' or provider_ref is
+    //      null`) et rend le claim ATOMIQUE — deux reprises concurrentes, une seule gagne ;
+    //  (3) PROVIDER : la reprise garde la MÊME ligne, donc le même send.id, donc la même
+    //      Idempotency-Key (dérivée de l'id) — même si un POST perdu avait en fait été accepté,
+    //      MySendingBox reconnaît la clé et ne crée pas de second courrier.
+    // Le débit, lui, est idempotent par construction (send_debits.send_id est la PK) : une reprise
+    // après libération re-débite correctement, une reprise sans libération ne débite pas deux fois.
+    let send = created.send
     if (created.duplicate) {
-      // Ce courrier a déjà une ligne : qu'elle soit partie, en cours ou en échec, on ne relance
-      // RIEN d'ici. Contrairement à l'email (retry par claim_letter_retry), un pli papier engage
-      // une dépense et un destinataire physique — la reprise d'une soumission échouée est un
-      // geste explicite, prévu au lot 2b (la RPC claim_letter_retry l'autorise déjà, sous garde
-      // `provider_ref is null`). Le front distingue les cas grâce au statut renvoyé ici.
-      return res.status(409).json({
-        success: false,
-        error: msg(lang, 'send_already_exists'),
-        code: 'SEND_ALREADY_EXISTS',
-        send: created.send,
+      const status = created.send.status
+      const resumable = !created.send.provider_ref && (status === 'prepared' || status === 'failed')
+      if (!resumable) {
+        return res.status(409).json({
+          success: false,
+          error: msg(lang, 'send_already_exists'),
+          code: 'SEND_ALREADY_EXISTS',
+          send: created.send,
+        })
+      }
+      // `prepared` = statut initial du canal : la ligne n'est claimable que si elle est PÉRIMÉE
+      // (une autre requête est peut-être en train de soumettre en ce moment même). `failed` =
+      // tentative constatée close : claim immédiat.
+      const claimed = await store.claimRetry(req.supabaseClient, created.send.id, {
+        allowStaleSending: status === 'prepared',
+        staleSeconds: PAPER_STALE_SECONDS,
       })
+      if (!claimed) {
+        // Claim perdu : un envoi de ce courrier est en cours ailleurs (ou vient de l'être) — on
+        // ne soumet rien. Même verdict et même message que le canal email dans ce cas.
+        return res.status(409).json({ success: false, error: msg(lang, 'send_in_progress'), code: 'SEND_IN_PROGRESS' })
+      }
+      send = claimed
     }
-
-    const send = created.send
 
     // ── 8. Débit atomique du quota, AVANT la soumission (spec §4) ─────────────────────────
     // Deux envois concurrents avec un seul crédit ne passent jamais tous les deux ; sur échec de
@@ -581,15 +644,42 @@ export function createLettersRouter({
     return { buffer: Buffer.from(await response.arrayBuffer()), mime: row.mime, filename: row.filename }
   }
 
-  /** Échec AVANT toute prise en charge par le provider : le débit est rendu (« pas de débit sur
-   * échec », spec §4) et la ligne marquée. Deux nuances :
-   *  • `paper_not_configured` (clé API absente) n'est pas un échec d'envoi mais une configuration
-   *    manquante : la ligne reste `prepared`, comme le canal email laisse la sienne en `sending` ;
-   *  • `provider_unavailable` (5xx ou réseau) est temporaire → 503 ; tout autre refus est un 502.
+  /** La soumission n'a pas abouti. TROIS RÉGIMES, selon ce qu'on sait réellement du sort du pli
+   * (correctif I1 de la revue Task 9 — le régime « incertain » manquait) :
+   *
+   *  • CERTAIN, rien n'est parti — `provider_rejected` (4xx : MySendingBox a lu la requête et l'a
+   *    refusée) et `provider_unavailable` AVEC un `status` HTTP (5xx : la requête a bien atteint
+   *    le provider, qui a échoué). Le débit est rendu (« pas de débit sur échec », spec §4), la
+   *    ligne passe `failed` → 502 / 503.
+   *  • INCERTAIN — `provider_unavailable` SANS `status` : c'est le fetch lui-même qui a rejeté
+   *    (DNS, TCP coupé, timeout). Le POST a PEUT-ÊTRE été reçu et accepté : un courrier existe
+   *    peut-être déjà, facturé. On ne rend donc RIEN et on ne déclare RIEN en échec — la ligne
+   *    reste `prepared` avec son débit, et la reprise (garde 7 bis) la rattrapera avec la MÊME
+   *    Idempotency-Key : si le pli existait, MySendingBox renvoie le même, sinon il le crée.
+   *    Libérer le crédit ici reviendrait à offrir un courrier réellement affranchi ; le marquer
+   *    `failed` fermerait la ligne sur un échec qui n'en est peut-être pas un.
+   *  • CONFIGURATION — `paper_not_configured` (clé API absente) : rien n'a été tenté, le débit est
+   *    rendu et la ligne reste `prepared`, comme le canal email laisse la sienne en `sending`.
+   *
    * Aucune erreur de rattrapage ne doit masquer l'échec initial : les deux appels sont protégés. */
   async function handlePaperFailure({ req, res, lang, send, error }) {
     const code = error?.code
     const notConfigured = error?.message === 'paper_not_configured'
+    // Un rejet de fetch ne porte pas de status HTTP : la requête n'a jamais reçu de réponse.
+    const uncertain = code === 'provider_unavailable' && error?.status === undefined
+
+    if (uncertain) {
+      console.error(`⚠️ letters/send papier — résultat INCERTAIN (send ${send.id}) : débit conservé, ligne laissée prepared`)
+      Sentry.captureException(error, { tags: { stage: 'provider_submit_uncertain', send_id: send.id } })
+      return res.status(503).json({
+        success: false,
+        error: msg(lang, 'provider_unavailable'),
+        code: 'PROVIDER_UNAVAILABLE',
+        // Le front doit inviter à REPRENDRE ce courrier (même bouton, même ligne) plutôt qu'à en
+        // créer un autre : la reprise est la seule manière de réconcilier un sort inconnu.
+        retryable: true,
+      })
+    }
 
     // TOUJOURS avec le user_id de la requête : cette RPC rend un crédit, elle ne doit jamais
     // pouvoir toucher au débit d'un tiers (garde d'appartenance, letters-store.js).

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 // @ts-expect-error — module JS serveur
-import { getPaidPurchase } from '../server/lib/purchases-store.js'
+import { getPaidPurchase, createPending, markPaid } from '../server/lib/purchases-store.js'
 
 /**
  * Fake du query-builder Supabase (même patron que tests/letters-store.test.ts) : chaîne fluide
@@ -49,5 +49,43 @@ describe('purchases-store — getPaidPurchase', () => {
   it('propage les erreurs Supabase en exceptions lisibles', async () => {
     const { client } = fakeClient({ data: null, error: { message: 'boom' } })
     await expect(getPaidPurchase(client, 'user-1')).rejects.toThrow(/boom/)
+  })
+})
+
+/** Client à RPC (les écritures passent toutes par des fonctions security definer). */
+function fakeRpcClient(result: { data?: unknown; error?: { message: string } | null } = { error: null }) {
+  const calls: Array<[string, Record<string, unknown>]> = []
+  const client = {
+    rpc: (name: string, params: Record<string, unknown>) => {
+      calls.push([name, params])
+      return Promise.resolve(result)
+    },
+  }
+  return { client: client as never, calls }
+}
+
+// Chantier 2a : `kind` distingue le forfait (qui ouvre le gate du produit) de l'achat d'un envoi
+// supplémentaire. Correctif I2 de la revue Task 9 : une valeur inconnue LÈVE au lieu d'être
+// silencieusement ramenée à 'forfait' — la valeur privilégiée ne s'obtient jamais par accident.
+describe('purchases-store — kind (facturation à l’acte)', () => {
+  it('createPending transmet p_kind tel quel', async () => {
+    const { client, calls } = fakeRpcClient()
+    await createPending(client, { userId: 'user-1', sessionId: 'cs_1', includedSends: 1, kind: 'envoi_sup' })
+    expect(calls[0][0]).toBe('create_pending_purchase')
+    expect(calls[0][1]).toMatchObject({ p_kind: 'envoi_sup', p_included_sends: 1 })
+  })
+
+  it('markPaid sans kind : repli « forfait » (appelant d’avant le chantier 2a, metadata absente)', async () => {
+    const { client, calls } = fakeRpcClient()
+    await markPaid(client, { sessionId: 'cs_1', userId: 'user-1', paymentIntent: null, amountTotal: null, currency: null, includedSends: 5 })
+    expect(calls[0][1]).toMatchObject({ p_kind: 'forfait' })
+  })
+
+  it('kind inconnu : LÈVE, aucune écriture tentée (le webhook acquitte quand même et capture)', async () => {
+    const { client, calls } = fakeRpcClient()
+    await expect(
+      markPaid(client, { sessionId: 'cs_1', userId: 'user-1', paymentIntent: null, amountTotal: null, currency: null, includedSends: 1, kind: 'abonnement' }),
+    ).rejects.toThrow(/kind inattendu/)
+    expect(calls).toHaveLength(0)
   })
 })

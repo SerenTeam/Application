@@ -16,7 +16,10 @@ const TABLE = 'purchases'
 
 // Colonnes lues par le gate et l'UI. Les identifiants Stripe (session, payment intent) sont
 // volontairement exclus : ils ne servent à rien côté client, autant ne pas les exposer.
-const PUBLIC_COLUMNS = 'id, status, amount_total, currency, included_sends, paid_at, refunded_at, created_at'
+// `kind` en fait partie depuis le chantier 2a : la route /status doit pouvoir reconnaître un
+// achat d'envoi supplémentaire pour ce qu'il est (détection d'anomalie M1), et le front en aura
+// besoin pour le libellé de l'écran de confirmation.
+const PUBLIC_COLUMNS = 'id, status, kind, amount_total, currency, included_sends, paid_at, refunded_at, created_at'
 
 // Appel RPC commun aux quatre écritures. Le secret manquant lève AVANT tout appel réseau (même
 // comportement que letters-store.updateSendByProviderRef) ; l'appelant décide quoi en faire —
@@ -66,13 +69,21 @@ export async function getLatestPurchase(client, userId) {
   return data ?? null
 }
 
-// Nature de l'achat (chantier 2a) : 'forfait' (le produit) ou 'envoi_sup' (facturation à
-// l'acte, `included_sends = 1`). Normalisée ICI, avant tout appel : une valeur inattendue
-// violerait le CHECK `purchases_kind_check` et ferait échouer l'encaissement d'un paiement
-// pourtant réel. Le défaut retenu est 'forfait' — c'est la seule valeur qu'un appelant d'avant
-// le chantier 2a pouvait produire, et donc la seule compatible avec l'historique.
+// Nature de l'achat (chantier 2a) : 'forfait' (le produit) ou 'envoi_sup' (facturation à l'acte,
+// `included_sends = 1`). SEULS l'absence de valeur (appelant d'avant le chantier 2a, metadata
+// sans `kind`) est ramenée à 'forfait' — c'est la seule valeur que l'historique pouvait produire.
+// Toute AUTRE valeur LÈVE (correctif I2 de la revue Task 9) : la ramener silencieusement à
+// 'forfait' donnerait la valeur PRIVILÉGIÉE (celle qui ouvre le gate du produit) à une donnée
+// qu'on n'a pas comprise, et masquerait durablement le bug qui l'a produite. La route webhook,
+// elle, acquitte toujours en 200 et capture dans Sentry : l'exception rend l'anomalie VISIBLE
+// sans faire réessayer Stripe en boucle, et le CHECK SQL `purchases_kind_check` redevient une
+// vraie ceinture plutôt que le seul filet.
 function normalizeKind(kind) {
-  return kind === 'envoi_sup' ? 'envoi_sup' : 'forfait'
+  if (kind === undefined || kind === null) return 'forfait'
+  if (kind !== 'forfait' && kind !== 'envoi_sup') {
+    throw new Error(`purchases.kind inattendu : ${JSON.stringify(String(kind).slice(0, 32))}`)
+  }
+  return kind
 }
 
 export async function createPending(client, { userId, sessionId, includedSends, kind }) {

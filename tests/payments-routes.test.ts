@@ -1,6 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+
+// Sentry mocké pour tout le graphe : la détection d'anomalie « envoi supplémentaire encaissé sans
+// forfait » (correctif M1 de la revue Task 9) se vérifie comme le reste du contrat.
+vi.mock('@sentry/node', () => ({ captureException: vi.fn() }))
+
 import express from 'express'
 import request from 'supertest'
+import * as Sentry from '@sentry/node'
 // @ts-expect-error — module JS serveur
 import { createPaymentsRouter } from '../server/routes/payments.js'
 import { makePurchasesStore } from './helpers/purchases-fake'
@@ -62,6 +68,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   delete process.env.WEBHOOK_RPC_SECRET
+  vi.mocked(Sentry.captureException).mockClear()
 })
 
 describe('POST /api/payments/checkout', () => {
@@ -255,5 +262,27 @@ describe('GET /api/payments/status', () => {
     const store = makePurchasesStore([{ status: 'refunded', kind: 'forfait', paid_at: '2026-07-25T10:00:00.000Z' }])
     const { app } = makeApp({ store })
     expect((await request(app).get('/api/payments/status')).body.has_paid).toBe(false)
+  })
+
+  // Correctif M1 de la revue Task 9 : l'utilisateur a payé un envoi supplémentaire qu'il ne peut
+  // pas consommer (le gate exige un forfait). Cas réel : paiement différé encaissé après un
+  // remboursement du forfait. La route est le premier endroit du flux qui peut le CONSTATER (le
+  // webhook, lui, lit avec le client anon et ne voit aucune ligne sous RLS).
+  it('anomalie : envoi supplémentaire encaissé sans forfait payé → capture Sentry', async () => {
+    const store = makePurchasesStore([{ status: 'paid', kind: 'envoi_sup', included_sends: 1, paid_at: '2026-09-13T10:00:00.000Z' }])
+    const { app } = makeApp({ store })
+    const res = await request(app).get('/api/payments/status')
+    expect(res.status).toBe(200)
+    expect(Sentry.captureException).toHaveBeenCalled()
+  })
+
+  it('cas normal (forfait payé, puis envoi supplémentaire) : aucune capture', async () => {
+    const store = makePurchasesStore([
+      { status: 'paid', kind: 'forfait', included_sends: 5, paid_at: '2026-07-25T10:00:00.000Z' },
+      { status: 'paid', kind: 'envoi_sup', included_sends: 1, paid_at: '2026-09-13T10:00:00.000Z' },
+    ])
+    const { app } = makeApp({ store })
+    await request(app).get('/api/payments/status')
+    expect(Sentry.captureException).not.toHaveBeenCalled()
   })
 })

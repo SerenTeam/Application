@@ -163,6 +163,27 @@ export function createPaymentsRouter({
         store.getPaidPurchase(req.supabaseClient, req.user.id),
         getPrice ? getPrice() : Promise.resolve(null),
       ])
+
+      // Détection d'anomalie (correctif M1 de la revue Task 9) : un envoi supplémentaire encaissé
+      // alors que l'utilisateur n'a PAS (ou n'a plus) de forfait payé. Le Checkout à l'acte exige
+      // pourtant un forfait (403), mais la fenêtre existe : paiement différé encaissé après un
+      // remboursement du forfait, ou achat manuel depuis le Dashboard Stripe. L'utilisateur a payé
+      // quelque chose qu'il ne peut pas consommer (le gate le refuse) → réconciliation manuelle.
+      //
+      // ⚠️ POURQUOI ICI ET PAS DANS LE WEBHOOK (écart documenté) : le webhook n'a pas de token
+      // utilisateur, il écrit avec le client `anon` + les RPC à secret. La policy `own purchases
+      // read` étant `auth.uid() = user_id`, une lecture des achats depuis ce client ne renvoie
+      // JAMAIS de ligne — le test « a-t-il un forfait ? » y serait faux pour TOUS les achats à
+      // l'acte, soit 100 % de faux positifs. Cette route-ci lit avec le token de l'utilisateur :
+      // c'est le premier endroit du flux où la question a une réponse fiable (et elle est appelée
+      // au retour de Checkout, exactement quand l'anomalie apparaîtrait).
+      if (!forfait && purchase?.status === 'paid' && purchase?.kind === 'envoi_sup') {
+        console.warn('⚠️ payments/status : envoi supplémentaire encaissé sans forfait payé')
+        Sentry.captureException(new Error('extra_send_paid_without_forfait'), {
+          tags: { anomaly: 'extra_send_without_forfait', purchase_id: purchase.id },
+        })
+      }
+
       return res.json({
         success: true,
         payments_enabled: saleOpen(),
@@ -244,7 +265,12 @@ async function handleEvent({ event, store, publicClient }) {
       // revenue sous signature vérifiée. Elle ne sert qu'au chemin INSERT de la RPC (webhook plus
       // rapide que la ligne d'attente) ; sur une ligne `pending` existante, le `kind` déjà écrit
       // fait foi et n'est jamais réécrit. Toute valeur autre que 'envoi_sup' est ramenée à
-      // 'forfait' par le store — jamais d'échec d'encaissement pour une metadata inattendue.
+      // 'forfait' par le store — une valeur inattendue, elle, LÈVE (correctif I2) : le webhook
+      // acquitte quand même en 200 et capture dans Sentry, l'anomalie devient visible au lieu de
+      // s'écrire en base sous la valeur privilégiée.
+      // La vérification « cet achat à l'acte a-t-il un forfait derrière lui ? » (anomalie M1) ne
+      // peut PAS se faire ici : ce client n'a pas de token utilisateur et la RLS de purchases ne
+      // lui montre aucune ligne — elle vit dans GET /status, qui lit avec le token du porteur.
       kind: session.metadata?.kind,
     })
     return
