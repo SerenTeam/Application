@@ -6,19 +6,38 @@
 // en test). Le fold statut (`events[] → statut Seren`) vit dans msb-status.js, pas ici :
 // `getLetter` renvoie le JSON brut de la réponse provider.
 //
-// ⚠️ DÉCISIONS PRISES FAUTE D'ACCÈS À LA DOC MYSENDINGBOX AUTHENTIFIÉE PENDANT CETTE SESSION —
-// marquées « à confirmer au test réel » (E2E préprod, clé test, USER STEP) :
-//   - Transport : corps JSON (Content-Type: application/json), PAS multipart/form-data. Le plan
-//     énumère les champs du payload comme un objet unique ("body avec address_placement: …,
-//     manage_returned_mail: true, …") plutôt que comme des parts de formulaire — lecture retenue
-//     ici. Si l'API réelle attend du multipart, seule cette couche transport change (le contrat
-//     `send()` et les tests de forme du payload restent valables).
-//   - Fichiers : `source_file` (corps du courrier) et `source_file_2`..`source_file_5` (pièces
-//     jointes, max 4) transmis en base64 dans le JSON, pas en upload binaire.
-//   - Noms de champs adresse : `recipient_name`, `recipient_address_line1/2`,
-//     `recipient_postal_code`, `recipient_city`, `recipient_country` (miroir `sender_*`).
-//   - Réponse POST : `_id` à la racine du JSON (identique à la clé de dédup des événements,
-//     msb-status.js) → `providerRef`.
+// ── Structure du POST /letters (doc officielle docs.mysendingbox.fr, pré-vol 13/09 — CORRECTIF
+// post-implémentation : la première version de ce fichier avait des champs plats et un corps
+// JSON+base64 inventés faute d'accès à la doc ; voici la structure vérifiée) ──
+//   - Destinataire = objet imbriqué `to` (name et/ou company, address_line1/2/3, address_city,
+//     address_postalcode, address_country ISO 3166) ; expéditeur = objet `from` (même forme).
+//     `from` n'est OBLIGATOIRE que pour lr/lrar selon la doc, mais on l'envoie TOUJOURS : c'est
+//     l'adresse de retour dont `manage_returned_mail` a besoin, et elle est imprimée en tête de
+//     lettre via `print_sender_address: true`.
+//   - Fichiers : `source_file` + `source_file_type` ∈ {html, file, template_id, remote} ;
+//     multi-fichiers `source_file_2..5` + leur propre `source_file_X_type`, fusionnés dans
+//     l'ordre par MySendingBox. Le base64-en-JSON n'est PAS dans l'enum documenté.
+//   - DÉCISION DE TRANSPORT (retenue) : `source_file_type: 'file'` en **multipart/form-data**
+//     (l'« upload local » canonique) — les buffers (PDF principal + PJ déjà converties en PDF)
+//     partent en parts binaires, pas en base64. PLAN B si le multipart s'avère refusé par l'API
+//     réelle (constaté à l'E2E préprod, USER STEP) : basculer `source_file_type` sur `'remote'`
+//     et transmettre des URLs signées Storage courte durée au lieu des buffers — seule
+//     `buildMultipart` (et l'appel HTTP dans `send()`) changerait, `buildLetterPayload` et le
+//     contrat public `send({...}) → { providerRef, status }` restent valables tels quels.
+//   - Options TOUJOURS présentes : `address_placement: 'insert_blank_page'`,
+//     `manage_returned_mail: true`, `postage_type: 'ecopli'`, `color: 'bw'`,
+//     `print_sender_address: true` ; `both_sides` non fixé (défaut provider conservé) ; header
+//     `Idempotency-Key` fourni par l'appelant.
+//   - Réponse : `_id` (→ providerRef), `file`, `price`, `events` (initialement `letter.created`).
+//
+// ⚠️ À CONFIRMER AU TEST RÉEL : l'encodage exact des objets `to`/`from` en multipart. Un
+// multipart/form-data standard n'a pas de notion d'objet imbriqué — deux conventions sont
+// courantes pour les API construites en Rails/PHP (dont MySendingBox, plausible vu le TLD .fr) :
+// (a) la notation crochets retenue ici (`to[name]`, `to[address_line1]`, …) — un champ par
+// sous-clé ; (b) un unique champ `to` contenant le JSON stringifié de l'objet. `metadata`, lui,
+// est un blob opaque round-trip (pas de sous-champs connus à l'avance) : envoyé en JSON
+// stringifié dans un unique champ `metadata`, quelle que soit la convention retenue pour
+// `to`/`from`. Si (a) est rejeté par l'API réelle, seule `buildMultipart` change.
 import { jsPDF } from 'jspdf'
 
 const MSB_BASE_URL = 'https://api.mysendingbox.fr'
@@ -47,8 +66,11 @@ function checkLine(value, field, side) {
 }
 
 // Validation stricte AVANT tout appel réseau (spec Task 7) : une adresse ne respectant pas les
-// contraintes physiques du courrier (lignes ≤ 45 caractères, CP à 5 chiffres — mêmes bornes que
-// les CHECK SQL de sender_profiles/organisations, Task 1) est refusée ici, jamais tronquée.
+// contraintes physiques du courrier (lignes ≤ 45 caractères — 38 seulement en
+// `postage_speed: 'express'`, non utilisé ici — CP à 5 chiffres, mêmes bornes que les CHECK SQL
+// de sender_profiles/organisations, Task 1) est refusée ici, jamais tronquée. Shape interne
+// Seren (`{ name, address_line1, address_line2?, postal_code, city, country? }`), traduite en
+// shape API (`to`/`from`) par `toApiAddress` seulement après validation.
 function validateAddress(addr, side) {
   if (!addr || typeof addr !== 'object') {
     throw new PaperSenderError('invalid_address', { field: side })
@@ -62,6 +84,21 @@ function validateAddress(addr, side) {
   if (!POSTAL_CODE_RE.test(String(addr.postal_code ?? ''))) {
     throw new PaperSenderError('invalid_address', { field: `${side}.postal_code` })
   }
+}
+
+// Shape interne Seren → shape API MySendingBox (`to`/`from`) : renomme `postal_code`/`city` en
+// `address_postalcode`/`address_city` (noms exacts doc), `country` en `address_country` (défaut
+// 'FR'), omet `address_line2` si absent plutôt que d'envoyer une clé vide.
+function toApiAddress(addr) {
+  const api = {
+    name: addr.name,
+    address_line1: addr.address_line1,
+    address_city: addr.city,
+    address_postalcode: addr.postal_code,
+    address_country: addr.country || 'FR',
+  }
+  if (addr.address_line2) api.address_line2 = addr.address_line2
+  return api
 }
 
 /**
@@ -99,16 +136,72 @@ function toPdfBytes({ buffer, mime }) {
   throw new PaperSenderError('unsupported_attachment_type', { mime })
 }
 
-function addressPayload(addr, prefix) {
-  const payload = {
-    [`${prefix}_name`]: addr.name,
-    [`${prefix}_address_line1`]: addr.address_line1,
-    [`${prefix}_postal_code`]: addr.postal_code,
-    [`${prefix}_city`]: addr.city,
-    [`${prefix}_country`]: addr.country || 'FR',
+/**
+ * Fonction PURE : construit les champs sémantiques du courrier (aucun encodage réseau ici — voir
+ * `buildMultipart` pour la mise en forme multipart). `recipient`/`sender` sont la shape interne
+ * Seren déjà validée (`validateAddress`) ; `metadata` est passthrough (opaque pour cet adaptateur).
+ * @param {{ recipient: object, sender: object, metadata?: object }} params
+ */
+export function buildLetterPayload({ recipient, sender, metadata }) {
+  return {
+    to: toApiAddress(recipient),
+    from: toApiAddress(sender),
+    metadata: metadata ?? {},
+    // Prémisses d'appel §M — TOUJOURS présentes, quel que soit le contenu du courrier.
+    address_placement: 'insert_blank_page',
+    manage_returned_mail: true,
+    postage_type: 'ecopli',
+    color: 'bw',
+    // `from` est envoyé même pour un courrier simple (voir note de tête) : cette option demande
+    // explicitement à MySendingBox de l'imprimer en tête de lettre.
+    print_sender_address: true,
+    // Upload local direct (buffers en multipart) — pas de remote URL ni de template MSB en 2a.
+    source_file_type: 'file',
   }
-  if (addr.address_line2) payload[`${prefix}_address_line2`] = addr.address_line2
-  return payload
+}
+
+// Aplatit un objet adresse (`to`/`from`) en parts multipart `prefix[clé]` — convention retenue,
+// à confirmer au test réel (voir note de tête du fichier). Omet les valeurs vides/absentes
+// plutôt que d'envoyer une part vide.
+function appendAddressParts(form, prefix, addr) {
+  for (const [key, value] of Object.entries(addr)) {
+    if (value === undefined || value === null || value === '') continue
+    form.append(`${prefix}[${key}]`, String(value))
+  }
+}
+
+/**
+ * Fonction pure côté données (aucun appel réseau) : encode `payload` (issu de
+ * `buildLetterPayload`) et les fichiers en `FormData`. AUCUN `Content-Type` n'est fixé ici ni
+ * dans `send()` — c'est fetch/undici qui calcule l'en-tête `multipart/form-data; boundary=…` à
+ * partir du corps `FormData` ; un `Content-Type` posé à la main casserait l'encodage (boundary
+ * manquant).
+ * @param {ReturnType<typeof buildLetterPayload>} payload
+ * @param {{ pdfBuffer: Buffer, attachments?: Buffer[] }} files pièces jointes DÉJÀ converties en PDF
+ * @returns {FormData}
+ */
+export function buildMultipart(payload, { pdfBuffer, attachments = [] }) {
+  const { to, from, metadata, ...scalars } = payload
+  const form = new FormData()
+
+  appendAddressParts(form, 'to', to)
+  appendAddressParts(form, 'from', from)
+  // `metadata` : blob opaque round-trip, JSON stringifié dans un unique champ (voir note de tête).
+  form.append('metadata', JSON.stringify(metadata ?? {}))
+  for (const [key, value] of Object.entries(scalars)) {
+    if (value === undefined) continue
+    form.append(key, String(value))
+  }
+
+  form.append('source_file', new Blob([pdfBuffer], { type: 'application/pdf' }), 'letter.pdf')
+  attachments.forEach((buf, i) => {
+    const field = `source_file_${i + 2}`
+    form.append(field, new Blob([buf], { type: 'application/pdf' }), `${field}.pdf`)
+    // Chaque fichier additionnel porte son propre `_type` (doc) — même valeur que le principal
+    // ici puisque toutes les PJ sont, comme le corps, des buffers locaux déjà en PDF.
+    form.append(`${field}_type`, 'file')
+  })
+  return form
 }
 
 function basicAuthHeader(apiKey) {
@@ -180,30 +273,17 @@ export function createPaperSender({ apiKey, fetchImpl = fetch } = {}) {
       }
 
       const preparedAttachments = attachments.map(toPdfBytes)
-
-      const body = {
-        // Prémisses d'appel §M — TOUJOURS présents, quel que soit le contenu du courrier.
-        address_placement: 'insert_blank_page',
-        manage_returned_mail: true,
-        postage_type: 'ecopli',
-        color: 'bw',
-        metadata: metadata ?? {},
-        source_file: pdfBuffer.toString('base64'),
-        ...addressPayload(recipient, 'recipient'),
-        ...addressPayload(sender, 'sender'),
-      }
-      preparedAttachments.forEach((buf, i) => {
-        body[`source_file_${i + 2}`] = buf.toString('base64')
-      })
+      const payload = buildLetterPayload({ recipient, sender, metadata })
+      const form = buildMultipart(payload, { pdfBuffer, attachments: preparedAttachments })
 
       const res = await callProvider(`${MSB_BASE_URL}${LETTERS_PATH}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          // PAS de Content-Type : fetch le calcule (avec boundary) à partir du corps FormData.
           Authorization: basicAuthHeader(apiKey),
           'Idempotency-Key': idempotencyKey,
         },
-        body: JSON.stringify(body),
+        body: form,
       })
       const data = await res.json()
       return { providerRef: data._id, status: 'submitted' }

@@ -1,13 +1,16 @@
 import { describe, it, expect, vi } from 'vitest'
 // @ts-expect-error — module JS serveur
-import { createPaperSender, imageToPdf, PaperSenderError } from '../server/lib/paper-sender.js'
+import { createPaperSender, imageToPdf, buildLetterPayload, buildMultipart, PaperSenderError } from '../server/lib/paper-sender.js'
 
 // Adaptateur MySendingBox (REST direct, PAS le SDK) — contrat symétrique à
 // server/lib/email-sender.js. `fetchImpl` est TOUJOURS injecté ici : aucun test ne fait
-// d'appel réseau réel. Décisions de transport prises faute de doc publique consultable en
-// session (marquées « à confirmer au test réel » dans server/lib/paper-sender.js) : corps JSON
-// (pas multipart), fichiers en base64 sous `source_file`/`source_file_2..5`, noms de champs
-// adresse `recipient_/sender_ address_line1/2, postal_code, city, country`.
+// d'appel réseau réel.
+//
+// Structure vérifiée contre la doc officielle docs.mysendingbox.fr (pré-vol 13/09, correctif
+// post-implémentation) : adresses `to`/`from` imbriquées, `source_file_type: 'file'`,
+// multipart/form-data. Point encore marqué « à confirmer au test réel » dans
+// server/lib/paper-sender.js : l'encodage exact des objets imbriqués en multipart (notation
+// crochets `to[name]` retenue ici, alternative JSON-stringifié possible).
 
 const VALID_RECIPIENT = {
   name: 'CPAM de Paris',
@@ -52,6 +55,146 @@ function fakeFetch(responses: Array<{ status: number; ok?: boolean; body?: unkno
   })
   return { fn, calls }
 }
+
+/** Relit une FormData en objet simple { champ: valeur | valeur[] } pour des assertions lisibles
+ * (les champs répétés — aucun ici en pratique — deviendraient des tableaux). */
+function formEntries(form: FormData) {
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of form.entries()) {
+    if (key in out) {
+      out[key] = ([] as unknown[]).concat(out[key], value)
+    } else {
+      out[key] = value
+    }
+  }
+  return out
+}
+
+describe('buildLetterPayload (fonction pure — champs sémantiques)', () => {
+  it('produit des objets to/from imbriqués (pas de champs plats recipient_*/sender_*)', () => {
+    const payload = buildLetterPayload({ recipient: VALID_RECIPIENT, sender: VALID_SENDER, metadata: {} })
+    expect(payload.to).toEqual({
+      name: 'CPAM de Paris',
+      address_line1: '21 rue Georges Auric',
+      address_line2: 'Service Succession',
+      address_city: 'Paris',
+      address_postalcode: '75019',
+      address_country: 'FR',
+    })
+    expect(payload.from).toEqual({
+      name: 'Jean Dupont',
+      address_line1: '10 rue de la Paix',
+      address_city: 'Paris',
+      address_postalcode: '75002',
+      address_country: 'FR',
+    })
+    expect((payload as Record<string, unknown>).recipient_name).toBeUndefined()
+    expect((payload as Record<string, unknown>).sender_name).toBeUndefined()
+  })
+
+  it('omet address_line2 quand absent plutôt que d’envoyer une clé vide', () => {
+    const payload = buildLetterPayload({ recipient: VALID_SENDER, sender: VALID_SENDER, metadata: {} })
+    expect(payload.to.address_line2).toBeUndefined()
+    expect('address_line2' in payload.to).toBe(false)
+  })
+
+  it('inclut TOUJOURS address_placement, manage_returned_mail, print_sender_address et source_file_type', () => {
+    const payload = buildLetterPayload({ recipient: VALID_RECIPIENT, sender: VALID_SENDER })
+    expect(payload.address_placement).toBe('insert_blank_page')
+    expect(payload.manage_returned_mail).toBe(true)
+    expect(payload.print_sender_address).toBe(true)
+    expect(payload.source_file_type).toBe('file')
+    expect(payload.postage_type).toBe('ecopli')
+    expect(payload.color).toBe('bw')
+  })
+
+  it('passe le metadata tel quel (opaque)', () => {
+    const payload = buildLetterPayload({
+      recipient: VALID_RECIPIENT,
+      sender: VALID_SENDER,
+      metadata: { seren_send_id: 'send-42' },
+    })
+    expect(payload.metadata).toEqual({ seren_send_id: 'send-42' })
+  })
+
+  it('metadata absent → objet vide (jamais undefined/null dans le payload)', () => {
+    const payload = buildLetterPayload({ recipient: VALID_RECIPIENT, sender: VALID_SENDER })
+    expect(payload.metadata).toEqual({})
+  })
+})
+
+describe('buildMultipart (fonction pure — encodage réseau)', () => {
+  it('encode to/from en notation crochets (to[name], to[address_line1], …)', () => {
+    const payload = buildLetterPayload({ recipient: VALID_RECIPIENT, sender: VALID_SENDER, metadata: {} })
+    const form = buildMultipart(payload, { pdfBuffer: PDF_MAGIC })
+    const entries = formEntries(form)
+    expect(entries['to[name]']).toBe('CPAM de Paris')
+    expect(entries['to[address_line1]']).toBe('21 rue Georges Auric')
+    expect(entries['to[address_line2]']).toBe('Service Succession')
+    expect(entries['to[address_city]']).toBe('Paris')
+    expect(entries['to[address_postalcode]']).toBe('75019')
+    expect(entries['to[address_country]']).toBe('FR')
+    expect(entries['from[name]']).toBe('Jean Dupont')
+    expect(entries['from[address_postalcode]']).toBe('75002')
+  })
+
+  it('encode metadata en JSON stringifié dans un seul champ', () => {
+    const payload = buildLetterPayload({
+      recipient: VALID_RECIPIENT,
+      sender: VALID_SENDER,
+      metadata: { seren_send_id: 'send-42' },
+    })
+    const form = buildMultipart(payload, { pdfBuffer: PDF_MAGIC })
+    expect(formEntries(form).metadata).toBe(JSON.stringify({ seren_send_id: 'send-42' }))
+  })
+
+  it('encode les scalaires en chaînes (booléens inclus) : source_file_type, manage_returned_mail…', () => {
+    const payload = buildLetterPayload({ recipient: VALID_RECIPIENT, sender: VALID_SENDER })
+    const form = buildMultipart(payload, { pdfBuffer: PDF_MAGIC })
+    const entries = formEntries(form)
+    expect(entries.address_placement).toBe('insert_blank_page')
+    expect(entries.manage_returned_mail).toBe('true')
+    expect(entries.print_sender_address).toBe('true')
+    expect(entries.source_file_type).toBe('file')
+    expect(entries.postage_type).toBe('ecopli')
+    expect(entries.color).toBe('bw')
+  })
+
+  it('le PDF principal est une part nommée "source_file" (type application/pdf)', async () => {
+    const payload = buildLetterPayload({ recipient: VALID_RECIPIENT, sender: VALID_SENDER })
+    const form = buildMultipart(payload, { pdfBuffer: PDF_MAGIC })
+    const file = form.get('source_file') as unknown as File
+    expect(file).toBeInstanceOf(Blob)
+    expect(file.type).toBe('application/pdf')
+    const bytes = Buffer.from(await file.arrayBuffer())
+    expect(bytes.equals(PDF_MAGIC)).toBe(true)
+  })
+
+  it('place les pièces jointes en source_file_2..N, chacune avec son propre source_file_X_type', async () => {
+    const attachment1 = Buffer.from('%PDF-1.4 piece jointe 1')
+    const attachment2 = Buffer.from('%PDF-1.4 piece jointe 2')
+    const payload = buildLetterPayload({ recipient: VALID_RECIPIENT, sender: VALID_SENDER })
+    const form = buildMultipart(payload, { pdfBuffer: PDF_MAGIC, attachments: [attachment1, attachment2] })
+    const entries = formEntries(form)
+    expect(entries.source_file_2_type).toBe('file')
+    expect(entries.source_file_3_type).toBe('file')
+    expect(entries.source_file_4_type).toBeUndefined()
+    const file2 = form.get('source_file_2') as unknown as File
+    const file3 = form.get('source_file_3') as unknown as File
+    expect(Buffer.from(await file2.arrayBuffer()).equals(attachment1)).toBe(true)
+    expect(Buffer.from(await file3.arrayBuffer()).equals(attachment2)).toBe(true)
+  })
+
+  it('produit une FormData réelle qui sérialise avec un boundary multipart valide (via Request)', async () => {
+    const payload = buildLetterPayload({ recipient: VALID_RECIPIENT, sender: VALID_SENDER })
+    const form = buildMultipart(payload, { pdfBuffer: PDF_MAGIC })
+    const probe = new Request('https://api.mysendingbox.fr/letters', { method: 'POST', body: form })
+    expect(probe.headers.get('content-type')).toMatch(/^multipart\/form-data; boundary=/)
+    const raw = Buffer.from(await probe.arrayBuffer()).toString('latin1')
+    expect(raw).toContain('name="to[name]"')
+    expect(raw).toContain('name="source_file"; filename="letter.pdf"')
+  })
+})
 
 describe('createPaperSender', () => {
   describe('non configuré (pas de clé)', () => {
@@ -182,8 +325,8 @@ describe('createPaperSender', () => {
     })
   })
 
-  describe('payload POST /letters — assertions complètes', () => {
-    it('envoie insert_blank_page + manage_returned_mail TOUJOURS présents, en Basic Auth, avec Idempotency-Key', async () => {
+  describe('appel POST /letters — assertions complètes', () => {
+    it('envoie un corps multipart (FormData) en Basic Auth, avec Idempotency-Key, sans Content-Type manuel', async () => {
       const { fn, calls } = fakeFetch([{ status: 201, body: { _id: 'abc' } }])
       const sender = createPaperSender({ apiKey: 'ma-cle-secrete', fetchImpl: fn })
       await sender.send({
@@ -198,49 +341,29 @@ describe('createPaperSender', () => {
       const { url, init } = calls[0]
       expect(url).toBe('https://api.mysendingbox.fr/letters')
       expect(init.method).toBe('POST')
+      expect(init.body).toBeInstanceOf(FormData)
 
       const headers = init.headers as Record<string, string>
       expect(headers['Idempotency-Key']).toBe('idem-abc-123')
       // Basic Auth : clé API en username, mot de passe vide.
       const expectedAuth = 'Basic ' + Buffer.from('ma-cle-secrete:').toString('base64')
       expect(headers.Authorization).toBe(expectedAuth)
-      // La clé API elle-même n'apparaît JAMAIS en clair ailleurs que dans l'en-tête Authorization.
-      expect(JSON.stringify(init)).not.toContain('ma-cle-secrete')
+      // Pas de Content-Type manuel : fetch doit pouvoir calculer le boundary lui-même.
+      expect(headers['Content-Type']).toBeUndefined()
+      expect(headers['content-type']).toBeUndefined()
 
-      const body = JSON.parse(init.body as string)
-      expect(body.address_placement).toBe('insert_blank_page')
-      expect(body.manage_returned_mail).toBe(true)
-      expect(body.postage_type).toBe('ecopli')
-      expect(body.color).toBe('bw')
-      expect(body.metadata).toEqual({ seren_send_id: 'send-42' })
-      expect(body.source_file).toBe(PDF_MAGIC.toString('base64'))
-      expect(body.recipient_address_line1).toBe(VALID_RECIPIENT.address_line1)
-      expect(body.sender_address_line1).toBe(VALID_SENDER.address_line1)
+      // La clé API elle-même n'apparaît JAMAIS ailleurs que dans l'en-tête Authorization.
+      const entries = formEntries(init.body as FormData)
+      expect(JSON.stringify(entries)).not.toContain('ma-cle-secrete')
+
+      expect(entries['to[address_line1]']).toBe(VALID_RECIPIENT.address_line1)
+      expect(entries['from[address_line1]']).toBe(VALID_SENDER.address_line1)
+      expect(entries.address_placement).toBe('insert_blank_page')
+      expect(entries.manage_returned_mail).toBe('true')
+      expect(entries.source_file_type).toBe('file')
     })
 
-    it('place les pièces jointes PDF en source_file_2..N (jamais dans source_file, réservé au corps)', async () => {
-      const { fn, calls } = fakeFetch([{ status: 201, body: { _id: 'abc' } }])
-      const sender = createPaperSender({ apiKey: 'key', fetchImpl: fn })
-      const attachment1 = Buffer.from('%PDF-1.4 piece jointe 1')
-      const attachment2 = Buffer.from('%PDF-1.4 piece jointe 2')
-      await sender.send({
-        pdfBuffer: PDF_MAGIC,
-        attachments: [
-          { buffer: attachment1, mime: 'application/pdf' },
-          { buffer: attachment2, mime: 'application/pdf' },
-        ],
-        recipient: VALID_RECIPIENT,
-        sender: VALID_SENDER,
-        idempotencyKey: 'i',
-      })
-      const body = JSON.parse(calls[0].init.body as string)
-      expect(body.source_file).toBe(PDF_MAGIC.toString('base64'))
-      expect(body.source_file_2).toBe(attachment1.toString('base64'))
-      expect(body.source_file_3).toBe(attachment2.toString('base64'))
-      expect(body.source_file_4).toBeUndefined()
-    })
-
-    it('convertit une pièce jointe JPEG/PNG en PDF avant l’envoi (magic bytes %PDF sur le résultat décodé)', async () => {
+    it('convertit une pièce jointe JPEG/PNG en PDF avant l’envoi (magic bytes %PDF sur le fichier transmis)', async () => {
       const { fn, calls } = fakeFetch([{ status: 201, body: { _id: 'abc' } }])
       const sender = createPaperSender({ apiKey: 'key', fetchImpl: fn })
       await sender.send({
@@ -253,11 +376,11 @@ describe('createPaperSender', () => {
         sender: VALID_SENDER,
         idempotencyKey: 'i',
       })
-      const body = JSON.parse(calls[0].init.body as string)
-      const decodedPng = Buffer.from(body.source_file_2, 'base64')
-      const decodedJpeg = Buffer.from(body.source_file_3, 'base64')
-      expect(decodedPng.subarray(0, 5).toString('latin1')).toBe('%PDF-')
-      expect(decodedJpeg.subarray(0, 5).toString('latin1')).toBe('%PDF-')
+      const form = calls[0].init.body as FormData
+      const png = Buffer.from(await (form.get('source_file_2') as unknown as File).arrayBuffer())
+      const jpeg = Buffer.from(await (form.get('source_file_3') as unknown as File).arrayBuffer())
+      expect(png.subarray(0, 5).toString('latin1')).toBe('%PDF-')
+      expect(jpeg.subarray(0, 5).toString('latin1')).toBe('%PDF-')
     })
 
     it('laisse une pièce jointe déjà PDF inchangée (aucune conversion)', async () => {
@@ -271,8 +394,9 @@ describe('createPaperSender', () => {
         sender: VALID_SENDER,
         idempotencyKey: 'i',
       })
-      const body = JSON.parse(calls[0].init.body as string)
-      expect(body.source_file_2).toBe(pdfAttachment.toString('base64'))
+      const form = calls[0].init.body as FormData
+      const file = Buffer.from(await (form.get('source_file_2') as unknown as File).arrayBuffer())
+      expect(file.equals(pdfAttachment)).toBe(true)
     })
   })
 
