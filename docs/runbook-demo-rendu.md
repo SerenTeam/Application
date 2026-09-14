@@ -1,8 +1,9 @@
-# Runbook — Rendu du 2026-09-16 (démo investisseurs + ouverture bêta)
+# Runbook — Rendu investisseurs (JEUDI) + bêta réelle
 
-> Rédigé le 2026-09-13. Dispositif : **prod** (`app.seren-app.fr`, branche `main`) = utilisateurs réels, vente fermée (`PAYMENTS_ENABLED` non défini → paywall masqué, fonctions ouvertes) ; **préprod** (`preprod-app.seren-app.fr`, branche `pre-prod`, Basic Auth) = démo du paiement (Stripe mode test) + espace partenaire PF v0.
-> Décisions actées le 13/09 : bêta sans relecture juridique **assumée par Arnaud** (bandeau bêta disponible à ~1 h si revirement) ; dashboard PF réel confiné à la préprod.
-
+> Mis à jour le 2026-09-14 (nuit). Rendu : **jeudi**, démo pilotée investisseurs + utilisateurs réels ensuite.
+> Dispositif : **prod** (`app.seren-app.fr`, branche `main`) = utilisateurs réels, vente fermée, code stable INTOUCHÉ jusqu'au rendu ; **préprod** (`preprod-app.seren-app.fr`, branche `pre-prod`, Basic Auth) = démo complète : paiement Stripe test + espace partenaire PF + **envoi papier chantier 2a en mode test MySendingBox** (décision du 2026-09-14 : la feature phare entre dans la démo — PDF réellement généré, aucun pli réel).
+> Séquençage : dimanche = socle (paiement+PF) · lundi = 2a sur préprod · mardi = polish + répétition · mercredi midi = GEL + tag + captures · jeudi = rendu.
+> État nuit du 14 : merge 2a→pre-prod PRÊT sur `integration/2a-preprod` (conflits i18n résolus, 467 tests, build vert — ff au réveil). Comptes de démo NON créés (préprod : « Confirm email » activé + rate limit SMTP atteint → toggle à faire, voir §1).
 ## 1. Mise en place (J-3 → J-2) — dans l'ordre
 
 ### Côté Arnaud (user steps)
