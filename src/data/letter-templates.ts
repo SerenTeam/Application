@@ -81,7 +81,7 @@ ${SIGNATURE}`,
     ],
     tone: 'formel',
     notes: 'Envoi recommandé avec accusé de réception. Joindre une copie de l\'acte de décès.',
-    channel: 'lre',
+    channel: 'papier',
   },
 
   // 2. Assurance — Déclaration de décès
@@ -121,7 +121,7 @@ ${SIGNATURE}`,
     ],
     tone: 'formel',
     notes: 'Envoi recommandé avec accusé de réception. Joindre une copie de l\'acte de décès.',
-    channel: 'lre',
+    channel: 'papier',
   },
 
   // 3. Assurance Vie — Demande de versement
@@ -163,7 +163,7 @@ ${SIGNATURE}`,
     ],
     tone: 'formel',
     notes: 'Envoi recommandé avec AR. Joindre : acte de décès, pièce d\'identité, justificatif de qualité de bénéficiaire.',
-    channel: 'lre',
+    channel: 'papier',
   },
 
   // 4. Employeur — Notification
@@ -281,7 +281,7 @@ ${SIGNATURE}`,
     ],
     tone: 'formel',
     notes: 'Envoi recommandé avec AR. Joindre l\'acte de décès.',
-    channel: 'lre',
+    channel: 'papier',
   },
 
   // 7. Mutuelle — Résiliation
@@ -355,7 +355,7 @@ ${SIGNATURE}`,
     ],
     tone: 'formel',
     notes: 'Envoi recommandé avec AR obligatoire. Joindre l\'acte de décès.',
-    channel: 'lre',
+    channel: 'papier',
   },
 
   // 9. CPAM — Notification
@@ -456,4 +456,27 @@ export function getLetterTemplate(templateId: string): LetterTemplate | undefine
 
 export function getLetterTemplateByStepId(stepId: string): LetterTemplate | undefined {
   return LETTER_TEMPLATES.find((t) => t.step_id === stepId)
+}
+
+// ── Réseau du destinataire (chantier 2a, panneau papier) ────────────────
+//
+// `recipient_kind` (network:caf|cpam|carsat|impots | user_specific | portail) est une donnée
+// PROPRE AU SERVEUR (server/lib/letter-templates.js — résolution d'adresse à l'envoi, Task 9) :
+// on ne la duplique pas ici pour ne rien pouvoir faire diverger d'un fichier source de vérité
+// serveur. Cette carte est un simple indice d'UI (quel formulaire d'adresse afficher : annuaire
+// ou saisie libre) — jamais utilisée pour valider ou construire ce qui part réellement : le
+// serveur revalide entièrement l'adresse reçue (garde 4 de POST /api/letters/send), quel que
+// soit ce que le client croyait afficher. Parité avec les `recipient_kind` serveur (les 4
+// `network:*`) vérifiée par `tests/letter-templates-server.test.ts` (describe « parité
+// NETWORK_RECIPIENT_TEMPLATES ↔ recipient_kind serveur ») — corrigé après la revue finale, qui a
+// relevé que cette promesse n'était pas tenue par un test réel.
+export const NETWORK_RECIPIENT_TEMPLATES: Record<string, 'caf' | 'cpam' | 'carsat' | 'impots'> = {
+  'caf-notification': 'caf',
+  'cpam-notification': 'cpam',
+  'carsat-notification': 'carsat',
+  'impots-notification': 'impots',
+}
+
+export function getTemplateNetwork(templateId: string): 'caf' | 'cpam' | 'carsat' | 'impots' | null {
+  return NETWORK_RECIPIENT_TEMPLATES[templateId] ?? null
 }

@@ -385,5 +385,87 @@ export const STRINGS_EN: Strings = {
       commission: 'Your commission',
     },
     previewNotice: 'Preview — full partner program coming soon',
+  // Paper sending (chantier 2a) — send panel for `papier` channel letters (simple mail,
+  // MySendingBox). The letters themselves stay in French ; this UI is bilingual like the rest
+  // of the app.
+  paperSend: {
+    // Sender address (sender_profiles)
+    senderTitle: 'Your sender address',
+    senderHint: 'It appears at the top of the letter and serves as the return address.',
+    senderFullNameLabel: 'Full name',
+    senderAddressLine1Label: 'Address',
+    senderAddressLine2Label: 'Address line 2 (optional)',
+    senderPostalCodeLabel: 'Postal code',
+    senderCityLabel: 'City',
+    senderRelationshipLabel: 'Your relationship with the deceased (optional)',
+    senderSaveCta: 'Save my address',
+    senderSaving: 'Saving...',
+    senderSavedHint: 'Address saved.',
+    senderSaveError: 'Unable to save your address, please try again.',
+    senderEditCta: 'Edit',
+    senderMissingFields: 'Fill in all required fields.',
+
+    // Recipient address
+    recipientTitle: 'Recipient address',
+    recipientNameLabel: 'Recipient name',
+    recipientAddressLine1Label: 'Address',
+    recipientAddressLine2Label: 'Address line 2 (optional)',
+    recipientPostalCodeLabel: 'Postal code',
+    recipientCityLabel: 'City',
+    recipientPickerLabel: 'Pick from the directory',
+    recipientPickerPlaceholder: 'Select an organisation',
+    recipientPickerLoading: 'Loading the directory...',
+    recipientPickerHint: 'Address pre-filled from the directory, editable if needed.',
+    recipientPickerError: 'Unable to load the directory, enter the address manually.',
+    recipientDepartmentPrompt: 'Département of the deceased',
+    recipientDepartmentHint: 'Needed to find the local organisation (e.g. 75, 2A, 971).',
+    recipientDepartmentPlaceholder: 'E.g. 75',
+    recipientDepartmentInvalid: 'Invalid département (e.g. 75, 2A, 971)',
+    recipientDepartmentConfirmCta: 'Confirm',
+    recipientFrozenNote: 'The address cannot be changed on this resume: it is part of this letter’s identification.',
+
+    // Shared (sender + recipient forms)
+    lineCounter: '{count}/45 characters',
+    invalidPostalCode: '5-digit postal code',
+    panelLoading: 'Loading...',
+
+    // Attachments (minimal vault)
+    attachmentsTitle: 'Attachments',
+    attachmentsHint: 'Four maximum. The death certificate is recommended for this letter.',
+    attachmentsActeDeces: 'Death certificate',
+    attachmentsJustificatif: 'Supporting document',
+    attachmentsUploadCta: 'Add a document',
+    attachmentsUploading: 'Uploading document...',
+    attachmentsUploadError: 'Unable to add this document, please try again.',
+    attachmentsMaxReached: 'Four attachments maximum.',
+    attachmentsEmpty: 'No documents in your vault yet.',
+    attachmentsFrozenNote:
+      'Attachments cannot be changed on this resume — this is exactly what was already submitted.',
+    attachmentsLoadError: 'Unable to load your vault.',
+    attachmentsLoading: 'Loading your vault...',
+
+    // Quota and pay-per-send
+    quotaLoading: 'Checking your balance...',
+    quotaRemaining: '{count} included send{s} left',
+    quotaExhausted: 'You have used every included send.',
+    quotaBuyCta: 'Buy an extra send',
+    quotaBuyCtaWithPrice: 'Buy an extra send — {price}',
+    quotaBuyOpening: 'Opening payment...',
+    quotaBuyError: 'Unable to open payment, please try again.',
+
+    // Sending and statuses
+    sendCta: 'Send this letter by post',
+    sending: 'Sending...',
+    retryCta: 'Retry sending',
+    statusSubmitted: 'Accepted',
+    statusSent: 'Sent',
+    statusFailedAddressTitle: 'Address could not be delivered',
+    statusFailedAddressHint: 'Correct the address, then resend this letter — this resend is free.',
+    resendCta: 'Correct the address and resend (free)',
+    statusFailed: 'Sending failed',
+    retryableHint: 'Service temporarily unavailable, please try again in a moment.',
+    finalizingPayment: 'Finalizing payment, please try again in a moment...',
+    autoRetrying: 'Retrying automatically...',
+    missingFieldsHint: 'Fill in the information above before sending.',
   },
 }

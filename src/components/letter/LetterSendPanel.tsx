@@ -8,6 +8,7 @@ import { apiFetch } from '@/lib/api'
 import { usePayments, formatPrice } from '@/hooks/usePayments'
 import { useT } from '@/i18n/useT'
 import { useLang } from '@/i18n/LanguageContext'
+import { PaperSendPanel } from './PaperSendPanel'
 
 // Regex email basique côté client — filet de sécurité UX avant la validation serveur
 // (server/routes/letters.js utilise la même règle RFC simplifiée).
@@ -35,12 +36,35 @@ interface LetterSendPanelProps {
   subject: string
   body: string
   isComplete: boolean
+  // Canal du template (chantier 2a) : 'email' rend le bloc historique 1 clic ci-dessous ;
+  // 'papier' délègue entièrement à PaperSendPanel (profil expéditeur, adresse, PJ, quota…).
+  // Le paywall du forfait (D1), lui, reste commun aux deux canaux — c'est l'ACTION d'envoi qui
+  // est retenue, jamais l'aperçu ni la préparation du courrier.
+  channel: 'email' | 'papier'
+  // ── Props consommées UNIQUEMENT par la branche papier ──
+  variables?: Record<string, string>
+  recipientNetwork?: 'caf' | 'cpam' | 'carsat' | 'impots' | null
+  deceasedDepartment?: string
+  onDeceasedDepartmentResolved?: (department: string) => void
+  userId?: string
 }
 
-// Bloc d'envoi 1 clic — UNIQUEMENT pour les templates à canal email (employeur, mutuelle).
-// Le texte envoyé (PDF + email) est le MÊME texte résolu que celui affiché dans LetterPreview
-// (subject/body reçus en props, jamais recalculés ici).
-export function LetterSendPanel({ templateId, stepId, subject, body, isComplete }: LetterSendPanelProps) {
+// Bloc d'envoi — canal email (1 clic, employeur/mutuelle) ou papier (chantier 2a, PaperSendPanel).
+// Pour l'email, le texte envoyé (PDF + email) est le MÊME texte résolu que celui affiché dans
+// LetterPreview (subject/body reçus en props, jamais recalculés ici).
+export function LetterSendPanel({
+  templateId,
+  stepId,
+  subject,
+  body,
+  isComplete,
+  channel,
+  variables,
+  recipientNetwork,
+  deceasedDepartment,
+  onDeceasedDepartmentResolved,
+  userId,
+}: LetterSendPanelProps) {
   const t = useT()
   const { lang } = useLang()
   const [email, setEmail] = useState('')
@@ -53,8 +77,10 @@ export function LetterSendPanel({ templateId, stepId, subject, body, isComplete 
   const [checkoutError, setCheckoutError] = useState(false)
 
   // Au montage : dernier envoi existant pour ce courrier (statut sent/delivered/failed).
-  // Pas de polling (hors périmètre v1) — simple snapshot.
+  // Pas de polling (hors périmètre v1) — simple snapshot. Canal papier UNIQUEMENT : c'est
+  // PaperSendPanel qui fait sa propre lecture (statuts papier distincts, cf. ce composant).
   useEffect(() => {
+    if (channel !== 'email') return
     let cancelled = false
     apiFetch('/api/letters')
       .then((res) => (res.ok ? res.json() : null))
@@ -72,7 +98,7 @@ export function LetterSendPanel({ templateId, stepId, subject, body, isComplete 
     return () => {
       cancelled = true
     }
-  }, [templateId, stepId])
+  }, [channel, templateId, stepId])
 
   const emailValid = EMAIL_RE.test(email.trim())
   // Tant que le statut du forfait n'est pas connu, le bouton reste inactif plutôt que d'inviter
@@ -152,6 +178,25 @@ export function LetterSendPanel({ templateId, stepId, subject, body, isComplete 
         </Button>
         {checkoutError && <p className="text-xs text-text-muted">{t.payments.checkoutFailed}</p>}
       </div>
+    )
+  }
+
+  // Canal papier (chantier 2a) : toute la logique (profil expéditeur, adresse, PJ, quota,
+  // statuts, reprise après Checkout) vit dans PaperSendPanel — ce composant-ci ne fait que
+  // dispatcher, une fois le paywall commun franchi.
+  if (channel === 'papier') {
+    if (!userId) return null // garde de défense : jamais atteint en pratique (RoadmapView le fournit toujours)
+    return (
+      <PaperSendPanel
+        templateId={templateId}
+        stepId={stepId}
+        isComplete={isComplete}
+        variables={variables ?? {}}
+        network={recipientNetwork ?? null}
+        deceasedDepartment={deceasedDepartment}
+        onDeceasedDepartmentResolved={onDeceasedDepartmentResolved}
+        userId={userId}
+      />
     )
   }
 

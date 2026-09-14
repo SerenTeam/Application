@@ -9,6 +9,10 @@
 //      donc rejeu = 0 ligne, et un `completed` relivré après remboursement ne ressuscite rien ;
 //   4. mark_purchase_refunded : gardé par `status = 'paid'` ;
 //   5. expire_purchase : gardé par `status = 'pending'`.
+//   6. (chantier 2a) getPaidPurchase filtre EN PLUS `kind = 'forfait'` — un achat d'envoi
+//      supplémentaire (`kind = 'envoi_sup'`, facturation à l'acte) ne doit jamais, à lui seul,
+//      ouvrir le gate du produit (voir tests/purchases-store.test.ts pour le test unitaire du
+//      vrai store, et purchase-gate.test.ts pour la vérification de bout en bout).
 // Ce fichier n'est pas une suite de tests (include: tests/**/*.test.ts) — il n'est jamais
 // collecté par Vitest.
 
@@ -16,6 +20,7 @@ export type PurchaseRow = {
   id: string
   user_id: string
   status: 'pending' | 'paid' | 'refunded' | 'expired'
+  kind: 'forfait' | 'envoi_sup'
   amount_total: number | null
   currency: string | null
   stripe_session_id: string
@@ -39,6 +44,7 @@ export function makePurchasesStore(initial: Partial<PurchaseRow>[] = []) {
       id: `purchase-${++seq}`,
       user_id: 'user-1',
       status: 'pending',
+      kind: 'forfait',
       amount_total: null,
       currency: null,
       stripe_session_id: `cs_${seq}`,
@@ -66,7 +72,7 @@ export function makePurchasesStore(initial: Partial<PurchaseRow>[] = []) {
       if (store.failReads) throw new Error('lecture impossible (incident simulé)')
       return (
         rows
-          .filter((r) => r.user_id === userId && r.status === 'paid')
+          .filter((r) => r.user_id === userId && r.status === 'paid' && r.kind === 'forfait')
           .sort((a, b) => (b.paid_at ?? '').localeCompare(a.paid_at ?? ''))[0] ?? null
       )
     },
@@ -80,16 +86,16 @@ export function makePurchasesStore(initial: Partial<PurchaseRow>[] = []) {
       )
     },
 
-    async createPending(_c: unknown, { userId, sessionId, includedSends }: { userId: string; sessionId: string; includedSends: number }) {
+    async createPending(_c: unknown, { userId, sessionId, includedSends, kind }: { userId: string; sessionId: string; includedSends: number; kind?: 'forfait' | 'envoi_sup' }) {
       requireSecret()
       if (rows.some((r) => r.stripe_session_id === sessionId)) return // on conflict do nothing
-      insert({ user_id: userId, status: 'pending', stripe_session_id: sessionId, included_sends: includedSends })
+      insert({ user_id: userId, status: 'pending', stripe_session_id: sessionId, included_sends: includedSends, kind: kind ?? 'forfait' })
     },
 
     async markPaid(
       _c: unknown,
-      { sessionId, userId, paymentIntent, amountTotal, currency, includedSends }:
-        { sessionId: string; userId: string; paymentIntent: string | null; amountTotal: number | null; currency: string | null; includedSends: number },
+      { sessionId, userId, paymentIntent, amountTotal, currency, includedSends, kind }:
+        { sessionId: string; userId: string; paymentIntent: string | null; amountTotal: number | null; currency: string | null; includedSends: number; kind?: 'forfait' | 'envoi_sup' },
     ) {
       requireSecret()
       const existing = rows.find((r) => r.stripe_session_id === sessionId)
@@ -102,11 +108,18 @@ export function makePurchasesStore(initial: Partial<PurchaseRow>[] = []) {
           amount_total: amountTotal,
           currency,
           included_sends: includedSends,
+          // `kind` écrit dans le MÊME insert que `status='paid'` (règle (b) de la Task 4 : jamais
+          // de fenêtre paid-puis-kind, qui ouvrirait le gate du produit entre les deux écritures).
+          kind: kind ?? 'forfait',
           paid_at: new Date().toISOString(),
         })
         return
       }
       if (existing.status !== 'pending') return // garde du DO UPDATE : rejeu = 0 ligne
+      // ⚠️ `kind` VOLONTAIREMENT NON RÉÉCRIT ici (règle (a) de la Task 4, migration
+      // 20260914150000_purchases_kind_writer.sql) : la ligne pending porte déjà la bonne valeur,
+      // et un appelant ancien rétrograderait un `envoi_sup` en `forfait` — le gate du produit
+      // entier s'ouvrirait au prix d'un timbre.
       existing.status = 'paid'
       existing.stripe_payment_intent = paymentIntent ?? existing.stripe_payment_intent
       existing.amount_total = amountTotal ?? existing.amount_total

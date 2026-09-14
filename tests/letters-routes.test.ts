@@ -144,12 +144,11 @@ describe('POST /api/letters/send', () => {
     expect(res.body.success).toBe(false)
   })
 
-  it('canal non disponible (lre) → 400', async () => {
-    const { app } = makeApp()
-    const res = await request(app).post('/api/letters/send').send({ ...VALID_PAYLOAD, template_id: 'banque-declaration-deces' })
-    expect(res.status).toBe(400)
-  })
-
+  // 'banque-declaration-deces' était 'lre' (jamais implémenté) et servait ici à couvrir le refus
+  // générique CHANNEL_NOT_AVAILABLE. Depuis la requalification Task 11 (les 5 'lre' → 'papier'),
+  // ce gabarit est un canal RÉELLEMENT envoyable — sa branche complète (gate, kill switch,
+  // gardes…) est couverte exhaustivement par tests/letters-paper-routes.test.ts. Le refus
+  // générique reste testé ci-dessous via 'portail' (canal jamais envoyable en 2a, D6).
   it('canal non disponible (portail) → 400', async () => {
     const { app } = makeApp()
     const res = await request(app).post('/api/letters/send').send({ ...VALID_PAYLOAD, template_id: 'caf-notification' })

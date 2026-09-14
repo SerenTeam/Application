@@ -8,6 +8,8 @@
 // catalogue, aucune divergence structurelle possible. id/value/type/applicable_when/order
 // restent intacts (le moteur ne lit jamais les textes). Résoudre via `textIn(champ, lang)`.
 
+import { DEPARTMENTS } from './departments.js'
+
 /**
  * @typedef {Object} QuestionSpec
  * @property {string} id - clé du champ QuestionnaireAnswersV2
@@ -108,6 +110,26 @@ export const QUESTIONS_CATALOG = [
     order: 4,
   },
   {
+    // chantier 2a : donnée d'adressage (résolution de l'annuaire des organismes à l'envoi
+    // papier), PAS une condition de roadmap — question de données comme le prénom/nom du
+    // défunt (allowlist IDENTITY_FIELDS de tests/invariants.test.ts). Jamais transmise au
+    // rédacteur Mistral (server/routes/questionnaire.js, writerContext/last).
+    id: 'deceased_department',
+    type: 'select',
+    options: DEPARTMENTS.map((d) => ({ value: d.value, label: { fr: d.label, en: d.label } })),
+    applicable_when: {},
+    obligatoire: true,
+    fallback_text: {
+      question: { fr: 'Dans quel département résidait {prenom} ?', en: 'In which department did {prenom} live?' },
+      aide: {
+        fr: 'Cette information nous permettra de retrouver les bonnes adresses (CAF, CPAM, caisse de retraite…) pour vos courriers.',
+        en: 'This lets us find the right addresses (CAF, CPAM, pension fund…) for your letters.',
+      },
+    },
+    categorie: { fr: 'Votre situation', en: 'Your situation' },
+    order: 5,
+  },
+  {
     id: 'statut_professionnel',
     type: 'select',
     options: [
@@ -132,7 +154,7 @@ export const QUESTIONS_CATALOG = [
       en: 'If an employee: mention that company group insurance may provide a death benefit, sometimes a substantial one.',
     },
     categorie: { fr: 'Sa situation', en: 'Their situation' },
-    order: 5,
+    order: 6,
   },
   {
     id: 'logement',
@@ -152,7 +174,7 @@ export const QUESTIONS_CATALOG = [
       },
     },
     categorie: { fr: 'Sa situation', en: 'Their situation' },
-    order: 6,
+    order: 7,
   },
   {
     id: 'enfants',
@@ -172,7 +194,7 @@ export const QUESTIONS_CATALOG = [
       },
     },
     categorie: { fr: 'Sa situation', en: 'Their situation' },
-    order: 7,
+    order: 8,
   },
   {
     id: 'has_notary',
@@ -191,7 +213,7 @@ export const QUESTIONS_CATALOG = [
       en: 'Reassure if not: this is a normal step, especially important if there is real estate involved.',
     },
     categorie: { fr: 'Succession', en: 'Estate' },
-    order: 8,
+    order: 9,
   },
   {
     id: 'has_life_insurance',
@@ -210,7 +232,7 @@ export const QUESTIONS_CATALOG = [
       en: 'The insurer must pay out the benefit within one month of receiving the complete file.',
     },
     categorie: { fr: 'Assurances', en: 'Insurance' },
-    order: 9,
+    order: 10,
   },
   {
     id: 'has_joint_account',
@@ -227,7 +249,7 @@ export const QUESTIONS_CATALOG = [
       },
     },
     categorie: { fr: 'Banque', en: 'Bank' },
-    order: 10,
+    order: 11,
   },
   {
     id: 'has_vehicle',
@@ -242,7 +264,7 @@ export const QUESTIONS_CATALOG = [
       },
     },
     categorie: { fr: 'Patrimoine', en: 'Assets' },
-    order: 11,
+    order: 12,
   },
   {
     id: 'has_credits',
@@ -264,7 +286,7 @@ export const QUESTIONS_CATALOG = [
       en: 'Bring this up gently: many families don\'t realize that borrower\'s insurance can pay off the loan in full.',
     },
     categorie: { fr: 'Patrimoine', en: 'Assets' },
-    order: 12,
+    order: 13,
   },
   {
     id: 'employait_aide_domicile',
@@ -282,7 +304,7 @@ export const QUESTIONS_CATALOG = [
       },
     },
     categorie: { fr: 'Emploi à domicile', en: 'Home employment' },
-    order: 13,
+    order: 14,
   },
   {
     id: 'contrat_obseques',
@@ -297,7 +319,7 @@ export const QUESTIONS_CATALOG = [
       },
     },
     categorie: { fr: 'Obsèques', en: 'Funeral arrangements' },
-    order: 14,
+    order: 15,
   },
   {
     id: 'organismes_contactes',
@@ -329,6 +351,6 @@ export const QUESTIONS_CATALOG = [
       en: 'Last question: signal that the end is near, and offer a brief, understated acknowledgment of the path they\'ve walked.',
     },
     categorie: { fr: 'Vos démarches', en: 'Your steps' },
-    order: 15,
+    order: 16,
   },
 ]

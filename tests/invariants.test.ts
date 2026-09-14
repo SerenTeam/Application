@@ -11,7 +11,9 @@ import { QUESTIONS_CATALOG } from '../server/lib/questions-catalog.js'
 import { matchesWhen } from '../server/lib/questionnaire-engine.js'
 
 // Champs d'identité : servent aux courriers et à la personnalisation, pas au filtrage.
-const IDENTITY_FIELDS = ['deceased_firstname', 'deceased_lastname', 'deceased_dod']
+// deceased_department (chantier 2a) : donnée d'adressage pour l'annuaire des organismes,
+// ne conditionne aucune étape — même traitement que les autres champs d'identité.
+const IDENTITY_FIELDS = ['deceased_firstname', 'deceased_lastname', 'deceased_dod', 'deceased_department']
 // organismes_contactes est branché via organisme_key (statut done), pas via applicable_when.
 const SPECIAL_FIELDS = ['organismes_contactes']
 

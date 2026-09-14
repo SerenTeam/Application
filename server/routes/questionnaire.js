@@ -19,6 +19,10 @@ const BOOLEAN_LABELS = { fr: { true: 'Oui', false: 'Non' }, en: { true: 'Yes', f
 const NONE_LABEL = { fr: 'Aucun', en: 'None' }
 // Types à valeurs fermées (enums non identifiants) : seuls autorisés dans le contexte LLM.
 const CLOSED_TYPES = ['boolean', 'tristate', 'select', 'multiselect']
+// deceased_department (chantier 2a) est un select — donc un CLOSED_TYPE — mais reste une
+// donnée d'adressage personnelle : exclu de la transition comme les champs d'identité
+// texte/date (nom de famille, date de décès). docs/design-chantier-2a-envoi-papier.md §3.2.
+const WRITER_EXCLUDED_IDS = ['deceased_department']
 
 /**
  * Langue à utiliser pour un message d'erreur émis AVANT le chargement d'une session (ou quand
@@ -152,7 +156,7 @@ export function createQuestionnaireRouter({
       // (valeurs enum non identifiantes). Nom de famille et date de décès ne partent pas.
       // Libellé humain plutôt qu'enum brut : « Mon père ou ma mère » est sans ambiguïté
       // de direction, là où « parent » a fait écrire au rédacteur qu'un enfant était décédé.
-      const last = CLOSED_TYPES.includes(spec.type)
+      const last = CLOSED_TYPES.includes(spec.type) && !WRITER_EXCLUDED_IDS.includes(spec.id)
         ? { question: textIn(spec.fallback_text.question, session.lang), value: displayValue(spec, value, session.lang) }
         : undefined
       const data = await renderNext(session, last)

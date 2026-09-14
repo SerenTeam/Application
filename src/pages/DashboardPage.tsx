@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { getStepsCatalog } from '@/data/steps-catalog'
+import { hasPendingPaperSendForCheckoutReturn } from '@/lib/paper-send-resume'
 import { AppHeader, HeaderNavLink } from '@/components/layout/AppHeader'
 import { CheckoutReturnBanner } from '@/components/payments/CheckoutReturnBanner'
 import { useT } from '@/i18n/useT'
@@ -122,12 +123,24 @@ export function DashboardPage() {
   const tRef = useRef(t)
   tRef.current = t
 
-  const [activeView, setActiveView] = useState<DashboardView>('dashboard')
+  // Chantier 2a (legs R1) : si un envoi papier attend une reprise après un retour de Checkout
+  // (achat d'un envoi à l'acte), l'onglet « roadmap » — replié par défaut sinon — doit être actif
+  // dès le premier rendu : c'est là que vit PaperSendPanel, seul endroit qui consomme la reprise.
+  const [activeView, setActiveView] = useState<DashboardView>(() =>
+    hasPendingPaperSendForCheckoutReturn() ? 'roadmap' : 'dashboard'
+  )
   const [scrollToStepId, setScrollToStepId] = useState<number | null>(null)
 
   const [dbSteps, setDbSteps] = useState<DbStep[]>([])
   const [roadmapId, setRoadmapId] = useState<string | null>(null)
+  const [questionnaireId, setQuestionnaireId] = useState<string | null>(null)
   const [questionnaireAnswers, setQuestionnaireAnswers] = useState<Record<string, unknown>>({})
+  // Miroir de `questionnaireAnswers`, tenu à jour à CHAQUE rendu (même patron que `tRef` ci-
+  // dessus) : lu par `handleDeceasedDepartmentResolved` pour construire l'écriture Supabase EN
+  // DEHORS de tout updater `setState` (React peut invoquer un updater deux fois en StrictMode
+  // pour vérifier sa pureté — une écriture réseau qui y vivrait partirait alors deux fois).
+  const questionnaireAnswersRef = useRef(questionnaireAnswers)
+  questionnaireAnswersRef.current = questionnaireAnswers
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -166,6 +179,7 @@ export function DashboardPage() {
 
       // Load questionnaire answers for letter auto-fill
       if (roadmap.questionnaire_id) {
+        setQuestionnaireId(roadmap.questionnaire_id)
         const { data: qData } = await supabase
           .from('questionnaires')
           .select('answers')
@@ -261,6 +275,23 @@ export function DashboardPage() {
     setScrollToStepId(null)
   }, [])
 
+  // Chantier 2a (spec §3.2) : le panneau d'envoi papier demande le département du défunt à la
+  // volée sur un dossier ancien, puis le persiste — ICI, car cette page est la seule à connaître
+  // les réponses ENTIÈRES du questionnaire (`questionnaireAnswers`) ; un merge partiel plus bas
+  // dans l'arbre (RoadmapView ne reçoit qu'un sous-ensemble typé) écraserait le reste du JSON.
+  const handleDeceasedDepartmentResolved = useCallback(
+    (department: string) => {
+      const next = { ...questionnaireAnswersRef.current, deceased_department: department }
+      setQuestionnaireAnswers(next)
+      // Écriture Supabase HORS de l'updater setState ci-dessus (correctif revue finale) : un
+      // simple appel, jamais dupliqué par React.
+      if (questionnaireId) {
+        void supabase.from('questionnaires').update({ answers: next }).eq('id', questionnaireId)
+      }
+    },
+    [questionnaireId]
+  )
+
   // ─── Render ───────────────────────────────────────────────────
 
   if (isLoading) {
@@ -325,7 +356,9 @@ export function DashboardPage() {
                 deceased_firstname: questionnaireAnswers.deceased_firstname as string | undefined,
                 deceased_lastname: questionnaireAnswers.deceased_lastname as string | undefined,
                 deceased_dod: questionnaireAnswers.deceased_dod as string | undefined,
+                deceased_department: questionnaireAnswers.deceased_department as string | undefined,
               }}
+              onDeceasedDepartmentResolved={handleDeceasedDepartmentResolved}
             />
           )}
 

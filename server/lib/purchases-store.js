@@ -16,7 +16,10 @@ const TABLE = 'purchases'
 
 // Colonnes lues par le gate et l'UI. Les identifiants Stripe (session, payment intent) sont
 // volontairement exclus : ils ne servent à rien côté client, autant ne pas les exposer.
-const PUBLIC_COLUMNS = 'id, status, amount_total, currency, included_sends, paid_at, refunded_at, created_at'
+// `kind` en fait partie depuis le chantier 2a : la route /status doit pouvoir reconnaître un
+// achat d'envoi supplémentaire pour ce qu'il est (détection d'anomalie M1), et le front en aura
+// besoin pour le libellé de l'écran de confirmation.
+const PUBLIC_COLUMNS = 'id, status, kind, amount_total, currency, included_sends, paid_at, refunded_at, created_at'
 
 // Appel RPC commun aux quatre écritures. Le secret manquant lève AVANT tout appel réseau (même
 // comportement que letters-store.updateSendByProviderRef) ; l'appelant décide quoi en faire —
@@ -32,13 +35,20 @@ async function callRpc(client, name, params) {
   if (error) throw new Error(`RPC ${name} impossible : ${error.message}`)
 }
 
-/** Achat encaissé et non remboursé — la seule chose dont le gate a besoin. `null` si aucun. */
+/** Achat encaissé et non remboursé DU FORFAIT — la seule chose dont le gate a besoin. `null` si
+ * aucun. Filtre `kind = 'forfait'` (chantier 2a, amendement AM-2) : un envoi supplémentaire
+ * (`kind = 'envoi_sup'`) est une ligne `purchases` normale, encaissée et non remboursée elle
+ * aussi — sans ce filtre, un utilisateur n'ayant acheté QU'un envoi à l'acte (jamais le forfait)
+ * ouvrirait le gate du produit entier au prix d'un timbre. `getLatestPurchase`, elle, reste
+ * volontairement sans filtre : l'écran de confirmation doit pouvoir afficher n'importe quel achat
+ * récent, forfait ou envoi supplémentaire. */
 export async function getPaidPurchase(client, userId) {
   const { data, error } = await client
     .from(TABLE)
     .select(PUBLIC_COLUMNS)
     .eq('user_id', userId)
     .eq('status', 'paid')
+    .eq('kind', 'forfait')
     .order('paid_at', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -59,15 +69,38 @@ export async function getLatestPurchase(client, userId) {
   return data ?? null
 }
 
-export async function createPending(client, { userId, sessionId, includedSends }) {
+// Nature de l'achat (chantier 2a) : 'forfait' (le produit) ou 'envoi_sup' (facturation à l'acte,
+// `included_sends = 1`). SEULS l'absence de valeur (appelant d'avant le chantier 2a, metadata
+// sans `kind`) est ramenée à 'forfait' — c'est la seule valeur que l'historique pouvait produire.
+// Toute AUTRE valeur LÈVE (correctif I2 de la revue Task 9) : la ramener silencieusement à
+// 'forfait' donnerait la valeur PRIVILÉGIÉE (celle qui ouvre le gate du produit) à une donnée
+// qu'on n'a pas comprise, et masquerait durablement le bug qui l'a produite. La route webhook,
+// elle, acquitte toujours en 200 et capture dans Sentry : l'exception rend l'anomalie VISIBLE
+// sans faire réessayer Stripe en boucle, et le CHECK SQL `purchases_kind_check` redevient une
+// vraie ceinture plutôt que le seul filet.
+function normalizeKind(kind) {
+  if (kind === undefined || kind === null) return 'forfait'
+  if (kind !== 'forfait' && kind !== 'envoi_sup') {
+    throw new Error(`purchases.kind inattendu : ${JSON.stringify(String(kind).slice(0, 32))}`)
+  }
+  return kind
+}
+
+export async function createPending(client, { userId, sessionId, includedSends, kind }) {
   await callRpc(client, 'create_pending_purchase', {
     p_user_id: userId,
     p_session_id: sessionId,
     p_included_sends: includedSends ?? 0,
+    p_kind: normalizeKind(kind),
   })
 }
 
-export async function markPaid(client, { sessionId, userId, paymentIntent, amountTotal, currency, includedSends }) {
+// ⚠️ `kind` n'est écrit par la RPC que sur le chemin INSERT (webhook arrivé avant la ligne
+// d'attente), dans le MÊME ordre SQL que `status = 'paid'` ; sur la branche `on conflict do
+// update`, la valeur posée par createPending est conservée telle quelle. Voir les deux règles en
+// tête de supabase/migrations/20260914150000_purchases_kind_writer.sql : réécrire `kind` ici
+// rétrograderait un envoi supplémentaire en forfait et ouvrirait le gate du produit entier.
+export async function markPaid(client, { sessionId, userId, paymentIntent, amountTotal, currency, includedSends, kind }) {
   await callRpc(client, 'mark_purchase_paid', {
     p_session_id: sessionId,
     p_user_id: userId,
@@ -75,6 +108,7 @@ export async function markPaid(client, { sessionId, userId, paymentIntent, amoun
     p_amount_total: amountTotal ?? null,
     p_currency: currency ?? null,
     p_included_sends: includedSends ?? 0,
+    p_kind: normalizeKind(kind),
   })
 }
 

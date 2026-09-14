@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { CheckCircle2, Loader2 } from 'lucide-react'
 import { usePayments } from '@/hooks/usePayments'
 import { useT } from '@/i18n/useT'
+import { clearPendingPaperSend } from '@/lib/paper-send-resume'
 
 // Retour de Stripe Checkout. Point de conception essentiel : le paramètre `?checkout=success`
 // NE DÉBLOQUE RIEN — c'était exactement la faille du paiement précédent (?payment=success
@@ -26,7 +27,14 @@ export function CheckoutReturnBanner() {
 
   // Nettoyage de l'URL — sans quoi un partage de lien ou un retour arrière rejouerait l'écran.
   useEffect(() => {
-    if (!searchParams.get('checkout')) return
+    const checkoutParam = searchParams.get('checkout')
+    if (!checkoutParam) return
+    // Chantier 2a (mineur, revue finale) : ce composant est TOUJOURS monté (contrairement à
+    // PaperSendPanel, replié par défaut) — c'est donc l'endroit fiable pour purger une reprise
+    // papier devenue stale sur un retour `success`/`cancel` du forfait. `extra_success` est
+    // exclu : PaperSendPanel doit d'abord LIRE cette entrée avant de la consommer lui-même
+    // (paper-send-resume.ts, takePendingPaperSend) — la nettoyer ici la lui volerait.
+    if (checkoutParam !== 'extra_success') clearPendingPaperSend()
     const next = new URLSearchParams(searchParams)
     next.delete('checkout')
     setSearchParams(next, { replace: true })

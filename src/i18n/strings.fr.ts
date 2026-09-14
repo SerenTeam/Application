@@ -385,6 +385,89 @@ export const STRINGS_FR = {
       commission: 'Votre commission',
     },
     previewNotice: 'Préversion — dispositif partenaire complet à venir',
+  // Envoi papier (chantier 2a) — panneau d'envoi pour les courriers au canal `papier`
+  // (courrier simple, MySendingBox). Les courriers eux-mêmes restent toujours en français ;
+  // cette UI, elle, est bilingue comme le reste de l'app.
+  paperSend: {
+    // Profil expéditeur (sender_profiles)
+    senderTitle: 'Votre adresse d’expéditeur',
+    senderHint: 'Elle figure en tête du courrier et sert d’adresse de retour.',
+    senderFullNameLabel: 'Nom complet',
+    senderAddressLine1Label: 'Adresse',
+    senderAddressLine2Label: 'Complément d’adresse (optionnel)',
+    senderPostalCodeLabel: 'Code postal',
+    senderCityLabel: 'Ville',
+    senderRelationshipLabel: 'Votre lien avec le défunt (optionnel)',
+    senderSaveCta: 'Enregistrer mon adresse',
+    senderSaving: 'Enregistrement...',
+    senderSavedHint: 'Adresse enregistrée.',
+    senderSaveError: 'Impossible d’enregistrer votre adresse, réessayez.',
+    senderEditCta: 'Modifier',
+    senderMissingFields: 'Complétez tous les champs obligatoires.',
+
+    // Adresse du destinataire
+    recipientTitle: 'Adresse du destinataire',
+    recipientNameLabel: 'Nom du destinataire',
+    recipientAddressLine1Label: 'Adresse',
+    recipientAddressLine2Label: 'Complément d’adresse (optionnel)',
+    recipientPostalCodeLabel: 'Code postal',
+    recipientCityLabel: 'Ville',
+    recipientPickerLabel: 'Choisir dans l’annuaire',
+    recipientPickerPlaceholder: 'Sélectionnez un organisme',
+    recipientPickerLoading: 'Chargement de l’annuaire...',
+    recipientPickerHint: 'Adresse pré-remplie par l’annuaire, modifiable si besoin.',
+    recipientPickerError: 'Impossible de charger l’annuaire, saisissez l’adresse manuellement.',
+    recipientDepartmentPrompt: 'Département du défunt',
+    recipientDepartmentHint: 'Nécessaire pour retrouver l’organisme local (ex : 75, 2A, 971).',
+    recipientDepartmentPlaceholder: 'Ex : 75',
+    recipientDepartmentInvalid: 'Département invalide (ex : 75, 2A, 971)',
+    recipientDepartmentConfirmCta: 'Valider',
+    recipientFrozenNote:
+      'L’adresse ne peut pas être modifiée lors de cette reprise : elle fait partie de l’identification de ce courrier.',
+
+    // Partagés (profil expéditeur + destinataire)
+    lineCounter: '{count}/45 caractères',
+    invalidPostalCode: 'Code postal à 5 chiffres',
+    panelLoading: 'Chargement...',
+
+    // Pièces jointes (coffre minimal)
+    attachmentsTitle: 'Pièces jointes',
+    attachmentsHint: 'Quatre au maximum. L’acte de décès est recommandé pour ce courrier.',
+    attachmentsActeDeces: 'Acte de décès',
+    attachmentsJustificatif: 'Justificatif',
+    attachmentsUploadCta: 'Ajouter un document',
+    attachmentsUploading: 'Envoi du document...',
+    attachmentsUploadError: 'Impossible d’ajouter ce document, réessayez.',
+    attachmentsMaxReached: 'Quatre pièces jointes au maximum.',
+    attachmentsEmpty: 'Aucun document dans votre coffre pour le moment.',
+    attachmentsFrozenNote:
+      'Les pièces jointes ne peuvent pas être modifiées lors de cette reprise : c’est exactement ce qui a déjà été transmis.',
+    attachmentsLoadError: 'Impossible de charger votre coffre.',
+    attachmentsLoading: 'Chargement de votre coffre...',
+
+    // Quota et facturation à l'acte
+    quotaLoading: 'Vérification de votre solde...',
+    quotaRemaining: '{count} envoi{s} inclus restant{s}',
+    quotaExhausted: 'Vous avez utilisé tous vos envois inclus.',
+    quotaBuyCta: 'Acheter un envoi supplémentaire',
+    quotaBuyCtaWithPrice: 'Acheter un envoi supplémentaire — {price}',
+    quotaBuyOpening: 'Ouverture du paiement...',
+    quotaBuyError: 'Impossible d’ouvrir le paiement, réessayez.',
+
+    // Envoi et statuts
+    sendCta: 'Envoyer ce courrier par la poste',
+    sending: 'Envoi en cours...',
+    retryCta: 'Réessayer l’envoi',
+    statusSubmitted: 'Pris en charge',
+    statusSent: 'Expédié',
+    statusFailedAddressTitle: 'Adresse non distribuable',
+    statusFailedAddressHint: 'Corrigez l’adresse puis renvoyez ce courrier — ce renvoi est offert.',
+    resendCta: 'Corriger l’adresse et renvoyer (offert)',
+    statusFailed: 'L’envoi a échoué',
+    retryableHint: 'Service momentanément indisponible, réessayez dans un instant.',
+    finalizingPayment: 'Finalisation du paiement en cours, réessayez dans un instant...',
+    autoRetrying: 'Nouvelle tentative en cours...',
+    missingFieldsHint: 'Complétez les informations ci-dessus avant l’envoi.',
   },
 }
 

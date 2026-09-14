@@ -102,6 +102,18 @@ describe('gating de POST /api/letters/send', () => {
     expect((await request(app).post('/api/letters/send').send(PAYLOAD)).status).toBe(402)
   })
 
+  // Chantier 2a (amendement AM-2) : un envoi supplémentaire (facturation à l'acte) est une ligne
+  // purchases payée comme une autre — sans le filtre kind='forfait' de getPaidPurchase, l'acheter
+  // seul (sans jamais avoir pris le forfait) ouvrirait le gate du produit entier.
+  it('achat kind=envoi_sup seul (payé) : 402 — un envoi supplémentaire n’ouvre jamais le gate à lui seul', async () => {
+    const purchases = makePurchasesStore([{ status: 'paid', kind: 'envoi_sup', included_sends: 1, paid_at: '2026-09-13T10:00:00.000Z' }])
+    const { app, lettersStore } = makeApp({ paymentsEnabled: true, purchases })
+    const res = await request(app).post('/api/letters/send').send(PAYLOAD)
+    expect(res.status).toBe(402)
+    expect(res.body.code).toBe('PURCHASE_REQUIRED')
+    expect(lettersStore.rows).toHaveLength(0)
+  })
+
   it('incident de lecture : 500 franc, JAMAIS un passage (un bug base n’offre pas un envoi)', async () => {
     const purchases = makePurchasesStore([{ status: 'paid', paid_at: '2026-07-25T10:00:00.000Z' }])
     purchases.failReads = true

@@ -11,7 +11,7 @@ const spec = (id: string) => QUESTIONS_CATALOG.find((q: { id: string }) => q.id 
 function runProfile(fixed: Answers): { sequence: string[]; answers: Answers } {
   const canned: Answers = {
     relation: 'parent', deceased_firstname: 'Pierre', deceased_lastname: 'Dupont',
-    deceased_dod: '2026-04-10', statut_professionnel: 'retraite', logement: 'proprietaire',
+    deceased_dod: '2026-04-10', deceased_department: '75', statut_professionnel: 'retraite', logement: 'proprietaire',
     enfants: 'aucun', has_notary: false, has_life_insurance: 'ne_sait_pas',
     has_joint_account: true, has_vehicle: false, has_credits: false,
     employait_aide_domicile: false, contrat_obseques: 'non', organismes_contactes: [],
@@ -30,16 +30,17 @@ function runProfile(fixed: Answers): { sequence: string[]; answers: Answers } {
 }
 
 describe('nextQuestion — séquences par profil', () => {
-  it('conjoint marié : 15 questions, compte joint inclus, ordre croissant', () => {
+  it('conjoint marié : 16 questions, compte joint inclus, ordre croissant', () => {
     const { sequence } = runProfile({ relation: 'conjoint_marie' })
-    expect(sequence).toHaveLength(15)
+    expect(sequence).toHaveLength(16)
     expect(sequence).toContain('has_joint_account')
+    expect(sequence).toContain('deceased_department')
     expect(sequence[0]).toBe('relation')
     expect(sequence[sequence.length - 1]).toBe('organismes_contactes')
   })
-  it('enfant du défunt : 15 questions, compte joint désormais posé (décision 2026-07-11)', () => {
+  it('enfant du défunt : 16 questions, compte joint désormais posé (décision 2026-07-11)', () => {
     const { sequence } = runProfile({ relation: 'enfant' })
-    expect(sequence).toHaveLength(15)
+    expect(sequence).toHaveLength(16)
     expect(sequence).toContain('has_joint_account')
   })
   it('null quand tout est répondu', () => {
@@ -110,7 +111,7 @@ describe('setAnswer — conservation des réponses (catalogue 100 % universel) e
     answers = setAnswer(answers, spec('relation'), 'conjoint_marie')
     // avance jusqu'à has_joint_account
     answers = { ...answers, deceased_firstname: 'P', deceased_lastname: 'D', deceased_dod: '2026-04-10',
-      statut_professionnel: 'retraite', logement: 'locataire', enfants: 'aucun',
+      deceased_department: '75', statut_professionnel: 'retraite', logement: 'locataire', enfants: 'aucun',
       has_notary: false, has_life_insurance: 'non' }
     answers = setAnswer(answers, spec('has_joint_account'), true)
     expect(answers.has_joint_account).toBe(true)
@@ -157,10 +158,10 @@ describe('progress', () => {
     let answers: Answers = {}
     const p0 = progress(answers)
     expect(p0.current).toBe(0)
-    expect(p0.total).toBe(15)
+    expect(p0.total).toBe(16)
     answers = setAnswer(answers, spec('relation'), 'conjoint_marie')
     const p1 = progress(answers)
     expect(p1.current).toBe(1)
-    expect(p1.total).toBe(15) // branche conjoint ouverte
+    expect(p1.total).toBe(16) // branche conjoint ouverte
   })
 })

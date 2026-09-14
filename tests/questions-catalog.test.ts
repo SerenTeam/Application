@@ -4,17 +4,17 @@ import { QUESTIONS_CATALOG, textIn } from '../server/lib/questions-catalog.js'
 
 // Clés autorisées = champs du contrat v2 (dupliqué sciemment : le test casse si l'un bouge sans l'autre)
 const CONTRACT_KEYS = [
-  'relation', 'deceased_firstname', 'deceased_lastname', 'deceased_dod',
+  'relation', 'deceased_firstname', 'deceased_lastname', 'deceased_dod', 'deceased_department',
   'statut_professionnel', 'logement', 'enfants', 'has_notary', 'has_life_insurance',
   'has_joint_account', 'has_vehicle', 'has_credits', 'employait_aide_domicile',
   'contrat_obseques', 'organismes_contactes',
 ]
 
 describe('questions-catalog', () => {
-  it('15 questions, ids uniques, tous dans le contrat', () => {
+  it('16 questions, ids uniques, tous dans le contrat', () => {
     const ids = QUESTIONS_CATALOG.map((q: { id: string }) => q.id)
-    expect(ids).toHaveLength(15)
-    expect(new Set(ids).size).toBe(15)
+    expect(ids).toHaveLength(16)
+    expect(new Set(ids).size).toBe(16)
     for (const id of ids) expect(CONTRACT_KEYS).toContain(id)
   })
   it('orders uniques', () => {
@@ -50,6 +50,21 @@ describe('questions-catalog', () => {
         expect(seen.has(key), `condition ${key} de ${q.id} doit être posée avant`).toBe(true)
       }
       seen.add(q.id)
+    }
+  })
+
+  // chantier 2a : question d'adressage pour l'annuaire des organismes (résolution à l'envoi
+  // papier), donnée pure comme le prénom/nom du défunt — jamais transmise au rédacteur
+  // (voir tests/questionnaire-routes.test.ts, describe « PII : rédacteur Mistral »).
+  it('deceased_department : select, bloc identité, 101 départements, textes {fr,en}', () => {
+    const q = QUESTIONS_CATALOG.find((x: { id: string }) => x.id === 'deceased_department')
+    expect(q, 'question deceased_department absente du catalogue').toBeDefined()
+    expect(q.type).toBe('select')
+    expect(q.categorie).toEqual({ fr: 'Votre situation', en: 'Your situation' })
+    expect(q.options).toHaveLength(101)
+    expect(new Set(q.options.map((o: { value: string }) => o.value)).size).toBe(101)
+    for (const lang of ['fr', 'en'] as const) {
+      expect(textIn(q.fallback_text.question, lang).trim().length).toBeGreaterThan(10)
     }
   })
 })

@@ -1,12 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+
+// Mock du SDK Sentry : `vi.mock` intercepte la résolution du module pour TOUT le graphe de ce
+// fichier de test (y compris letters-store.js, qui importe '@sentry/node' en production) — plus
+// fiable qu'un vi.spyOn direct sur un module tiers (bindings ESM parfois non redéfinissables).
+vi.mock('@sentry/node', () => ({ captureException: vi.fn() }))
+
 // @ts-expect-error — module JS serveur
-import { createSend, listSends, updateSendByProviderRef, markSendResult, claimRetry } from '../server/lib/letters-store.js'
+import { createSend, listSends, updateSendByProviderRef, markSendResult, claimRetry, consumeSend, releaseDebit, recordProviderEvent, markProviderEventProcessed, checkSendLimits, listSendsForResync } from '../server/lib/letters-store.js'
+import * as Sentry from '@sentry/node'
 
 /**
  * Fake du query-builder Supabase : chaîne fluide qui enregistre les appels et résout
- * `single`/`then`/`rpc` sur une file de résultats (un résultat par appel terminal, le
- * dernier étant réutilisé au-delà) — nécessaire ici car `createSend` enchaîne deux appels
- * terminaux distincts sur le même client en cas de conflit `dedup_key` (insert puis reload).
+ * `single`/`then`/`rpc` sur une file de résultats (un résultat par appel terminal, le dernier
+ * étant réutilisé au-delà).
  */
 function fakeClient(results: Array<{ data?: unknown; error?: { message: string; code?: string } | null }>) {
   const calls: Array<[string, unknown[]]> = []
@@ -28,40 +34,170 @@ function fakeClient(results: Array<{ data?: unknown; error?: { message: string; 
   return { client: chain as never, calls }
 }
 
+// Depuis le chantier 2a, TOUTE écriture de letter_sends passe par une RPC à secret — le secret
+// est donc stubé pour l'ensemble du fichier ; les quelques tests « secret absent » l'enlèvent
+// localement.
+beforeEach(() => {
+  vi.stubEnv('WEBHOOK_RPC_SECRET', 'rpc-secret-test')
+})
+afterEach(() => {
+  vi.unstubAllEnvs()
+  vi.restoreAllMocks()
+  vi.mocked(Sentry.captureException).mockClear()
+})
+
 describe('letters-store', () => {
   describe('createSend', () => {
-    it('insère les champs fournis et retourne { send }', async () => {
-      const fields = { user_id: 'u1', template_id: 'mutuelle-resiliation', channel: 'email', dedup_key: 'k1' }
-      const row = { id: 's1', status: 'sending', ...fields }
-      const { client, calls } = fakeClient([{ data: row, error: null }])
+    it('canal email : appelle create_letter_send et retourne { duplicate: false, send }', async () => {
+      const fields = { user_id: 'u1', template_id: 'mutuelle-resiliation', channel: 'email', dedup_key: 'k1', status: 'sending', provider: 'resend', recipient: { email: 'a@b.fr' } }
+      const row = { id: 's1', ...fields }
+      const { client, calls } = fakeClient([{ data: { duplicate: false, send: row }, error: null }])
       const result = await createSend(client, fields)
-      expect(result).toEqual({ send: row })
-      expect(calls).toContainEqual(['from', ['letter_sends']])
-      expect(calls).toContainEqual(['insert', [fields]])
+      expect(result).toEqual({ duplicate: false, send: row })
+      const rpcCall = calls.find(([m]) => m === 'rpc')!
+      expect(rpcCall[1][0]).toBe('create_letter_send')
+      expect(rpcCall[1][1]).toEqual({
+        p_secret: 'rpc-secret-test',
+        p_user_id: 'u1',
+        p_template_id: 'mutuelle-resiliation',
+        p_channel: 'email',
+        p_dedup_key: 'k1',
+        p_step_id: null,
+        p_status: 'sending',
+        p_provider: 'resend',
+        p_recipient: { email: 'a@b.fr' },
+        p_resend_of: null,
+        p_attachment_ids: null,
+        p_cost_cents: null,
+      })
     })
 
-    it('conflit dedup_key (23505) : recharge la ligne existante et signale le duplicata', async () => {
+    it('dedup_key déjà présent : la RPC renvoie duplicate=true avec la ligne existante (sémantique inchangée)', async () => {
       const fields = { user_id: 'u1', template_id: 'mutuelle-resiliation', channel: 'email', dedup_key: 'k1' }
       const existing = { id: 's0', status: 'sent', ...fields }
-      const { client, calls } = fakeClient([
-        { data: null, error: { message: 'duplicate key value violates unique constraint', code: '23505' } },
-        { data: existing, error: null },
-      ])
+      const { client } = fakeClient([{ data: { duplicate: true, send: existing }, error: null }])
       const result = await createSend(client, fields)
       expect(result).toEqual({ duplicate: true, send: existing })
-      // La recharge doit filtrer par dedup_key, pas par id
-      expect(calls).toContainEqual(['eq', ['dedup_key', 'k1']])
     })
 
-    it('propage les erreurs Supabase non-23505 en exceptions lisibles', async () => {
-      const fields = { user_id: 'u1', template_id: 't', channel: 'email', dedup_key: 'k2' }
+    it('canal papier : transmet resend_of/attachment_ids/cost_cents, p_status=null (la RPC choisit le statut initial)', async () => {
+      const fields = {
+        user_id: 'u1',
+        template_id: 'caf-notification',
+        channel: 'papier',
+        dedup_key: 'k2',
+        resend_of: 'send-orig',
+        attachment_ids: ['att-1'],
+        cost_cents: 120,
+      }
+      const { client, calls } = fakeClient([{ data: { duplicate: false, send: { id: 's2' } }, error: null }])
+      await createSend(client, fields)
+      const rpcCall = calls.find(([m]) => m === 'rpc')!
+      expect(rpcCall[1][1]).toMatchObject({
+        p_status: null,
+        p_resend_of: 'send-orig',
+        p_attachment_ids: ['att-1'],
+        p_cost_cents: 120,
+      })
+    })
+
+    it.each(['invalid_initial_status', 'invalid_resend_of', 'resend_already_exists', 'user_daily_exceeded', 'global_daily_exceeded', 'send_not_found'])(
+      'exception nommée %s → LetterStoreError.code correspondant',
+      async (code) => {
+        const { client } = fakeClient([{ data: null, error: { message: code } }])
+        await expect(createSend(client, { user_id: 'u1', template_id: 't', channel: 'papier', dedup_key: 'k3' }))
+          .rejects.toMatchObject({ code, name: 'LetterStoreError' })
+      },
+    )
+
+    it('erreur Supabase non nommée → exception lisible générique', async () => {
       const { client } = fakeClient([{ data: null, error: { message: 'boom' } }])
-      await expect(createSend(client, fields)).rejects.toThrow(/boom/)
+      await expect(createSend(client, { user_id: 'u1', template_id: 't', channel: 'email', dedup_key: 'k4' })).rejects.toThrow(/boom/)
+    })
+
+    it('réponse RPC sans erreur mais sans `send` (anomalie) → exception lisible, pas un TypeError opaque (revue 5+6, M1)', async () => {
+      const { client } = fakeClient([{ data: null, error: null }])
+      await expect(createSend(client, { user_id: 'u1', template_id: 't', channel: 'email', dedup_key: 'k9' })).rejects.toThrow(/send manquant/)
+    })
+
+    it('WEBHOOK_RPC_SECRET absent → lève AVANT tout appel RPC', async () => {
+      vi.unstubAllEnvs()
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const { client, calls } = fakeClient([{ data: null, error: null }])
+      await expect(createSend(client, { user_id: 'u1', template_id: 't', channel: 'email', dedup_key: 'k5' })).rejects.toThrow(/WEBHOOK_RPC_SECRET/)
+      expect(calls.filter(([m]) => m === 'rpc')).toHaveLength(0)
+      expect(errorSpy).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('claimRetry', () => {
+    it('claim gagné : renvoie la ligne retournée par la RPC (p_allow_stale=false par défaut)', async () => {
+      const row = { id: 's1', status: 'prepared' }
+      const { client, calls } = fakeClient([{ data: row, error: null }])
+      const result = await claimRetry(client, 's1')
+      expect(result).toEqual(row)
+      const rpcCall = calls.find(([m]) => m === 'rpc')!
+      expect(rpcCall[1]).toEqual(['claim_letter_retry', { p_secret: 'rpc-secret-test', p_id: 's1', p_allow_stale: false }])
+    })
+
+    it('allowStaleSending + staleSeconds transmis à la RPC (canal papier : fenêtre plus large)', async () => {
+      const { client, calls } = fakeClient([{ data: null, error: null }])
+      await claimRetry(client, 's1', { allowStaleSending: true, staleSeconds: 300 })
+      const rpcCall = calls.find(([m]) => m === 'rpc')!
+      expect(rpcCall[1][1]).toEqual({ p_secret: 'rpc-secret-test', p_id: 's1', p_allow_stale: true, p_stale_seconds: 300 })
+    })
+
+    it('0 ligne modifiée (RPC renvoie null) → claim perdu → null', async () => {
+      const { client } = fakeClient([{ data: null, error: null }])
+      expect(await claimRetry(client, 's1')).toBeNull()
+    })
+
+    it('propage les erreurs Supabase non nommées', async () => {
+      const { client } = fakeClient([{ data: null, error: { message: 'boom' } }])
+      await expect(claimRetry(client, 's1')).rejects.toThrow(/boom/)
+    })
+  })
+
+  describe('markSendResult', () => {
+    it('déballe .send et expose transition_applied=true', async () => {
+      const row = { id: 's1', status: 'sent', provider_ref: 'prov-1', sent_at: '2026-09-13T00:00:00.000Z' }
+      const { client, calls } = fakeClient([{ data: { send: row, transition_applied: true }, error: null }])
+      const result = await markSendResult(client, 's1', { status: 'sent', provider_ref: 'prov-1', sent_at: row.sent_at })
+      expect(result).toEqual({ ...row, transition_applied: true })
+      const rpcCall = calls.find(([m]) => m === 'rpc')!
+      expect(rpcCall[1]).toEqual([
+        'mark_letter_result',
+        { p_secret: 'rpc-secret-test', p_id: 's1', p_status: 'sent', p_provider_ref: 'prov-1', p_sent_at: row.sent_at, p_error: null, p_cost_cents: null },
+      ])
+    })
+
+    it('transition_applied=false (course avec le webhook) : la ligne est quand même renvoyée à plat avec ses métadonnées', async () => {
+      // Le statut le plus avancé (déjà écrit par le webhook) est conservé côté RPC ; la route ne
+      // doit pas traiter ce cas comme une erreur.
+      const row = { id: 's1', status: 'sent', provider_ref: 'prov-1' }
+      const { client } = fakeClient([{ data: { send: row, transition_applied: false }, error: null }])
+      const result = await markSendResult(client, 's1', { status: 'submitted', provider_ref: 'prov-1' })
+      expect(result).toEqual({ ...row, transition_applied: false })
+    })
+
+    it('send_not_found → LetterStoreError', async () => {
+      const { client } = fakeClient([{ data: null, error: { message: 'send_not_found' } }])
+      await expect(markSendResult(client, 'inconnu', { status: 'sent' })).rejects.toMatchObject({ code: 'send_not_found' })
+    })
+
+    it('propage les erreurs Supabase non nommées en exceptions lisibles', async () => {
+      const { client } = fakeClient([{ data: null, error: { message: 'boom' } }])
+      await expect(markSendResult(client, 's1', { status: 'failed', error: 'boom' })).rejects.toThrow(/boom/)
+    })
+
+    it('réponse RPC sans erreur mais sans `send` (anomalie) → exception lisible, pas un TypeError sur .send (revue 5+6, M1)', async () => {
+      const { client } = fakeClient([{ data: null, error: null }])
+      await expect(markSendResult(client, 's1', { status: 'sent' })).rejects.toThrow(/send manquant/)
     })
   })
 
   describe('listSends', () => {
-    it('sélectionne les envois du user, triés created_at desc', async () => {
+    it('sélectionne les envois du user, triés created_at desc (lecture directe, inchangée)', async () => {
       const rows = [{ id: 's2' }, { id: 's1' }]
       const { client, calls } = fakeClient([{ data: rows, error: null }])
       const result = await listSends(client, 'u1')
@@ -83,71 +219,7 @@ describe('letters-store', () => {
     })
   })
 
-  describe('markSendResult', () => {
-    it('met à jour la ligne par id et retourne la ligne mise à jour', async () => {
-      const updated = { id: 's1', status: 'sent', provider_ref: 'prov-1', sent_at: '2026-07-17T00:00:00.000Z' }
-      const { client, calls } = fakeClient([{ data: updated, error: null }])
-      const result = await markSendResult(client, 's1', { status: 'sent', provider_ref: 'prov-1', sent_at: '2026-07-17T00:00:00.000Z' })
-      expect(result).toEqual(updated)
-      expect(calls).toContainEqual(['from', ['letter_sends']])
-      expect(calls).toContainEqual(['update', [{ status: 'sent', provider_ref: 'prov-1', sent_at: '2026-07-17T00:00:00.000Z' }]])
-      expect(calls).toContainEqual(['eq', ['id', 's1']])
-    })
-
-    it('propage les erreurs Supabase en exceptions lisibles', async () => {
-      const { client } = fakeClient([{ data: null, error: { message: 'boom' } }])
-      await expect(markSendResult(client, 's1', { status: 'failed', error: 'boom' })).rejects.toThrow(/boom/)
-    })
-  })
-
-  describe('claimRetry', () => {
-    it('ligne failed : UPDATE conditionnel WHERE status=failed → claim gagné, retourne la ligne', async () => {
-      const row = { id: 's1', status: 'sending' }
-      const { client, calls } = fakeClient([{ data: [row], error: null }])
-      const result = await claimRetry(client, 's1')
-      expect(result).toEqual(row)
-      const updateCall = calls.find(([m]) => m === 'update')
-      expect(updateCall?.[1][0]).toMatchObject({ status: 'sending' })
-      expect((updateCall?.[1][0] as { updated_at: string }).updated_at).toMatch(/^\d{4}-\d{2}-\d{2}T/)
-      expect(calls).toContainEqual(['eq', ['id', 's1']])
-      expect(calls).toContainEqual(['eq', ['status', 'failed']])
-    })
-
-    it('allowStaleSending : garde WHERE status=sending AND updated_at < now-60s', async () => {
-      const { client, calls } = fakeClient([{ data: [{ id: 's1', status: 'sending' }], error: null }])
-      await claimRetry(client, 's1', { allowStaleSending: true })
-      expect(calls).toContainEqual(['eq', ['status', 'sending']])
-      const ltCall = calls.find(([m]) => m === 'lt')
-      expect(ltCall?.[1][0]).toBe('updated_at')
-      // La borne de fraîcheur doit être ≈ now - 60 s
-      const bound = new Date(ltCall?.[1][1] as string).getTime()
-      expect(Date.now() - bound).toBeGreaterThanOrEqual(59_000)
-      expect(Date.now() - bound).toBeLessThan(70_000)
-    })
-
-    it('0 ligne modifiée (une autre requête possède l’envoi) → claim perdu → null', async () => {
-      const { client } = fakeClient([{ data: [], error: null }])
-      expect(await claimRetry(client, 's1')).toBeNull()
-    })
-
-    it('propage les erreurs Supabase', async () => {
-      const { client } = fakeClient([{ data: null, error: { message: 'boom' } }])
-      await expect(claimRetry(client, 's1')).rejects.toThrow(/boom/)
-    })
-  })
-
   describe('updateSendByProviderRef', () => {
-    // La RPC est publiquement appelable via PostgREST (clé publishable + grant EXECUTE) :
-    // le secret partagé WEBHOOK_RPC_SECRET ↔ webhook_config est la vraie barrière, vérifiée
-    // PAR LA BASE — il doit donc TOUJOURS être transmis en p_secret.
-    beforeEach(() => {
-      vi.stubEnv('WEBHOOK_RPC_SECRET', 'rpc-secret-test')
-    })
-    afterEach(() => {
-      vi.unstubAllEnvs()
-      vi.restoreAllMocks()
-    })
-
     it('appelle la RPC security definer avec les bons arguments, p_secret inclus', async () => {
       const { client, calls } = fakeClient([{ data: null, error: null }])
       await updateSendByProviderRef(client, 'prov-ref-1', { status: 'delivered', delivered_at: '2026-07-17T00:00:00.000Z' })
@@ -182,6 +254,166 @@ describe('letters-store', () => {
     it('propage les erreurs Supabase', async () => {
       const { client } = fakeClient([{ data: null, error: { message: 'boom' } }])
       await expect(updateSendByProviderRef(client, 'ref', { status: 'sent' })).rejects.toThrow(/boom/)
+    })
+  })
+
+  describe('consumeSend', () => {
+    it('debited=true, source=included : passthrough intégral de la RPC', async () => {
+      const payload = { debited: true, already_debited: false, source: 'included', free_resend: false, balance_after: 4 }
+      const { client, calls } = fakeClient([{ data: payload, error: null }])
+      const result = await consumeSend(client, 'send-1', 'user-1')
+      expect(result).toEqual(payload)
+      const rpcCall = calls.find(([m]) => m === 'rpc')!
+      expect(rpcCall[1]).toEqual(['consume_send', { p_secret: 'rpc-secret-test', p_send_id: 'send-1', p_user_id: 'user-1' }])
+    })
+
+    it('already_debited=true (retry sur un envoi déjà débité) : passthrough, aucune exception', async () => {
+      const payload = { debited: false, already_debited: true, source: 'included', free_resend: false, balance_after: 4 }
+      const { client } = fakeClient([{ data: payload, error: null }])
+      await expect(consumeSend(client, 'send-1', 'user-1')).resolves.toEqual(payload)
+    })
+
+    it('re-envoi offert : source=offert, free_resend=true passthrough', async () => {
+      const payload = { debited: true, already_debited: false, source: 'offert', free_resend: true, balance_after: 4 }
+      const { client } = fakeClient([{ data: payload, error: null }])
+      await expect(consumeSend(client, 'send-2', 'user-1')).resolves.toEqual(payload)
+    })
+
+    it('quota_exhausted → LetterStoreError traduit, AUCUNE capture Sentry (flux utilisateur normal)', async () => {
+      const { client } = fakeClient([{ data: null, error: { message: 'quota_exhausted' } }])
+      await expect(consumeSend(client, 'send-1', 'user-1')).rejects.toMatchObject({ code: 'quota_exhausted', name: 'LetterStoreError' })
+      expect(Sentry.captureException).not.toHaveBeenCalled()
+    })
+
+    it('send_not_found → LetterStoreError', async () => {
+      const { client } = fakeClient([{ data: null, error: { message: 'send_not_found' } }])
+      await expect(consumeSend(client, 'inconnu', 'user-1')).rejects.toMatchObject({ code: 'send_not_found' })
+    })
+  })
+
+  describe('releaseDebit', () => {
+    it('true = débit libéré, TOUJOURS appelé avec p_user_id', async () => {
+      const { client, calls } = fakeClient([{ data: true, error: null }])
+      const result = await releaseDebit(client, 'send-1', 'user-1')
+      expect(result).toBe(true)
+      const rpcCall = calls.find(([m]) => m === 'rpc')!
+      expect(rpcCall[1]).toEqual(['release_debit', { p_secret: 'rpc-secret-test', p_send_id: 'send-1', p_user_id: 'user-1' }])
+    })
+
+    it('false = rien à libérer (débit inexistant ou envoi déjà engagé) : ce n’est PAS une erreur', async () => {
+      const { client } = fakeClient([{ data: false, error: null }])
+      await expect(releaseDebit(client, 'send-1', 'user-1')).resolves.toBe(false)
+    })
+
+    it('propage les erreurs Supabase non nommées', async () => {
+      const { client } = fakeClient([{ data: null, error: { message: 'boom' } }])
+      await expect(releaseDebit(client, 'send-1', 'user-1')).rejects.toThrow(/boom/)
+    })
+
+    // I3 (revue 5+6) : un userId JS `undefined` disparaît de l'objet JSON envoyé à client.rpc —
+    // PostgREST retomberait alors sur le `default null` de la RPC SQL et la garde d'appartenance
+    // deviendrait vraie pour n'importe qui. La garde doit donc être imposée EN JS, avant tout appel.
+    it.each([undefined, null, ''])('userId manquant/falsy (%s) → lève AVANT tout appel RPC, garde d’appartenance imposée en JS', async (badUserId) => {
+      const { client, calls } = fakeClient([{ data: true, error: null }])
+      await expect(releaseDebit(client, 'send-1', badUserId as unknown as string)).rejects.toThrow(/user_id obligatoire/)
+      expect(calls.filter(([m]) => m === 'rpc')).toHaveLength(0)
+    })
+  })
+
+  describe('recordProviderEvent', () => {
+    it('événement nouveau → true, tous les paramètres transmis', async () => {
+      const { client, calls } = fakeClient([{ data: true, error: null }])
+      const result = await recordProviderEvent(client, { id: 'msb-evt-1', sendId: 'send-1', eventType: 'letter.sent', payload: { foo: 'bar' } })
+      expect(result).toBe(true)
+      const rpcCall = calls.find(([m]) => m === 'rpc')!
+      expect(rpcCall[1]).toEqual([
+        'record_provider_event',
+        { p_secret: 'rpc-secret-test', p_id: 'msb-evt-1', p_send_id: 'send-1', p_event_type: 'letter.sent', p_payload: { foo: 'bar' } },
+      ])
+    })
+
+    it('événement déjà connu (rejeu du webhook) → false, idempotent, aucune exception', async () => {
+      const { client } = fakeClient([{ data: false, error: null }])
+      await expect(recordProviderEvent(client, { id: 'msb-evt-1' })).resolves.toBe(false)
+    })
+  })
+
+  describe('markProviderEventProcessed', () => {
+    it('passthrough booléen', async () => {
+      const { client, calls } = fakeClient([{ data: true, error: null }])
+      expect(await markProviderEventProcessed(client, 'msb-evt-1')).toBe(true)
+      const rpcCall = calls.find(([m]) => m === 'rpc')!
+      expect(rpcCall[1]).toEqual(['mark_provider_event_processed', { p_secret: 'rpc-secret-test', p_id: 'msb-evt-1' }])
+    })
+  })
+
+  describe('listSendsForResync', () => {
+    it('passthrough du périmètre renvoyé par la RPC (id/provider_ref/status/channel), secret transmis', async () => {
+      const rows = [
+        { id: 's1', provider_ref: 'msb-1', status: 'submitted', channel: 'papier' },
+        { id: 's2', provider_ref: 'msb-2', status: 'sent', channel: 'papier' },
+      ]
+      const { client, calls } = fakeClient([{ data: rows, error: null }])
+      const result = await listSendsForResync(client)
+      expect(result).toEqual(rows)
+      const rpcCall = calls.find(([m]) => m === 'rpc')!
+      expect(rpcCall[1]).toEqual(['list_sends_for_resync', { p_secret: 'rpc-secret-test' }])
+    })
+
+    it('retourne un tableau vide si data est null', async () => {
+      const { client } = fakeClient([{ data: null, error: null }])
+      await expect(listSendsForResync(client)).resolves.toEqual([])
+    })
+
+    it('propage les erreurs Supabase non nommées', async () => {
+      const { client } = fakeClient([{ data: null, error: { message: 'boom' } }])
+      await expect(listSendsForResync(client)).rejects.toThrow(/boom/)
+    })
+
+    it('WEBHOOK_RPC_SECRET absent → lève AVANT tout appel RPC', async () => {
+      vi.stubEnv('WEBHOOK_RPC_SECRET', '')
+      const { client, calls } = fakeClient([{ data: [], error: null }])
+      await expect(listSendsForResync(client)).rejects.toThrow(/WEBHOOK_RPC_SECRET manquant/)
+      expect(calls).toHaveLength(0)
+    })
+  })
+
+  describe('checkSendLimits', () => {
+    it.each(['ok', 'user_daily_exceeded', 'global_daily_exceeded'])('%s renvoyé tel quel (pas une exception), RPC + paramètres vérifiés', async (status) => {
+      const { client, calls } = fakeClient([{ data: status, error: null }])
+      const result = await checkSendLimits(client, 'user-1')
+      expect(result).toBe(status)
+      const rpcCall = calls.find(([m]) => m === 'rpc')!
+      expect(rpcCall[1]).toEqual(['check_send_limits', { p_secret: 'rpc-secret-test', p_user_id: 'user-1' }])
+    })
+  })
+
+  // invalid_secret peut survenir sur N'IMPORTE QUELLE RPC neuve (désynchronisation entre l'env
+  // serveur et la ligne webhook_config) : chaque occurrence doit être traduite en LetterStoreError
+  // ET capturée par Sentry (vigilance de revue Task 4/5 — signal d'alerte, pas de compteur).
+  describe('invalid_secret renvoyé par la base — traduit + alerte Sentry, sur toutes les RPC', () => {
+    const cases: Array<[string, (client: never) => Promise<unknown>]> = [
+      ['create_letter_send', (client) => createSend(client, { user_id: 'u1', template_id: 't', channel: 'email', dedup_key: 'k' })],
+      ['claim_letter_retry', (client) => claimRetry(client, 's1')],
+      ['mark_letter_result', (client) => markSendResult(client, 's1', { status: 'sent' })],
+      ['consume_send', (client) => consumeSend(client, 's1', 'u1')],
+      ['release_debit', (client) => releaseDebit(client, 's1', 'u1')],
+      ['record_provider_event', (client) => recordProviderEvent(client, { id: 'evt1' })],
+      ['mark_provider_event_processed', (client) => markProviderEventProcessed(client, 'evt1')],
+      ['check_send_limits', (client) => checkSendLimits(client, 'u1')],
+      ['list_sends_for_resync', (client) => listSendsForResync(client)],
+    ]
+
+    it.each(cases)('%s', async (name, call) => {
+      const { client } = fakeClient([{ data: null, error: { message: 'invalid_secret' } }])
+      await expect(call(client)).rejects.toMatchObject({ code: 'invalid_secret', name: 'LetterStoreError' })
+      expect(Sentry.captureException).toHaveBeenCalledTimes(1)
+      // M3 (revue 5+6) : la RPC en cause est posée en tag (jamais dans le message) pour distinguer
+      // les issues Sentry par RPC plutôt qu'un unique groupement « invalid_secret ».
+      expect(Sentry.captureException).toHaveBeenCalledWith(
+        expect.objectContaining({ code: 'invalid_secret' }),
+        { tags: { rpc: name } },
+      )
     })
   })
 })

@@ -31,6 +31,14 @@ export function createPaymentsRouter({
   getPrice,
   paymentsEnabled,
   priceId,
+  // Tarif « envoi supplémentaire » (chantier 2a, facturation à l'acte) : tarif Stripe DISTINCT
+  // du forfait, absent → la route /checkout-extra-send est inerte en 503 (pattern maison).
+  extraPriceId,
+  // Lecteur du MONTANT de ce même tarif (chantier 2a, Task 11) : le panneau d'envoi papier
+  // affiche le prix AVANT le clic d'achat (spec §8 — pas de dark pattern), exactement comme le
+  // forfait. Optionnel : absent → `extra_price` reste `null`, le front affiche le bouton sans
+  // montant plutôt que de deviner un chiffre (patron de `getPrice`).
+  getExtraPrice,
   includedSends,
   appUrl,
 }) {
@@ -49,6 +57,9 @@ export function createPaymentsRouter({
   // conditions sont indissociables : un flag à true sans clé Stripe ne doit pas produire un
   // demi-état où le gate se ferme alors que personne ne peut acheter.
   const saleOpen = () => Boolean(paymentsEnabled && stripe && priceId)
+  // Même règle, appliquée au tarif à l'acte : un flag ouvert sans tarif « envoi supplémentaire »
+  // ne doit pas produire un demi-état (bouton d'achat qui mène à une erreur).
+  const extraSaleOpen = () => Boolean(paymentsEnabled && stripe && extraPriceId)
 
   router.post('/checkout', requireAuth, checkoutLimiter, async (req, res) => {
     const lang = reqLang(req)
@@ -93,20 +104,103 @@ export function createPaymentsRouter({
     }
   })
 
+  // Achat d'un envoi supplémentaire (chantier 2a, spec §4 — facturation à l'acte au-delà des
+  // envois inclus). Trois différences assumées avec /checkout :
+  //  • il EXIGE un forfait payé (403 sinon) — `getPaidPurchase` est filtré `kind='forfait'` :
+  //    sans cette garde, acheter un timbre à l'unité ouvrirait tout le produit payant, puisque
+  //    le gate cherche exactement « un achat payé » ;
+  //  • il est répétable (pas de no-op `already_purchased`) : on achète autant d'envois qu'on veut ;
+  //  • les metadata portent `kind: 'envoi_sup'` et `included_sends: '1'` — le webhook n'a rien à
+  //    deviner, et la RPC (migration 20260914150000) inscrit la bonne nature d'achat.
+  router.post('/checkout-extra-send', requireAuth, checkoutLimiter, async (req, res) => {
+    const lang = reqLang(req)
+    if (!extraSaleOpen()) {
+      return res.status(503).json({ success: false, error: msg(lang, 'payments_disabled') })
+    }
+
+    try {
+      const forfait = await store.getPaidPurchase(req.supabaseClient, req.user.id)
+      if (!forfait) {
+        return res.status(403).json({
+          success: false,
+          error: msg(lang, 'forfait_required'),
+          code: 'FORFAIT_REQUIRED',
+        })
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [{ price: extraPriceId, quantity: 1 }],
+        success_url: `${appUrl}/dashboard?checkout=extra_success`,
+        cancel_url: `${appUrl}/dashboard?checkout=cancel`,
+        client_reference_id: req.user.id,
+        customer_email: req.user.email,
+        metadata: { user_id: req.user.id, included_sends: '1', kind: 'envoi_sup' },
+      })
+
+      await store.createPending(publicClient, {
+        userId: req.user.id,
+        sessionId: session.id,
+        includedSends: 1,
+        kind: 'envoi_sup',
+      })
+
+      return res.json({ success: true, url: session.url })
+    } catch (error) {
+      console.error('❌ payments/checkout-extra-send :', error?.message ?? error)
+      Sentry.captureException(error)
+      return res.status(502).json({ success: false, error: msg(lang, 'checkout_failed') })
+    }
+  })
+
   router.get('/status', requireAuth, async (req, res) => {
     const lang = reqLang(req)
     try {
-      const [purchase, price] = await Promise.all([
+      // DEUX lectures volontairement distinctes (vigilance I4 de la revue Tasks 5+6) :
+      //  • `has_paid` vient de getPaidPurchase — filtré `kind='forfait'`, c'est EXACTEMENT ce que
+      //    vérifie le gate serveur. Le dériver du dernier achat ferait afficher « forfait payé »
+      //    à quelqu'un qui n'a acheté qu'un envoi supplémentaire (1 timbre), avec un paywall levé
+      //    côté UI et un 402 côté serveur à la première action.
+      //  • `purchase` reste le DERNIER achat, quel qu'il soit : c'est lui qu'affiche l'écran de
+      //    confirmation après un retour de Checkout (y compris pour un envoi supplémentaire).
+      const [purchase, forfait, price, extraPrice] = await Promise.all([
         store.getLatestPurchase(req.supabaseClient, req.user.id),
+        store.getPaidPurchase(req.supabaseClient, req.user.id),
         getPrice ? getPrice() : Promise.resolve(null),
+        getExtraPrice ? getExtraPrice() : Promise.resolve(null),
       ])
+
+      // Détection d'anomalie (correctif M1 de la revue Task 9) : un envoi supplémentaire encaissé
+      // alors que l'utilisateur n'a PAS (ou n'a plus) de forfait payé. Le Checkout à l'acte exige
+      // pourtant un forfait (403), mais la fenêtre existe : paiement différé encaissé après un
+      // remboursement du forfait, ou achat manuel depuis le Dashboard Stripe. L'utilisateur a payé
+      // quelque chose qu'il ne peut pas consommer (le gate le refuse) → réconciliation manuelle.
+      //
+      // ⚠️ POURQUOI ICI ET PAS DANS LE WEBHOOK (écart documenté) : le webhook n'a pas de token
+      // utilisateur, il écrit avec le client `anon` + les RPC à secret. La policy `own purchases
+      // read` étant `auth.uid() = user_id`, une lecture des achats depuis ce client ne renvoie
+      // JAMAIS de ligne — le test « a-t-il un forfait ? » y serait faux pour TOUS les achats à
+      // l'acte, soit 100 % de faux positifs. Cette route-ci lit avec le token de l'utilisateur :
+      // c'est le premier endroit du flux où la question a une réponse fiable (et elle est appelée
+      // au retour de Checkout, exactement quand l'anomalie apparaîtrait).
+      if (!forfait && purchase?.status === 'paid' && purchase?.kind === 'envoi_sup') {
+        console.warn('⚠️ payments/status : envoi supplémentaire encaissé sans forfait payé')
+        Sentry.captureException(new Error('extra_send_paid_without_forfait'), {
+          tags: { anomaly: 'extra_send_without_forfait', purchase_id: purchase.id },
+        })
+      }
+
       return res.json({
         success: true,
         payments_enabled: saleOpen(),
+        has_paid: Boolean(forfait),
         purchase: purchase
           ? { status: purchase.status, paid_at: purchase.paid_at, included_sends: purchase.included_sends }
           : null,
         price: price ?? null,
+        // Prix de l'envoi supplémentaire (chantier 2a) — même forme que `price`, `null` si le
+        // tarif n'est pas configuré (l'offre d'achat à l'acte s'affiche alors sans montant).
+        extra_price: extraPrice ?? null,
       })
     } catch (error) {
       console.error('❌ payments/status :', error?.message ?? error)
@@ -176,6 +270,17 @@ async function handleEvent({ event, store, publicClient }) {
       amountTotal: session.amount_total ?? null,
       currency: session.currency ?? null,
       includedSends: Number(session.metadata?.included_sends ?? 0) || 0,
+      // Nature de l'achat (chantier 2a) : posée par NOTRE serveur à la création de la session et
+      // revenue sous signature vérifiée. Elle ne sert qu'au chemin INSERT de la RPC (webhook plus
+      // rapide que la ligne d'attente) ; sur une ligne `pending` existante, le `kind` déjà écrit
+      // fait foi et n'est jamais réécrit. Toute valeur autre que 'envoi_sup' est ramenée à
+      // 'forfait' par le store — une valeur inattendue, elle, LÈVE (correctif I2) : le webhook
+      // acquitte quand même en 200 et capture dans Sentry, l'anomalie devient visible au lieu de
+      // s'écrire en base sous la valeur privilégiée.
+      // La vérification « cet achat à l'acte a-t-il un forfait derrière lui ? » (anomalie M1) ne
+      // peut PAS se faire ici : ce client n'a pas de token utilisateur et la RLS de purchases ne
+      // lui montre aucune ligne — elle vit dans GET /status, qui lit avec le token du porteur.
+      kind: session.metadata?.kind,
     })
     return
   }
