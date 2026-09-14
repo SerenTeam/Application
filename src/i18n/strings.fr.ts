@@ -385,6 +385,8 @@ export const STRINGS_FR = {
       commission: 'Votre commission',
     },
     previewNotice: 'Préversion — dispositif partenaire complet à venir',
+  },
+
   // Envoi papier (chantier 2a) — panneau d'envoi pour les courriers au canal `papier`
   // (courrier simple, MySendingBox). Les courriers eux-mêmes restent toujours en français ;
   // cette UI, elle, est bilingue comme le reste de l'app.

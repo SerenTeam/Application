@@ -385,6 +385,8 @@ export const STRINGS_EN: Strings = {
       commission: 'Your commission',
     },
     previewNotice: 'Preview — full partner program coming soon',
+  },
+
   // Paper sending (chantier 2a) — send panel for `papier` channel letters (simple mail,
   // MySendingBox). The letters themselves stay in French ; this UI is bilingual like the rest
   // of the app.
