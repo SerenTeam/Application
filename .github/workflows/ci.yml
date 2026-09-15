@@ -23,3 +23,6 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npx vitest run
+      # Build complet (tsc -b + vite build) : ce que Render exécute au déploiement.
+      # Mêmes variables factices VITE_* que ci-dessus (figées dans le bundle de CI, jamais déployé).
+      - run: npm run build

@@ -28,7 +28,17 @@
 //
 // Le compte B est créé à la volée via POST /auth/v1/signup s'il n'existe pas
 // encore déjà (uniquement viable sur un projet où la confirmation email est
-// désactivée — dev/préprod de test, jamais prod).
+// désactivée — préprod ou Supabase local, jamais prod).
+//
+// -- Garde anti-prod (lot L0, 2026-09-15) --------------------------------
+//
+// `oltwzvfjazwjvghpzhia` est la PROD (utilisateurs réels), pas un projet de dev.
+// Toute exécution actuelle de ce script ÉCRIT (signup du compte B, document
+// marqueur, tentatives d'INSERT/PATCH des sondes) : si PROBE_SUPABASE_URL contient
+// ce project-ref, le script refuse de démarrer (exit 1), AVANT toute lecture de
+// configuration ou tout appel réseau, sans dérogation possible. Seconde barrière
+// dans rawFetch() : aucune requête mutante ne part vers la prod, même si la garde
+// de tête était un jour assouplie pour un mode lecture seule.
 //
 // Optionnel — sondes partenaire (sautées avec un avertissement si absentes,
 // c'est attendu tant qu'aucun compte PF n'existe sur l'environnement visé) :
@@ -51,6 +61,27 @@
 // ============================================================================
 
 import { randomUUID } from 'node:crypto'
+import { isProdTarget, PROD_PROJECT_REF, PREPROD_PROJECT_REF } from './check-env-target.mjs'
+
+// ----------------------------------------------------------------------
+// Garde anti-prod — PREMIÈRE instruction exécutée, avant validateEnv()
+// ----------------------------------------------------------------------
+// Tous les modes actuels écrivent (voir l'en-tête) : RUN_WRITES est donc vrai en dur.
+// Un futur mode lecture seule (lot L6) le rendra conditionnel ; la garde ne laissera
+// alors passer la prod qu'en lecture, et assertNoProdWrite() (rawFetch) restera le filet.
+const RUN_WRITES = true
+
+function refuseProdTarget() {
+  const url = process.env.PROBE_SUPABASE_URL
+  if (RUN_WRITES && isProdTarget(url)) {
+    console.error(`REFUS : PROBE_SUPABASE_URL vise le projet Supabase PROD (${PROD_PROJECT_REF}, utilisateurs réels).`)
+    console.error('Ce script écrit (signup du compte B, document marqueur, INSERT/PATCH de sondes) : jamais sur la prod, sans dérogation.')
+    console.error(`Cibler la préprod (${PREPROD_PROJECT_REF}) ou un Supabase local. Voir docs/runbook-rls-probes.md § Garde anti-prod.`)
+    process.exit(1)
+  }
+}
+
+refuseProdTarget()
 
 // ----------------------------------------------------------------------
 // Configuration / environnement
@@ -102,7 +133,19 @@ class AuthError extends Error {
 // partenaire non disponible…).
 class Skip extends Error {}
 
+// Seconde barrière (défense en profondeur) : vers la prod, seules les lectures (GET/HEAD) et
+// la connexion (POST /auth/v1/token) sont tolérées — tout le reste (signup, INSERT, PATCH,
+// DELETE, RPC) lève avant l'envoi. Inatteignable tant que refuseProdTarget() sort en tête.
+function assertNoProdWrite(url, method) {
+  if (!isProdTarget(url)) return
+  const verb = String(method).toUpperCase()
+  if (verb === 'GET' || verb === 'HEAD') return
+  if (verb === 'POST' && new URL(url).pathname.endsWith('/auth/v1/token')) return
+  throw new Error(`requête ${verb} vers la PROD bloquée par la garde anti-prod (${new URL(url).pathname})`)
+}
+
 async function rawFetch(url, { method = 'GET', token, body, prefer, headers = {} } = {}) {
+  assertNoProdWrite(url, method)
   const res = await fetch(url, {
     method,
     headers: {

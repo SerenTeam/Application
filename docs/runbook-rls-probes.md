@@ -16,8 +16,9 @@ rejoindre la CI plus tard (voir § CI ci-dessous).
 
 ## Ce que le script prouve
 
-Sortie TAP (`ok`/`not ok`, plan en fin de run), lecture seule à une exception près (voir
-§ Écriture). Chaque ligne TAP documente en une phrase la propriété RGPD/RLS qu'elle établit :
+Sortie TAP (`ok`/`not ok`, plan en fin de run). Le script écrit : un document marqueur (voir
+§ Écriture), le signup éventuel du compte B et des tentatives d'écriture censées être refusées —
+d'où la garde anti-prod (voir § Garde anti-prod). Chaque ligne TAP documente en une phrase la propriété RGPD/RLS qu'elle établit :
 
 1. **Familles A↔B** — pour chaque table de données famille (`questionnaires`, `roadmaps`,
    `steps`, `step_actions`, `documents`, `questionnaire_sessions`, `letter_sends`,
@@ -71,14 +72,48 @@ node scripts/rls-probes.mjs
 - Toutes les valeurs viennent de variables d'environnement, **aucune valeur par défaut codée
   en dur** dans le script — l'absence d'une variable requise est un échec immédiat et
   explicite (pas une sonde lancée par erreur contre le mauvais projet).
-- Le compte B est créé à la volée (`POST /auth/v1/signup`) s'il n'existe pas encore, en
-  réutilisant le même mot de passe que A. Ne fonctionne que sur un projet où la confirmation
-  email est désactivée (c'est le cas du projet de dev, `oltwzvfjazwjvghpzhia`, réservé aux
-  domaines de test — voir `docs/runbook-supabase-cli.md`) — **jamais en prod**.
+- Le compte B est créé à la volée (`POST /auth/v1/signup`) s'il n'existe pas encore, avec
+  `PROBE_USER_B_PASSWORD`. Ne fonctionne que sur un projet où la confirmation email est
+  désactivée : la **préprod** (`kvtzhyxlqouvpwasedbe`) ou un **Supabase local**
+  (`supabase start`). **Jamais la prod** : voir § Garde anti-prod ci-dessous.
+  ⚠️ Correction du 2026-09-15 : `oltwzvfjazwjvghpzhia` n'est PAS un projet de dev, c'est la
+  **PROD** (branche `main`, `app.seren-app.fr`, utilisateurs réels — cf. `CLAUDE.md`). Les runs
+  antérieurs lancés avec l'URL du `.env` du dépôt principal ont donc visé la prod : compte B
+  (`…+b@seren-test.fr`) et éventuels documents marqueurs `rls-probe-%` résiduels sont à
+  inventorier et à exclure du backfill bêta (requête de détection du lot L9).
+- Après le hook `Before User Created` (plan v2, U2), le signup à la volée du compte B sera refusé
+  par construction : les comptes de probes seront provisionnés par le vrai parcours d'invitation
+  (lot L6, `scripts/provision-v2.mjs`).
 - `PROBE_PARTNER_EMAIL`/`PROBE_PARTNER_PASSWORD` sont optionnels : absents → les 4 sondes
   partenaire sont sautées avec un avertissement explicite, le reste du run continue et le exit
   code reste 0 si tout le reste passe. C'est l'état actuel de dev/préprod (aucun compte PF
   n'y existe) et un run sans ces variables doit finir **vert**.
+
+## Garde anti-prod
+
+Ajoutée le 2026-09-15 (lot L0 du plan v2-démonstrateur). Deux barrières, sans dérogation :
+
+1. **Garde de tête** (`refuseProdTarget()`, première instruction exécutée, avant même la
+   validation des variables) : si `PROBE_SUPABASE_URL` contient `oltwzvfjazwjvghpzhia`, le
+   script affiche `REFUS : …` sur stderr et sort en **code 1**, sans aucun appel réseau.
+   Aujourd'hui tous les modes du script écrivent (signup du compte B, document marqueur,
+   tentatives d'`INSERT`/`PATCH` des sondes deny-all et d'usurpation), donc **toute** exécution
+   contre la prod est refusée. Il n'y a volontairement pas de `PROD_OK` ici (contrairement à
+   `scripts/check-env-target.mjs`) : aucune de ces écritures n'a sa place sur des données réelles.
+2. **Seconde barrière** (`assertNoProdWrite()`, dans `rawFetch()`) : vers la prod, seules les
+   lectures (`GET`/`HEAD`) et la connexion (`POST /auth/v1/token`) partent ; signup, `INSERT`,
+   `PATCH`, `DELETE` et appels RPC lèvent avant l'envoi. Elle est inatteignable tant que la garde
+   de tête sort en premier ; elle protège le futur mode lecture seule du lot L6 (smoke prod en
+   lecture du lot L9), qui devra rendre `RUN_WRITES` conditionnel et étendre explicitement la
+   liste des RPC de lecture autorisées.
+
+La détection repose sur le project-ref dans l'URL (fonction partagée `isProdTarget()` de
+`scripts/check-env-target.mjs`) : un domaine personnalisé pointant sur la prod ne serait pas
+détecté (aucun n'est configuré à ce jour). Tests : `tests/check-env-target.test.ts` (sous-processus
+sur `127.0.0.1`, jamais de réseau vers Supabase).
+
+Avant de lancer le script, contrôler aussi son propre shell : `npm run check:env` (refuse si
+`SUPABASE_URL`/`VITE_SUPABASE_URL` visent la prod).
 
 ## Quand le lancer
 
