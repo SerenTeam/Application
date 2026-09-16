@@ -241,6 +241,14 @@ app.use('/api/letters', createLettersRouter({
 // server/routes/attachments.js.
 app.use('/api/attachments', createAttachmentsRouter({ requireAuth }));
 
+// Ancres contractuelles v2 (docs/design-v2-demonstrateur.md §8.1) : chaque lot insère son app.use
+// JUSTE AVANT son ancre, jamais ailleurs. Ne pas supprimer ni déplacer ces lignes.
+// v2:mount-partner
+
+// v2:mount-activation
+
+// v2:mount-admin
+
 // Webhook provider MySendingBox (chantier 2a, Task 10) : ping non fiable, gardé par un secret
 // d'URL (MSB_WEBHOOK_URL_SECRET) plutôt qu'une signature (non documentée côté MySendingBox) —
 // voir server/routes/provider-webhook.js pour le détail des trois garanties (secret temps

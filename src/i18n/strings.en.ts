@@ -470,4 +470,15 @@ export const STRINGS_EN: Strings = {
     autoRetrying: 'Retrying automatically...',
     missingFieldsHint: 'Fill in the information above before sending.',
   },
+  // v2 contractual anchors (docs/design-v2-demonstrateur.md §8.1): a NEW namespace is inserted
+  // RIGHT BEFORE its lot's anchor; existing namespaces are edited in place.
+  // v2:ns-l3
+
+  // v2:ns-l4
+
+  // v2:ns-l4b
+
+  // v2:ns-l4c
+
+  // v2:ns-l5
 }

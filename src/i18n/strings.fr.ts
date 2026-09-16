@@ -471,6 +471,17 @@ export const STRINGS_FR = {
     autoRetrying: 'Nouvelle tentative en cours...',
     missingFieldsHint: 'Complétez les informations ci-dessus avant l’envoi.',
   },
+  // Ancres contractuelles v2 (docs/design-v2-demonstrateur.md §8.1) : un namespace NEUF s'insère
+  // JUSTE AVANT l'ancre de son lot ; les namespaces existants se modifient en place.
+  // v2:ns-l3
+
+  // v2:ns-l4
+
+  // v2:ns-l4b
+
+  // v2:ns-l4c
+
+  // v2:ns-l5
 }
 
 export type Strings = typeof STRINGS_FR

@@ -75,6 +75,12 @@ export const MESSAGES = {
     purchase_required: 'Cette action fait partie du forfait Seren',
     payments_status_error: 'Erreur lors de la vérification de votre forfait',
     forfait_required: 'Le forfait Seren est nécessaire avant d’acheter un envoi supplémentaire',
+    // Ancres contractuelles v2 (§8.1) : chaque lot insère ses clés JUSTE AVANT son ancre.
+    // v2:messages-l2a
+
+    // v2:messages-l2b
+
+    // v2:messages-l4c
   },
   en: {
     session_required: 'session_id required',
@@ -147,6 +153,12 @@ export const MESSAGES = {
     purchase_required: 'This action is part of the Seren plan',
     payments_status_error: 'Error while checking your plan',
     forfait_required: 'The Seren plan is required before buying an extra send',
+    // v2 contractual anchors (§8.1): each lot inserts its keys RIGHT BEFORE its anchor.
+    // v2:messages-l2a
+
+    // v2:messages-l2b
+
+    // v2:messages-l4c
   },
 }
 

@@ -75,6 +75,7 @@ export default function App() {
               <Route path="/documents" element={<ProtectedRoute><DocumentsPage /></ProtectedRoute>} />
               {/* Espace partenaire (v0-démo) : accès par URL uniquement, aucun lien de nav partagée. */}
               <Route path="/partenaire" element={<ProtectedRoute><PartnerDashboardPage /></ProtectedRoute>} />
+              {/* v2:route-admin */}
 
               {/* 404 catch-all */}
               <Route path="*" element={<NotFoundPage />} />
