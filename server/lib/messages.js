@@ -109,6 +109,9 @@ export const MESSAGES = {
 
     // v2:messages-l2b
 
+    // Vue admin Seren (server/routes/admin.js, lot L4c)
+    not_admin: 'Accès réservé à l’équipe Seren',
+    admin_error: 'Erreur dans l’espace d’administration',
     // v2:messages-l4c
   },
   en: {
@@ -216,6 +219,9 @@ export const MESSAGES = {
 
     // v2:messages-l2b
 
+    // Seren admin view (server/routes/admin.js, lot L4c)
+    not_admin: 'Seren team only',
+    admin_error: 'Admin area error',
     // v2:messages-l4c
   },
 }

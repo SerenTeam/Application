@@ -483,6 +483,30 @@ export const STRINGS_EN: Strings = {
 
   // v2:ns-l4b
 
+  // Seren admin view (lot L4c) — counters per partner, never any family data.
+  admin: {
+    title: 'Seren administration',
+    lead: 'Counters per partner — no family data.',
+    generatedAt: 'Updated on {date}',
+    month: 'Current month: {month}',
+    refresh: 'Refresh',
+    empty: 'No partners.',
+    forbidden: 'Seren team only.',
+    loadError: 'Unable to load the counters.',
+    never: '—',
+    totals: 'Total',
+    columns: {
+      partner: 'Partner',
+      status: 'Status',
+      total: 'Cases created',
+      thisMonth: 'Created this month',
+      pending: 'Invited, pending',
+      activated: 'Activated',
+      cancelled: 'Cancelled',
+      lastDossier: 'Latest case',
+    },
+    statusLabels: { prospect: 'Prospect', active: 'Active', suspended: 'Suspended', terminated: 'Terminated' },
+  },
   // v2:ns-l4c
 
   // v2 family-facing offer (contract §7.6): never a price, never an LRAR mention.

@@ -29,6 +29,10 @@ import { createTransmissionRouter } from './routes/transmission.js';
 import * as lettersStore from './lib/letters-store.js';
 import * as purchasesStore from './lib/purchases-store.js';
 import { LETTER_CHANNELS } from './lib/letter-channels.js';
+// Vue admin Seren (lot L4c). Import volontairement placé en fin de bloc, loin des imports du lot
+// L2b (juste après `createProviderWebhookRouter`) : deux insertions au même endroit produisent un
+// conflit à l'intégration (§8.3 n'ancre que les `app.use`).
+import { createAdminRouter } from './routes/admin.js';
 
 dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.env') });
 
@@ -274,6 +278,9 @@ app.use('/api/activation', createActivationRouter({
 }));
 
 // v2:mount-activation
+
+// Vue admin Seren (lot L4c) : compteurs par partenaire, réservée aux comptes seren_admins (SQL).
+app.use('/api/admin', createAdminRouter({ requireAuth }));
 
 // v2:mount-admin
 
