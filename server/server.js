@@ -12,6 +12,7 @@ import { createLettersRouter } from './routes/letters.js';
 import { createPaymentsRouter } from './routes/payments.js';
 import { createAttachmentsRouter } from './routes/attachments.js';
 import { createProviderWebhookRouter } from './routes/provider-webhook.js';
+import { createAdminRouter } from './routes/admin.js';
 import { createBasicAuthGate } from './lib/basic-auth.js';
 import { createEmailSender } from './lib/email-sender.js';
 import { createPaperSender } from './lib/paper-sender.js';
@@ -246,6 +247,9 @@ app.use('/api/attachments', createAttachmentsRouter({ requireAuth }));
 // v2:mount-partner
 
 // v2:mount-activation
+
+// Vue admin Seren (lot L4c) : compteurs par partenaire, réservée aux comptes seren_admins (SQL).
+app.use('/api/admin', createAdminRouter({ requireAuth }));
 
 // v2:mount-admin
 
