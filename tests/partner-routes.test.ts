@@ -112,6 +112,17 @@ describe('POST /api/partner/dossiers', () => {
       supportEmail: 'support@seren-app.fr',
     })
   })
+  it('partner_name est TOUJOURS présent dans la réponse, null si la RPC ne le renvoie pas', async () => {
+    // Contrat §4.4 : la clé fait partie de la forme de réponse. Sans `?? null`, une RPC qui omet
+    // la clé la fait disparaître de la réponse (JSON.stringify supprime les `undefined`) et le
+    // front PF lirait `undefined` là où il attend `text|null`.
+    process.env.PARTNER_ACTIVATIONS_ENABLED = 'true'
+    const client = makeClient({ partner_create_dossier: () => ({ data: { created: true, duplicate_warning: false, dossier: DOSSIER }, error: null }) })
+    const res = await request(makeApp(client)).post('/api/partner/dossiers').send(BODY)
+    expect(res.status).toBe(201)
+    expect(Object.prototype.hasOwnProperty.call(res.body, 'partner_name')).toBe(true)
+    expect(res.body.partner_name).toBeNull()
+  })
   it('les valeurs du défunt ne sont jamais transmises à l’e-mail', async () => {
     process.env.PARTNER_ACTIVATIONS_ENABLED = 'true'
     const sender = makeSender()

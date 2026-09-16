@@ -121,7 +121,9 @@ export function createPartnerRouter({
   }
 
   function successPayload({ dossier, partnerName, emailSent, token }) {
-    const payload = { success: true, dossier, partner_name: partnerName, email_sent: emailSent }
+    // `?? null` : si la RPC omettait la clé, JSON.stringify la ferait disparaître de la réponse,
+    // alors que le contrat §4.4 la donne toujours présente (valeur `text|null`, §3.3.10 / §3.3.11).
+    const payload = { success: true, dossier, partner_name: partnerName ?? null, email_sent: emailSent }
     if (flagOn('SHOW_ACTIVATION_LINK')) payload.activation_url = activationUrlFor(token)
     return payload
   }
