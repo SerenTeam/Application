@@ -85,3 +85,29 @@ describe('killSwitch', () => {
     expect(res.body.error).toMatch(/Email sending is not available yet/)
   })
 })
+
+describe('server.js — câblage v2', () => {
+  it('variables obsolètes plus lues, gate forfait plus importé', () => {
+    const source = serverSource()
+    expect(source).not.toMatch(/PAYMENTS_ENABLED/)
+    expect(source).not.toMatch(/process\.env\.STRIPE_PRICE_ID\b/)
+    expect(source).not.toMatch(/FORFAIT_INCLUDED_SENDS/)
+    expect(source).not.toMatch(/createRequirePurchase/)
+  })
+  it('trust proxy posé (limiteur par IP derrière le proxy Render)', () => {
+    expect(serverSource()).toContain("app.set('trust proxy', 1)")
+  })
+  it('chaque router métier reçoit requireActiveDossier ; me et transmission montés', () => {
+    const source = serverSource()
+    for (const factory of ['createQuestionnaireRouter', 'createPaymentsRouter', 'createLettersRouter', 'createAttachmentsRouter']) {
+      expect(source).toMatch(new RegExp(`${factory}\\(\\{[\\s\\S]*?requireActiveDossier`))
+    }
+    expect(source).toContain("app.use('/api/me', createMeRouter({ requireAuth }))")
+    expect(source).toContain("app.use('/api', createTransmissionRouter({ requireAuth }))")
+    expect(source).not.toMatch(/app\.get\('\/api\/transmission\/:code'/)
+  })
+  it('ancres v2 conservées après le montage du coffre', () => {
+    const source = serverSource()
+    expect(source.indexOf("app.use('/api/attachments'")).toBeLessThan(source.indexOf('// v2:mount-partner'))
+  })
+})
