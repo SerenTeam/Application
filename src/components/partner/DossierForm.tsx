@@ -69,6 +69,10 @@ function TextField({ id, label, value, onChange, type = 'text', error, hint, max
   )
 }
 
+// Champs qui DÉFINISSENT le doublon côté base (contrat §3.3.9 étape 6 : même `deceased_last_name`
+// + même `deceased_death_date` chez ce partenaire). Eux seuls retirent l'avertissement.
+const DUPLICATE_FIELDS: DossierFormField[] = ['deceased_last_name', 'deceased_death_date']
+
 export function DossierForm({ onCreate, activationsEnabled }: DossierFormProps) {
   const t = useT()
   const [values, setValues] = useState<DossierFormValues>(EMPTY_DOSSIER_FORM)
@@ -82,12 +86,14 @@ export function DossierForm({ onCreate, activationsEnabled }: DossierFormProps) 
     | null
   >(null)
 
-  // Toute correction d'un champ retire l'avertissement de doublon : la PF a peut-être justement
-  // corrigé le nom ou la date qui l'avait déclenché.
+  // Corriger le nom du défunt ou la date du décès retire l'avertissement de doublon : la PF vient
+  // peut-être de corriger ce qui l'avait déclenché. Corriger un autre champ (une coquille dans le
+  // téléphone ou le prénom de la famille) le LAISSE affiché — le critère n'a pas bougé, et la PF
+  // perdrait sinon l'avertissement qu'elle est justement en train de lire.
   const setField = (field: DossierFormField) => (value: string) => {
     setValues((prev) => ({ ...prev, [field]: value }))
     setErrors((prev) => ({ ...prev, [field]: undefined }))
-    setDuplicatePending(false)
+    if (DUPLICATE_FIELDS.includes(field)) setDuplicatePending(false)
   }
 
   const errorText = (field: DossierFormField) => {
