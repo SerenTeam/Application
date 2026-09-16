@@ -26,6 +26,21 @@ Sortie TAP (`ok`/`not ok`, plan en fin de run), `exit 1` si une sonde échoue. U
    `sender_profiles`, `consents`, `transmissions`) : B fait un `SELECT *`, aucune ligne de A ne
    doit apparaître. Plus le storage : B ne liste aucun objet sous le préfixe `A/` du bucket
    `documents`. *SKIP* : table absente de l'environnement, ou bucket indisponible.
+
+   **Force de la preuve, table par table — à lire avant de citer ce chiffre.** Après
+   `provision-v2.mjs`, la famille A ne porte de lignes que dans **4** de ces tables :
+   `documents` et `questionnaires` (écrites par `ensureContent()`), `purchases` et `consents`
+   (écrites par `claim_dossier` et `record_consents`). Ces 4 sondes sont des **preuves fortes** :
+   il existe une ligne de A, et B ne la voit pas. Les **9 autres** (`roadmaps`, `steps`,
+   `step_actions`, `questionnaire_sessions`, `letter_sends`, `send_debits`, `attachments`,
+   `sender_profiles`, `transmissions`) sont **vides** : la sonde y est vraie par vacuité et le
+   resterait si la RLS tombait. Le script le dit lui-même dans sa note (`0 ligne accessible
+   (preuve faible)`) — **ne pas résumer ce bloc par « les 13 tables sont couvertes »**. Pour rendre
+   ces 9 sondes non vacantes, il faut faire écrire à `ensureContent()` une ligne de A dans
+   `roadmaps`, `steps` et `sender_profiles` (les 6 dernières dépendent de parcours complets :
+   envoi, pièce jointe, session en cours, transmission) ; augmenter le `limit=50` n'y changerait
+   rien. Correctif de fond identifié à la revue du 16/09, **non appliqué** : il modifie le chemin
+   de provisionnement, et n'a pas pu être rejoué avant la démo.
 2. **Comptes famille (`my_account`).** A et B ont chacun un dossier **actif**, un consentement à
    la version courante, et la projection n'expose aucun champ interdit (`family_email`,
    `invite_token_hash`, `price_ttc`, `commission_ttc`). Les deux dossiers sont distincts et
@@ -50,7 +65,9 @@ Sortie TAP (`ok`/`not ok`, plan en fin de run), `exit 1` si une sonde échoue. U
 7. **Partenaire PF-X — la règle rouge.** PF-X est `role partner` sans dossier ; sa liste
    (`partner_list_dossiers`) et ses compteurs (`partner_month_counters`) ne contiennent **aucune**
    clé de contenu ni de secret ; et surtout PF-X ne lit **aucune ligne** des 13 tables famille de
-   **sa propre famille activée A**, ni aucun objet de son storage. *SKIP* : compte PF-X absent.
+   **sa propre famille activée A**, ni aucun objet de son storage — avec la même gradation qu'au
+   point 1 (preuve forte sur les 4 tables où A porte des lignes, vacuité sur les 9 autres ; la note
+   de la sonde distingue « preuve forte » et « preuve faible »). *SKIP* : compte PF-X absent.
 8. **PF-Y contre PF-X.** PF-Y ne liste aucun dossier de PF-X, et ne peut ni renvoyer l'invitation
    (`POST /api/partner/dossiers/:id/resend` → **404 `DOSSIER_NOT_FOUND`**, jamais 403 : aucun
    indice d'existence) ni annuler (`partner_cancel_dossier` → `dossier_not_found`) un dossier de
@@ -162,16 +179,20 @@ PROBE_WRITE=1 node --env-file="$HOME/.seren-probes.env" scripts/rls-probes.mjs #
 
 ## Garde anti-prod
 
-**Trois barrières**, sans dérogation pour l'écriture :
+**Quatre barrières**, sans dérogation pour l'écriture :
 
 1. **Garde de tête** (`refuseProdTarget()`, première instruction exécutée, avant la validation des
    variables) : si `PROBE_SUPABASE_URL` contient `oltwzvfjazwjvghpzhia`, l'écriture
    (`PROBE_WRITE=1`) est refusée **sans dérogation possible**, et la lecture seule exige
    `PROD_OK=1` explicite. Sortie `REFUS : …` sur stderr, **exit 1, aucun appel réseau**.
-2. **`assertNoProdWrite()`** (dans `rawFetch()`) : vers la prod, seuls partent `GET`/`HEAD`, la
+2. **`refuseProdApi()`** (juste après, même position : avant tout réseau) : `PROBE_API_URL` ne peut
+   viser ni le project-ref prod ni `app.seren-app.fr`, **quelle que soit la base ciblée** — sans
+   quoi un `PROBE_API_URL` de prod couplé à une base locale passait la garde (revue du 16/09).
+   Les quatre formes sont couvertes : hôte, hôte + chemin, project-ref, forme sans schéma.
+3. **`assertNoProdWrite()`** (dans `rawFetch()`) : vers la prod, seuls partent `GET`/`HEAD`, la
    connexion `POST /auth/v1/token`, le listing storage et les RPC de `READONLY_RPCS`. Tout le
    reste lève **avant** l'envoi.
-3. **`api()`** : aucune requête mutante vers le serveur Express quand la cible est la prod
+4. **`api()`** : aucune requête mutante vers le serveur Express quand la cible est la prod
    (l'URL du serveur ne contient pas le project-ref, d'où cette barrière dédiée).
 
 `scripts/provision-v2.mjs` **refuse la prod dans tous ses modes** (il crée comptes et dossiers), et
@@ -179,9 +200,10 @@ hors `127.0.0.1`/`localhost` exige `E2E_TARGET=preprod` **et** l'URL préprod, n
 adresses `@seren-test.fr`, et refuse toute clé secrète (`sb_secret_…`/`service_role`).
 
 La détection repose sur le project-ref dans l'URL (fonction partagée `isProdTarget()` de
-`scripts/check-env-target.mjs`) : un domaine personnalisé pointant sur la prod ne serait pas
-détecté (aucun n'est configuré à ce jour). Tests : `tests/check-env-target.test.ts` (sous-processus
-sur `127.0.0.1`, jamais de réseau vers Supabase).
+`scripts/check-env-target.mjs`), **plus** le domaine applicatif `app.seren-app.fr` pour les URL de
+serveur (`PROBE_API_URL`, `E2E_API_URL`) : un *autre* domaine personnalisé pointant sur la prod ne
+serait pas détecté (aucun n'est configuré à ce jour). Tests : `tests/check-env-target.test.ts` et
+`tests/provision-v2-guard.test.ts` (sous-processus sur `127.0.0.1`, jamais de réseau vers Supabase).
 
 Avant de lancer le script, contrôler aussi son propre shell : `npm run check:env`.
 
