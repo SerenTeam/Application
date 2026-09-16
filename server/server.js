@@ -12,6 +12,10 @@ import { createLettersRouter } from './routes/letters.js';
 import { createPaymentsRouter } from './routes/payments.js';
 import { createAttachmentsRouter } from './routes/attachments.js';
 import { createProviderWebhookRouter } from './routes/provider-webhook.js';
+import { createPartnerRouter } from './routes/partner.js';
+import { createActivationRouter } from './routes/activation.js';
+import { createInvitationSender } from './lib/invitation-email.js';
+import { generateInviteToken, hashInviteToken } from './lib/invite-token.js';
 import { createBasicAuthGate } from './lib/basic-auth.js';
 import { createEmailSender } from './lib/email-sender.js';
 import { createPaperSender } from './lib/paper-sender.js';
@@ -246,7 +250,28 @@ app.use('/api/attachments', createAttachmentsRouter({ requireAuth, requireActive
 
 // Ancres contractuelles v2 (docs/design-v2-demonstrateur.md §8.1) : chaque lot insère son app.use
 // JUSTE AVANT son ancre, jamais ailleurs. Ne pas supprimer ni déplacer ces lignes.
+// Espace partenaire PF (lot L2b) : comptes PF uniquement (la RPC refuse tout autre compte), non gaté
+// par le dossier famille. Invitation Resend indépendante d'EMAIL_SENDS_ENABLED.
+app.use('/api/partner', createPartnerRouter({
+  requireAuth,
+  invitationSender: createInvitationSender({ resendClient, from: process.env.RESEND_FROM }),
+  appUrl: process.env.APP_URL || 'http://localhost:5173',
+  supportEmail: process.env.SUPPORT_EMAIL || 'support@seren-app.fr',
+  // Secret partagé webhook_config : sans lui, création et renvoi répondent 500 (contrat §3.4, §4.4).
+  // Aucune valeur par défaut : mieux vaut une création fermée qu'une création contournable.
+  rpcSecret: process.env.WEBHOOK_RPC_SECRET,
+  generateInviteToken,
+  hashInviteToken,
+}));
+
 // v2:mount-partner
+
+// Activation famille (lot L2b) : check public (client publishable), claim au token utilisateur.
+app.use('/api/activation', createActivationRouter({
+  requireAuth,
+  publicClient: supabase,
+  supportEmail: process.env.SUPPORT_EMAIL || 'support@seren-app.fr',
+}));
 
 // v2:mount-activation
 

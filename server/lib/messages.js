@@ -84,6 +84,29 @@ export const MESSAGES = {
     attachments_disabled: 'Le dépôt de documents n’est pas encore disponible',
     // v2:messages-l2a
 
+    // v2 — espace partenaire et activation famille (lot L2b)
+    partner_error: 'Erreur dans l’espace partenaire',
+    not_a_partner: 'Ce compte n’est pas rattaché à une pompe funèbre partenaire',
+    partner_inactive: 'Votre espace partenaire est suspendu : contactez Seren',
+    partner_activations_disabled: 'La création de dossiers est momentanément fermée',
+    duplicate_deceased: 'Un dossier existe déjà pour ce défunt à cette date. Confirmez pour en créer un autre.',
+    email_unavailable: 'Cette adresse e-mail ne peut pas être utilisée pour un nouveau dossier',
+    invalid_input: 'Informations incomplètes ou invalides',
+    partner_daily_limit: 'Trop de dossiers créés sur les dernières 24 heures',
+    dossier_not_found: 'Dossier introuvable',
+    dossier_not_invitable: 'Ce dossier n’attend plus d’activation',
+    rotation_too_soon: 'Une invitation vient d’être envoyée, réessayez dans quelques minutes',
+    rotation_limit: 'Nombre maximal de renvois atteint pour ce dossier : contactez Seren',
+    dossier_already_active: 'La famille a déjà activé son accès : l’annulation n’est plus possible, contactez Seren',
+    cancel_window_elapsed: 'Le délai d’annulation de 48 heures est dépassé',
+    activation_error: 'Erreur lors de l’activation de votre accès',
+    invalid_token: 'Lien d’activation invalide',
+    invitation_invalid: 'Ce lien n’est plus valide ou a déjà été utilisé',
+    invitation_expired: 'Ce lien a expiré : demandez un nouveau lien à votre pompe funèbre',
+    email_mismatch: 'Ce lien correspond à une autre adresse e-mail',
+    account_role_forbidden: 'Ce compte ne peut pas activer un dossier famille',
+    account_already_linked: 'Ce compte est déjà rattaché à un dossier',
+
     // v2:messages-l2b
 
     // v2:messages-l4c
@@ -167,6 +190,29 @@ export const MESSAGES = {
     email_sends_disabled: 'Email sending is not available yet: download the letter to send it yourself',
     attachments_disabled: 'Document upload is not available yet',
     // v2:messages-l2a
+
+    // v2 — espace partenaire et activation famille (lot L2b)
+    partner_error: 'Partner area error',
+    not_a_partner: 'This account is not linked to a partner funeral home',
+    partner_inactive: 'Your partner area is suspended: contact Seren',
+    partner_activations_disabled: 'Case creation is temporarily closed',
+    duplicate_deceased: 'A case already exists for this deceased person on this date. Confirm to create another one.',
+    email_unavailable: 'This email address cannot be used for a new case',
+    invalid_input: 'Missing or invalid information',
+    partner_daily_limit: 'Too many cases created in the last 24 hours',
+    dossier_not_found: 'Case not found',
+    dossier_not_invitable: 'This case is no longer awaiting activation',
+    rotation_too_soon: 'An invitation was just sent, try again in a few minutes',
+    rotation_limit: 'Maximum number of resends reached for this case: contact Seren',
+    dossier_already_active: 'The family has already activated their access: cancellation is no longer possible, contact Seren',
+    cancel_window_elapsed: 'The 48-hour cancellation window has passed',
+    activation_error: 'Error while activating your access',
+    invalid_token: 'Invalid activation link',
+    invitation_invalid: 'This link is no longer valid or has already been used',
+    invitation_expired: 'This link has expired: ask your funeral home for a new one',
+    email_mismatch: 'This link belongs to another email address',
+    account_role_forbidden: 'This account cannot activate a family case',
+    account_already_linked: 'This account is already linked to a case',
 
     // v2:messages-l2b
 
