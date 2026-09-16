@@ -4091,11 +4091,11 @@ Revue : **unique** + checklist « aucun champ de contenu » (ni réponses, ni ro
 - Modify: `src/hooks/usePartnerDashboard.ts:56-63` (suppression de `formatEuroCents`)
 - Modify: `src/i18n/strings.{fr,en}.ts` (namespace `partner` : suppression de `rateLabel`, `tiles.paid`, `tiles.revenue`, `tiles.commission`)
 
-- [ ] **26.1** Constat de départ : `grep -n "formatEuroCents\|rateLabel\|revenue\|commission" src/pages/PartnerDashboardPage.tsx` → lignes présentes.
-- [ ] **26.2** `PartnerDashboardPage.tsx` : supprimer `formattedRate`, le `PillBadge` du taux et les tuiles `paid`, `revenue`, `commission` ; ne garder qu'une tuile `{ key: 'attributed', label: t.partner.tiles.attributed, value: String(data.attributed_count) }` rendue dans `grid grid-cols-1 gap-4 sm:grid-cols-2` ; supprimer les imports devenus inutiles (`formatEuroCents`, `useLang`, `fmt`, `PillBadge`). `usePartnerDashboard.ts` : supprimer `formatEuroCents` et l'import `Lang`.
-- [ ] **26.3** i18n `partner` (FR et EN) : ne conserver que `title`, `tiles.attributed` (FR « Dossiers accompagnés », EN inchangé) et `previewNotice`.
-- [ ] **26.4** Vérifier : la commande de 26.1 ne renvoie plus rien ; gate R3 vert.
-- [ ] **26.5** Commit : `feat(v2-l4-plancher): page PF v0 sans montants (CA, commission et taux masqués)`.
+- [x] **26.1** Constat de départ : `grep -n "formatEuroCents\|rateLabel\|revenue\|commission" src/pages/PartnerDashboardPage.tsx` → lignes présentes.
+- [x] **26.2** `PartnerDashboardPage.tsx` : supprimer `formattedRate`, le `PillBadge` du taux et les tuiles `paid`, `revenue`, `commission` ; ne garder qu'une tuile `{ key: 'attributed', label: t.partner.tiles.attributed, value: String(data.attributed_count) }` rendue dans `grid grid-cols-1 gap-4 sm:grid-cols-2` ; supprimer les imports devenus inutiles (`formatEuroCents`, `useLang`, `fmt`, `PillBadge`). `usePartnerDashboard.ts` : supprimer `formatEuroCents` et l'import `Lang`.
+- [x] **26.3** i18n `partner` (FR et EN) : ne conserver que `title`, `tiles.attributed` (FR « Dossiers accompagnés », EN inchangé) et `previewNotice`.
+- [x] **26.4** Vérifier : la commande de 26.1 ne renvoie plus rien ; gate R3 vert.
+- [x] **26.5** Commit : `feat(v2-l4-plancher): page PF v0 sans montants (CA, commission et taux masqués)`.
 
 ### Task 27 : `src/lib/partner-dossier.ts` — types API, `canCancel`, `validateDossierForm`
 
@@ -4104,7 +4104,7 @@ Revue : **unique** + checklist « aucun champ de contenu » (ni réponses, ni ro
 - Create: `src/lib/partner-dossier.ts`
 - Test: `tests/partner-dossier.test.ts`
 
-- [ ] **27.1** Test qui échoue, `tests/partner-dossier.test.ts` :
+- [x] **27.1** Test qui échoue, `tests/partner-dossier.test.ts` :
 
 ```ts
 import { describe, it, expect } from 'vitest'
@@ -4169,8 +4169,8 @@ describe('validateDossierForm (miroir des règles SQL)', () => {
 })
 ```
 
-- [ ] **27.2** Vérifier l'échec : `npx vitest run tests/partner-dossier.test.ts` → échec d'import.
-- [ ] **27.3** Créer `src/lib/partner-dossier.ts` :
+- [x] **27.2** Vérifier l'échec : `npx vitest run tests/partner-dossier.test.ts` → échec d'import.
+- [x] **27.3** Créer `src/lib/partner-dossier.ts` :
 
 ```ts
 // Espace PF (contrat §3.3.12, §4.4) : types des réponses /api/partner/* et règles de formulaire.
@@ -4281,8 +4281,8 @@ export function validateDossierForm(values: DossierFormValues, today: Date = new
 }
 ```
 
-- [ ] **27.4** Vérifier : `npx vitest run tests/partner-dossier.test.ts` → `0 failed`.
-- [ ] **27.5** Commit : `feat(v2-l4): types de l'espace PF, fenêtre d'annulation 48 h et validation du formulaire (miroir SQL)`.
+- [x] **27.4** Vérifier : `npx vitest run tests/partner-dossier.test.ts` → `0 failed`.
+- [x] **27.5** Commit : `feat(v2-l4): types de l'espace PF, fenêtre d'annulation 48 h et validation du formulaire (miroir SQL)`.
 
 ### Task 28 : `usePartnerDashboard` réécrit sur `/api/partner/*`
 
@@ -4290,7 +4290,7 @@ export function validateDossierForm(values: DossierFormValues, today: Date = new
 **Files:**
 - Modify: `src/hooks/usePartnerDashboard.ts` (réécriture complète)
 
-- [ ] **28.1** Réécrire `src/hooks/usePartnerDashboard.ts` (plus AUCUN appel `supabase.rpc('partner_dashboard')` ni `supabase.from(...)`) :
+- [x] **28.1** Réécrire `src/hooks/usePartnerDashboard.ts` (plus AUCUN appel `supabase.rpc('partner_dashboard')` ni `supabase.from(...)`) :
 
 ```ts
 import { useCallback, useEffect, useState } from 'react'
@@ -4387,8 +4387,8 @@ export function usePartnerDashboard() {
 }
 ```
 
-- [ ] **28.2** Vérifier : `npx tsc --noEmit` → erreurs attendues UNIQUEMENT dans `PartnerDashboardPage.tsx` (ancienne forme `data`) — corrigées à la Task 29 ; `grep -rn "partner_dashboard\|from('dossiers')\|from('partners')\|from('attributions')" src` → aucune sortie (H15).
-- [ ] **28.3** Commit (après Task 29, les deux tasks sont commitées ensemble pour garder `tsc` vert) : voir 29.7.
+- [x] **28.2** Vérifier : `npx tsc --noEmit` → erreurs attendues UNIQUEMENT dans `PartnerDashboardPage.tsx` (ancienne forme `data`) — corrigées à la Task 29 ; `grep -rn "partner_dashboard\|from('dossiers')\|from('partners')\|from('attributions')" src` → aucune sortie (H15).
+- [x] **28.3** Commit (après Task 29, les deux tasks sont commitées ensemble pour garder `tsc` vert) : voir 29.7.
 
 ### Task 29 : Composants PF, page réécrite, namespace `partner`
 
@@ -4397,7 +4397,7 @@ export function usePartnerDashboard() {
 - Create: `src/components/partner/PartnerCounters.tsx`, `src/components/partner/DossierForm.tsx`, `src/components/partner/DossierCard.tsx`
 - Modify: `src/pages/PartnerDashboardPage.tsx` (réécriture), `src/i18n/strings.{fr,en}.ts` (namespace `partner` réécrit en entier)
 
-- [ ] **29.1** Namespace `partner` (remplace intégralement l'existant) :
+- [x] **29.1** Namespace `partner` (remplace intégralement l'existant) :
 
 ```ts
 // strings.fr.ts
@@ -4558,8 +4558,8 @@ export function usePartnerDashboard() {
   },
 ```
 
-- [ ] **29.2** `src/components/partner/PartnerCounters.tsx` — props `{ counters: PartnerCountersData }`. Quatre tuiles (`grid grid-cols-2 gap-4 lg:grid-cols-4`, tuile `rounded-card border border-border-card bg-white p-5 shadow-card-border`, libellé `text-sm font-medium text-text-secondary`, valeur `font-display text-[28px] font-normal text-text`) dans cet ordre : `createdThisMonth` ← `created_this_month`, `createdTotal` ← `created_total`, `activatedTotal` ← `activated_total`, `pendingActivation` ← `pending_activation`. Sous la grille, ligne `text-sm text-text-muted` : `fmt(expiredInvitations, { count, s })` · `fmt(cancelledTotal, { count, s })` (affichée seulement si l'une des deux valeurs > 0). **Aucun montant.**
-- [ ] **29.3** `src/components/partner/DossierForm.tsx` — props `{ onCreate: (values: DossierFormValues, confirmDuplicate: boolean) => Promise<PartnerActionResult>; activationsEnabled: boolean }`. Si `!activationsEnabled` : carte avec `t.partner.form.activationsClosed`, pas de formulaire. Sinon : deux `fieldset` (`familySection` : prénom, nom, e-mail + `emailHint`, téléphone ; `deceasedSection` : prénom, nom, `<Input type="date" max={isoDay(new Date())} />`, `isoDay` importé de `@/lib/partner-dossier`), `Label`/`Input` Shadcn, grille `grid gap-4 sm:grid-cols-2`. Logique non triviale :
+- [x] **29.2** `src/components/partner/PartnerCounters.tsx` — props `{ counters: PartnerCountersData }`. Quatre tuiles (`grid grid-cols-2 gap-4 lg:grid-cols-4`, tuile `rounded-card border border-border-card bg-white p-5 shadow-card-border`, libellé `text-sm font-medium text-text-secondary`, valeur `font-display text-[28px] font-normal text-text`) dans cet ordre : `createdThisMonth` ← `created_this_month`, `createdTotal` ← `created_total`, `activatedTotal` ← `activated_total`, `pendingActivation` ← `pending_activation`. Sous la grille, ligne `text-sm text-text-muted` : `fmt(expiredInvitations, { count, s })` · `fmt(cancelledTotal, { count, s })` (affichée seulement si l'une des deux valeurs > 0). **Aucun montant.**
+- [x] **29.3** `src/components/partner/DossierForm.tsx` — props `{ onCreate: (values: DossierFormValues, confirmDuplicate: boolean) => Promise<PartnerActionResult>; activationsEnabled: boolean }`. Si `!activationsEnabled` : carte avec `t.partner.form.activationsClosed`, pas de formulaire. Sinon : deux `fieldset` (`familySection` : prénom, nom, e-mail + `emailHint`, téléphone ; `deceasedSection` : prénom, nom, `<Input type="date" max={isoDay(new Date())} />`, `isoDay` importé de `@/lib/partner-dossier`), `Label`/`Input` Shadcn, grille `grid gap-4 sm:grid-cols-2`. Logique non triviale :
 
 ```tsx
   const [values, setValues] = useState<DossierFormValues>(EMPTY_DOSSIER_FORM)
@@ -4593,7 +4593,7 @@ export function usePartnerDashboard() {
 ```
 
   Rendu du doublon : bandeau `rounded-2xl border border-warning/40 bg-warning-light p-4` avec `duplicateTitle`, `duplicateBody`, boutons `duplicateConfirm` (`submit(true)`) et `duplicateCancel` (`setDuplicatePending(false)`). Résultat `created` : `PillBadge tone="success"` + `fmt(created, { email })` ou `createdEmailFailed` ; si `activationUrl` : bouton `variant="outline"` `copyLink` → `navigator.clipboard.writeText(activationUrl)` puis libellé `linkCopied` (l'URL n'est jamais affichée en clair ni journalisée). Messages d'erreur de champ : `t.partner.form.errors[errors[field]]`.
-- [ ] **29.4** `src/components/partner/DossierCard.tsx` — props `{ dossier: PartnerDossier; onResend: (id: string) => Promise<PartnerActionResult>; onCancel: (id: string) => Promise<PartnerActionResult>; activationsEnabled: boolean }`. Carte `rounded-card border border-border-card bg-white p-5 shadow-card-border`, colonne sur mobile, 2 colonnes à partir de `sm`. Contenu STRICTEMENT limité à : prénom + nom de la famille, e-mail, téléphone s'il existe ; `fmt(list.deceased, { name: prénom + nom, date })` ; `createdOn`, `activatedOn` / `cancelledOn` / `invitationValidUntil` selon le statut ; badge de statut :
+- [x] **29.4** `src/components/partner/DossierCard.tsx` — props `{ dossier: PartnerDossier; onResend: (id: string) => Promise<PartnerActionResult>; onCancel: (id: string) => Promise<PartnerActionResult>; activationsEnabled: boolean }`. Carte `rounded-card border border-border-card bg-white p-5 shadow-card-border`, colonne sur mobile, 2 colonnes à partir de `sm`. Contenu STRICTEMENT limité à : prénom + nom de la famille, e-mail, téléphone s'il existe ; `fmt(list.deceased, { name: prénom + nom, date })` ; `createdOn`, `activatedOn` / `cancelledOn` / `invitationValidUntil` selon le statut ; badge de statut :
 
 | Statut | Clé | `PillBadge tone` |
 |---|---|---|
@@ -4604,7 +4604,7 @@ export function usePartnerDashboard() {
 | `cancelled` | `status.cancelled` | `neutral` |
 
   Actions : « Renvoyer » visible si `dossier.can_resend && activationsEnabled` ; « Annuler » visible si `dossier.can_cancel && canCancel(dossier)` avec confirmation en deux temps (`cancel` → `cancelConfirm` / `cancelKeep`) et mention `fmt(actions.cancelUntil, { date: cancelDeadline(dossier.created_at) })`. Retour d'action : succès → message `actions.resent` (renvoi) ; échec → `result.message || t.partner.actions.actionError`. Dates formatées par `new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : 'fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })` (heure ajoutée pour `cancelUntil` : `hour: '2-digit', minute: '2-digit'`).
-- [ ] **29.5** `src/pages/PartnerDashboardPage.tsx` (réécriture) :
+- [x] **29.5** `src/pages/PartnerDashboardPage.tsx` (réécriture) :
 
 ```tsx
 import { Navigate } from 'react-router-dom'
@@ -4676,8 +4676,8 @@ export function PartnerDashboardPage() {
 }
 ```
 
-- [ ] **29.6** Vérifier : gate R3 vert ; checklist « aucun champ de contenu » : `grep -rn "answers\|roadmap\|letter\|document\|attachment\|send_\|quota" src/components/partner src/pages/PartnerDashboardPage.tsx src/hooks/usePartnerDashboard.ts` → aucune sortie ; `grep -rn "#[0-9A-Fa-f]\{6\}" src/components/partner` → aucune sortie.
-- [ ] **29.7** Commit (Tasks 28 + 29) : `git add src/hooks/usePartnerDashboard.ts src/components/partner src/pages/PartnerDashboardPage.tsx src/i18n/strings.fr.ts src/i18n/strings.en.ts && git commit -m "feat(v2-l4): espace PF — créer (doublon confirmé), lister, renvoyer, annuler sous 48 h, compteurs explicites, sans contenu famille"`.
+- [x] **29.6** Vérifier : gate R3 vert ; checklist « aucun champ de contenu » : `grep -rn "answers\|roadmap\|letter\|document\|attachment\|send_\|quota" src/components/partner src/pages/PartnerDashboardPage.tsx src/hooks/usePartnerDashboard.ts` → aucune sortie ; `grep -rn "#[0-9A-Fa-f]\{6\}" src/components/partner` → aucune sortie.
+- [x] **29.7** Commit (Tasks 28 + 29) : `git add src/hooks/usePartnerDashboard.ts src/components/partner src/pages/PartnerDashboardPage.tsx src/i18n/strings.fr.ts src/i18n/strings.en.ts && git commit -m "feat(v2-l4): espace PF — créer (doublon confirmé), lister, renvoyer, annuler sous 48 h, compteurs explicites, sans contenu famille"`.
 
 ---
 
@@ -5856,3 +5856,13 @@ Amendements des **deux revues adversariales** appliqués au plan AVANT exécutio
 Exécution des lots :
 
 > **Note post-revue (Task 29, 2026-09-16) :** vérification 400 px du lot L4 — la classe de tuile prescrite en 29.2 (`rounded-card border border-border-card bg-white p-5 shadow-card-border`) laisse les **valeurs désalignées** dès qu'un libellé passe à deux lignes, ce qui arrive à 400 px pour « En attente d’activation » : le nombre de cette tuile descend sous celui de sa voisine — ajout de `flex h-full flex-col justify-between` sur la tuile, qui plaque les valeurs en bas et les réaligne — écart purement visuel, aucune donnée, aucune clé i18n ni signature touchée.
+
+Correctifs de la revue L4 (aucun défaut critique ; défauts mineurs 1, 2, 3, 4, 5 et 7 traités, 6 et 8 laissés tels quels) :
+
+> **Note post-revue (Task 29, 2026-09-16) :** revue L4, défaut mineur 1 — un 403 `NOT_A_PARTNER` survenant **en cours de séance** (PF résiliée pendant la session) faisait boucler l'onglet : la page redirigeait vers « / » alors que le cache de module de `useAccount` disait encore « partenaire », et la garde d'accès famille renvoyait aussitôt vers `/partenaire` — `resetAccountCache()` est appelé sur `notPartner` et l'écran d'erreur de chargement (`partner.loadError` + `retry`) remplace la redirection — aucune clé i18n ajoutée, `Navigate` n'est plus importé ; le cas au premier chargement reste inatteignable (§3.3.6 : une PF `terminated` ne reçoit plus le rôle).
+> **Note post-revue (Task 29, 2026-09-16) :** revue L4, défaut mineur 3 — `partner_activations_enabled` était lu avant la réponse de `GET /api/me` : le formulaire pouvait s'afficher ouvert une fraction de seconde alors que le drapeau est fermé — le voile de chargement couvre désormais aussi le compte (`pending = loading || accountLoading`) — inchangé quand le compte est en erreur (retombée « ouvert », le serveur refuse en 503 `PARTNER_ACTIVATIONS_DISABLED`).
+> **Note post-revue (Task 29, 2026-09-16) :** revue L4, défaut mineur 5 — toute frappe effaçait le bandeau de doublon, y compris dans le téléphone ou le prénom de la famille, faisant perdre à la PF l'avertissement qu'elle venait de lire — seuls `deceased_last_name` et `deceased_death_date`, les deux champs qui **définissent** le doublon (contrat §3.3.9 étape 6), le retirent désormais — écart assumé au code donné en 29.3, aucune signature ni clé i18n touchée.
+> **Note post-revue (Task 28, 2026-09-16) :** revue L4, défaut mineur 7 — `refresh()` n'avait aucune garde de séquence : deux rafraîchissements concurrents (création, renvoi, annulation, changement de langue) pouvaient revenir dans le désordre et la réponse la plus **ancienne** écraser la plus récente — ticket `useRef` et `commit()` qui n'écrit que pour le dernier refresh lancé — écart au code donné en 28.1, périmètre et signatures inchangés.
+> **Note post-revue (Task 28, 2026-09-16) :** revue L4, défaut mineur 4 — `duplicateCount` est remonté du 409 `DUPLICATE_DECEASED` sans être affiché ; ni retiré (il est contractuel, §7) ni rendu (le message `duplicate_deceased` du contrat §8.3 ne porte aucun nombre : en inventer un sortirait du contrat figé) — commentaire explicite sur `PartnerActionResult` — décision consignée, aucun code exécutable modifié.
+> **Note post-revue (Task 27, 2026-09-16) :** revue L4, défaut mineur 2 — `NOW` était un instant UTC comparé à des **jours calendaires locaux** (`isoDay`) : sous `TZ=Pacific/Kiritimati` (UTC+14) la version d'origine du fichier échoue bien 2/20 (« date future » et « exactement 2 ans » inversés), vérifié avant correctif — `NOW` est construit en heure locale et les `created_at` en dérivent par soustraction (`agoIso`) — 20/20 dans tous les fuseaux, `vitest.config.ts` (propriété d'un autre lot) laissé intact.
+> **Note post-revue (Tasks 28-29, 2026-09-16) :** revue L4, défauts mineurs 6 et 8 — laissés tels quels : le recentrage d'`INVALID_INPUT` sur `family_last_name` est prescrit en 29.3 et le miroir local attrape ces cas avant l'aller-retour ; `cancel_deadline` recalculé localement est strictement équivalent au contrat §3.3.12 — aucun correctif, constat consigné.
