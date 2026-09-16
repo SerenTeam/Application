@@ -193,6 +193,29 @@ PROBE_WRITE=1 PROBE_API_URL=https://preprod-app.seren-app.fr \
 
 ✅ `1..13` sans `not ok` pour l'E2E ; aucune ligne `not ok` pour les probes (en lecture seule, les sondes d'écriture sortent en SKIP). Puis **répétition chronométrée** (2 profils, vraie boîte e-mail) et verdict des défauts — GNG5.
 
+> ⚠️ **Force de la preuve des sondes d'isolation — limite signalée par le lot L6, à lire avant de citer un chiffre.**
+> Les sondes familles A↔B (et les sondes PF-X contre sa propre famille activée) balayent 13 tables, mais elles
+> ne prouvent pas la même chose sur les 13 :
+>
+> - **Preuve FORTE sur 4 tables** — `documents`, `questionnaires`, `purchases`, `consents` : après
+>   `provision-v2.mjs`, la famille A y porte réellement des lignes, et la sonde constate que B (ou PF-X) ne les
+>   voit pas. C'est une isolation démontrée.
+> - **Preuve FAIBLE sur les 9 autres** — `roadmaps`, `steps`, `step_actions`, `questionnaire_sessions`,
+>   `letter_sends`, `send_debits`, `attachments`, `sender_profiles`, `transmissions` : ces tables sont **vides**
+>   pour A, la sonde est donc vraie **par vacuité** et le resterait si la RLS tombait. Le script l'écrit lui-même
+>   dans sa note (`0 ligne accessible (preuve faible)`). Correctif de fond identifié à la revue du 16/09,
+>   **non appliqué** avant la démo (il modifie le chemin de provisionnement).
+>
+> 🛑 **Formule INTERDITE, à l'oral comme à l'écrit : « les 13 tables sont couvertes »** — ainsi que toute
+> variante (« les 13 tables sont protégées / prouvées / étanches »). Elle surqualifie 9 sondes vacantes et ne
+> résisterait pas à une question technique d'un investisseur. **Dire à la place** : « l'isolation est prouvée sur
+> les tables qui portent des données — documents, questionnaire, achats, consentements — et les autres sont
+> balayées par la même sonde, aujourd'hui à vide. »
+>
+> **Le rejeu complet `57/57 ok` se fait sur la préprod, une fois les comptes provisionnés** (étape 11 de U2,
+> puis les commandes ci-dessus) : le `1..57` obtenu en local sur la base de dev ne vaut pas preuve pour la
+> préprod. Détail sonde par sonde : `docs/runbook-rls-probes.md` §1 et §7.
+
 ### Jeudi 9h-9h25
 
 Push de `rc3` s'il est retenu, puis **tag de démo** : commandes exactes fournies par la session (41.5), **toutes en forme pelée**, tag `demo-2026-09-18` **annoté** et poussé séparément. Deploy IDs rc2 et rc3 notés. Puis checklist du jour J (§4). **Gel dur à 10h45.**
@@ -210,7 +233,7 @@ Push de `rc3` s'il est retenu, puis **tag de démo** : commandes exactes fournie
 | **3:15** | **Famille** | Deux ou trois questions du questionnaire (textes statiques, LLM coupé), puis bascule sur le compte **pré-activé** du même profil. | « Le questionnaire s'adapte ; on saute à un dossier déjà rempli. » |
 | **4:30** | **Famille** | Écran de fin « **N courriers prêts** » → roadmap avec le bandeau de relecture → courrier bailleur pré-rempli → PJ PDF fictive → **envoi papier en clé TEST** → « Pris en charge » → badge « **9 envois inclus restants sur 10** ». | « En test, l'imprimeur accepte le pli sans l'imprimer ; en production le suivi est réel. » |
 | **6:30** | **PF** | Le dossier créé à 0:45 est passé « **Activé** ». Aucune réponse, aucun courrier, aucun document visible. | « Voilà tout ce que la pompe funèbre voit. » |
-| **7:15** | mixte | Sécurité : `/signup` redirigé, sortie du scénario de hook (inscription non invitée refusée), sortie des probes (PF-X ne lit pas le contenu de sa propre famille), flags fermés (LLM, e-mail aux organismes, mini-paiement). | « L'isolation est prouvée par des sondes rejouables, pas par une promesse. » |
+| **7:15** | mixte | Sécurité : `/signup` redirigé, sortie du scénario de hook (inscription non invitée refusée), sortie des probes (PF-X ne lit pas le contenu de sa propre famille), flags fermés (LLM, e-mail aux organismes, mini-paiement). | « L'isolation est prouvée par des sondes rejouables, pas par une promesse. » **Ne pas dire « les 13 tables sont couvertes »** — formulation exacte et raison : §6 et l'encadré de U3. |
 | **8:15** | slide | Ce qui ouvre **ce soir** en bêta pilote réelle, et la suite : LRAR, file de validation, relances, facturation SEPA, coffre complet. | |
 
 ---
@@ -250,6 +273,7 @@ Push de `rc3` s'il est retenu, puis **tag de démo** : commandes exactes fournie
 - **Fragment `#t=` et Basic Auth** (H8) : si le navigateur perd le fragment après le défi Basic Auth, ouvrir le lien **après** avoir saisi la Basic Auth dans le profil.
 - **Unicité globale de l'e-mail famille** (H17) : une adresse = un dossier ouvert, toutes PF confondues. Une adresse déjà prise renvoie `EMAIL_UNAVAILABLE`.
 - **Suppression d'un compte de test** : `Delete user` est bloqué tant que le dossier est **actif** — clore d'abord le dossier (partie B de `scripts/erase-family.sql`).
+- **Sondes d'isolation — ne jamais dire « les 13 tables sont couvertes »** (moment 7:15). La preuve est **forte sur 4 tables seulement** (`documents`, `questionnaires`, `purchases`, `consents`, où la famille A porte des lignes) et **faible sur les 9 autres**, vides donc vraies par vacuité (`roadmaps`, `steps`, `step_actions`, `questionnaire_sessions`, `letter_sends`, `send_debits`, `attachments`, `sender_profiles`, `transmissions`). Formulation de repli et rejeu `57/57` sur la préprod : encadré de U3.
 
 ---
 
