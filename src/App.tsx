@@ -10,6 +10,7 @@ import { CookieBanner } from '@/components/layout/CookieBanner'
 import { Toaster } from '@/components/ui/toaster'
 import { LoginPage } from '@/pages/LoginPage'
 import { ActivationPage } from '@/pages/ActivationPage'
+import { ConsentPage } from '@/pages/ConsentPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 import { ResetPasswordConfirmPage } from '@/pages/ResetPasswordConfirmPage'
 import { ResetPasswordSuccessPage } from '@/pages/ResetPasswordSuccessPage'
@@ -72,6 +73,8 @@ export default function App() {
               <Route path="/maintenance" element={<MaintenancePage />} />
 
               {/* Protected routes */}
+              {/* Consentement : seule route famille ouverte tant que les 3 accords manquent. */}
+              <Route path="/bienvenue" element={<ProtectedRoute><RequireAccess area="consent"><ConsentPage /></RequireAccess></ProtectedRoute>} />
               <Route path="/" element={<ProtectedRoute><RequireAccess area="family"><QuestionnairePage /></RequireAccess></ProtectedRoute>} />
               <Route path="/access" element={<ProtectedRoute><AccessPage /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute><RequireAccess area="family"><DashboardPage /></RequireAccess></ProtectedRoute>} />

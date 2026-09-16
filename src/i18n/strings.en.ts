@@ -483,6 +483,25 @@ export const STRINGS_EN: Strings = {
     retry: 'Try again',
     support: 'Need help? Write to {email}',
   },
+
+  // Page /bienvenue (contrat §7.4) : les 3 consentements obligatoires, horodatés par record_consents.
+  consent: {
+    title: 'Welcome',
+    providedBy: 'Your Seren support is provided by {partner}.',
+    providedByGeneric: 'Your Seren support.',
+    deceasedLine: 'We are by your side for the formalities following the death of {name}.',
+    intro: 'Before you start, please read these three points.',
+    terms: 'I accept the terms of use (beta version)',
+    termsLink: 'Read the terms',
+    privacy: 'I have read the privacy policy',
+    privacyLink: 'Read the policy',
+    sensitiveData:
+      'I agree that Seren processes the sensitive information needed for my formalities (death, family situation, assets)',
+    cta: 'Start',
+    submitting: 'Saving...',
+    saveError: 'Unable to save your agreement, please try again.',
+    allRequired: 'All three boxes are required to use Seren.',
+  },
   // v2:ns-l3
 
   // v2:ns-l4

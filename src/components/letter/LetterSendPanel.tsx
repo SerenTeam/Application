@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label'
 import { PillBadge } from '@/components/ui/pill-badge'
 import { Send, Loader2 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
+import { useAccount } from '@/hooks/useAccount'
 import { useT } from '@/i18n/useT'
 import { useLang } from '@/i18n/LanguageContext'
 import { PaperSendPanel } from './PaperSendPanel'
@@ -65,6 +66,7 @@ export function LetterSendPanel({
 }: LetterSendPanelProps) {
   const t = useT()
   const { lang } = useLang()
+  const { me } = useAccount()
   const [email, setEmail] = useState('')
   const [sending, setSending] = useState(false)
   const [status, setStatus] = useState<SendStatus>({ kind: 'idle' })
@@ -132,6 +134,12 @@ export function LetterSendPanel({
       setSending(false)
     }
   }, [canSend, templateId, stepId, subject, body, email, lang])
+
+  // Canal e-mail fermé (EMAIL_SENDS_ENABLED absent) : le courrier reste consultable et téléchargeable
+  // (LetterActions, rendu à côté), seul l'envoi par Seren est remplacé par un message.
+  if (channel === 'email' && me?.flags.email_sends_enabled === false) {
+    return <p className="text-xs italic text-text-muted">{t.lettersPage.send.notConfigured}</p>
+  }
 
   // Canal papier (chantier 2a) : toute la logique (profil expéditeur, adresse, PJ, quota,
   // statuts, reprise après Checkout) vit dans PaperSendPanel — ce composant-ci ne fait que

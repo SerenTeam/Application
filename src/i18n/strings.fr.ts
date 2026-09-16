@@ -484,6 +484,25 @@ export const STRINGS_FR = {
     retry: 'Réessayer',
     support: 'Besoin d’aide ? Écrivez à {email}',
   },
+
+  // Page /bienvenue (contrat §7.4) : les 3 consentements obligatoires, horodatés par record_consents.
+  consent: {
+    title: 'Bienvenue',
+    providedBy: 'Votre accompagnement Seren vous est proposé par {partner}.',
+    providedByGeneric: 'Votre accompagnement Seren.',
+    deceasedLine: 'Nous sommes à vos côtés pour les démarches liées au décès de {name}.',
+    intro: 'Avant de commencer, merci de prendre connaissance de ces trois points.',
+    terms: 'J’accepte les conditions générales d’utilisation (version bêta)',
+    termsLink: 'Lire les conditions',
+    privacy: 'J’ai pris connaissance de la politique de confidentialité',
+    privacyLink: 'Lire la politique',
+    sensitiveData:
+      'J’accepte que Seren traite les informations sensibles nécessaires à mes démarches (décès, situation familiale, patrimoine)',
+    cta: 'Commencer',
+    submitting: 'Enregistrement...',
+    saveError: 'Impossible d’enregistrer votre accord, réessayez.',
+    allRequired: 'Les trois cases sont nécessaires pour utiliser Seren.',
+  },
   // v2:ns-l3
 
   // v2:ns-l4
