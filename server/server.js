@@ -17,7 +17,11 @@ import { createEmailSender } from './lib/email-sender.js';
 import { createPaperSender } from './lib/paper-sender.js';
 import { createPaperResync } from './lib/paper-resync.js';
 import { createStripeClient, createPriceReader } from './lib/stripe-client.js';
-import { createRequirePurchase } from './lib/require-purchase.js';
+import { flagOn } from './lib/flags.js';
+import { createRequireActiveDossier } from './lib/require-active-dossier.js';
+import { scrubSentryEvent } from './lib/sentry-scrub.js';
+import { createMeRouter } from './routes/me.js';
+import { createTransmissionRouter } from './routes/transmission.js';
 import * as lettersStore from './lib/letters-store.js';
 import * as purchasesStore from './lib/purchases-store.js';
 import { LETTER_CHANNELS } from './lib/letter-channels.js';
@@ -30,6 +34,9 @@ if (process.env.SENTRY_DSN) {
     dsn: process.env.SENTRY_DSN,
     tracesSampleRate: 0,
     sendDefaultPii: false,
+    // Contrat §4.8 : jamais de jeton d'activation, de hash ni de corps des routes
+    // d'activation/partenaire dans un événement sortant.
+    beforeSend: (event) => scrubSentryEvent(event),
   });
 }
 
@@ -37,6 +44,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.set('trust proxy', 1); // Render est derrière un proxy : req.ip = IP cliente (limiteur par IP, L2b)
 const PORT = process.env.PORT || 3000;
 
 // Client Supabase (clé publishable — opérations non authentifiées ; la RLS s'applique).
@@ -159,46 +167,41 @@ async function requireAuth(req, res, next) {
   }
 }
 
-// Client Mistral
-const client = new Mistral({
-  apiKey: process.env.MISTRAL_API_KEY,
-});
+// Rédacteur LLM du questionnaire (chantier 5) : coupé par défaut. Le client Mistral n'est
+// INSTANCIÉ que si FEATURE_LLM === 'true' ET qu'une clé existe — lu une seule fois au démarrage
+// (contrat §5, exception documentée). Sans lui, question-writer.js renvoie les textes relus du
+// catalogue et aucune donnée ne sort vers Mistral.
+const llmEnabled = flagOn('FEATURE_LLM') && Boolean(process.env.MISTRAL_API_KEY)
+const mistralClient = llmEnabled ? new Mistral({ apiKey: process.env.MISTRAL_API_KEY }) : null
 
 const MISTRAL_MODEL = process.env.MISTRAL_MODEL || 'mistral-small-latest'; // rédacteur du questionnaire v2
 
-// Questionnaire v2 : flux piloté par le moteur (server/lib), IA limitée à la rédaction des textes.
-app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, mistral: client, model: MISTRAL_MODEL }));
+// Gate v2 (contrat §4.1) : UNE instance partagée par les routers métier famille.
+const requireActiveDossier = createRequireActiveDossier()
 
-// ==================== PAIEMENT DU FORFAIT (chantier 1) ====================
-// PAYMENTS_ENABLED gouverne la vente ET le gating d'un seul geste : non défini (défaut) → la
-// vente est fermée (503 sur /checkout) ET le gate laisse passer, c'est-à-dire exactement le
-// comportement d'avant ce chantier. `=== 'true'` : toute autre valeur ferme la vente.
-const paymentsEnabled = process.env.PAYMENTS_ENABLED === 'true';
+// Compte courant (rôle, dossier, consentement, quota, flags) — requireAuth seul, jamais gaté.
+app.use('/api/me', createMeRouter({ requireAuth }))
+
+// Questionnaire v2 : flux piloté par le moteur (server/lib), IA limitée à la rédaction des textes.
+app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, requireActiveDossier, mistral: mistralClient, model: MISTRAL_MODEL }));
+
+// ==================== PAIEMENTS (v2) ====================
+// Forfait famille abandonné (la PF paie Seren) : les trois variables d'environnement du forfait
+// (ouverture de la vente, tarif Stripe du forfait, quota d'envois inclus) ne sont plus lues. Le
+// test « câblage v2 » de tests/flags.test.ts en interdit jusqu'au NOM dans ce fichier — d'où cette
+// périphrase. Reste le mini-paiement « envoi supplémentaire », fermé tant que EXTRA_SENDS_ENABLED
+// n'est pas 'true' (absent en bêta).
 const stripeClient = createStripeClient();
-const stripePriceId = process.env.STRIPE_PRICE_ID;
-// Tarif « envoi supplémentaire » (chantier 2a, facturation à l'acte) : tarif Stripe distinct du
-// forfait. Absent → POST /api/payments/checkout-extra-send répond 503 et le 402 de quota épuisé
-// n'affiche pas d'offre d'achat (extraSendAvailable ci-dessous).
 const stripeExtraSendPriceId = process.env.STRIPE_PRICE_ID_EXTRA_SEND;
-// Quota d'envois inclus dans le forfait : figé à l'achat (consommé par le canal papier, 2a).
-const forfaitIncludedSends = Number(process.env.FORFAIT_INCLUDED_SENDS ?? 5) || 0;
 
 app.use('/api/payments', createPaymentsRouter({
   requireAuth,
+  requireActiveDossier,
   store: purchasesStore,
   stripe: stripeClient,
-  // Le webhook (POST /api/payments/webhook, route publique) n'a pas de token utilisateur : il
-  // passe par ce client bare (clé publishable) et par les RPC security definer de la migration
-  // purchases pour écrire malgré la RLS — voir purchases-store.js.
   publicClient: supabase,
-  getPrice: createPriceReader({ stripe: stripeClient, priceId: stripePriceId }),
-  // Montant de l'envoi supplémentaire (chantier 2a, Task 11) — affiché AVANT le clic d'achat
-  // dans le panneau d'envoi papier (spec §8, pas de dark pattern), même mécanique que le forfait.
   getExtraPrice: createPriceReader({ stripe: stripeClient, priceId: stripeExtraSendPriceId }),
-  paymentsEnabled,
-  priceId: stripePriceId,
   extraPriceId: stripeExtraSendPriceId,
-  includedSends: forfaitIncludedSends,
   appUrl: process.env.APP_URL || 'http://localhost:5173',
 }));
 
@@ -217,8 +220,8 @@ const resendClient = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_
 const paperSender = createPaperSender({ apiKey: process.env.MYSENDINGBOX_API_KEY });
 app.use('/api/letters', createLettersRouter({
   requireAuth,
-  // Gate du forfait sur l'envoi (D1). Inerte tant que la vente est fermée.
-  requirePurchase: createRequirePurchase({ store: purchasesStore, paymentsEnabled }),
+  // Gate v2 (contrat §4.1) : dossier actif + consentement, dans le slot de l'ancien gate forfait.
+  requireActiveDossier,
   store: lettersStore,
   emailSender: createEmailSender({ resendClient, from: process.env.RESEND_FROM }),
   channels: LETTER_CHANNELS,
@@ -227,19 +230,19 @@ app.use('/api/letters', createLettersRouter({
   // update_letter_send_status pour mettre à jour un statut malgré la RLS — voir letters-store.js.
   publicClient: supabase,
   // ── Canal papier (chantier 2a) ──
-  // Le canal reste de toute façon fermé tant que PAPER_SENDS_ENABLED ≠ 'true' (kill switch lu à
-  // chaque requête dans la route, pas ici : le couper ne doit pas exiger un redéploiement).
+  // Les deux canaux restent fermés tant que leur flag ≠ 'true' (kill switch PAR CANAL lu à chaque
+  // requête dans la route, pas ici : couper un canal ne doit pas exiger un redéploiement).
   paperSender,
   // Le 402 « quota épuisé » ne propose l'achat d'un envoi que si ce Checkout-là peut réellement
-  // s'ouvrir (vente ouverte + SDK + tarif dédié) — sinon le bouton mènerait droit à un 503.
-  extraSendAvailable: Boolean(paymentsEnabled && stripeClient && stripeExtraSendPriceId),
+  // s'ouvrir (flag relu à CHAQUE 402 + SDK + tarif dédié) — sinon le bouton mènerait à un 503.
+  extraSendAvailable: () => flagOn('EXTRA_SENDS_ENABLED') && Boolean(stripeClient) && Boolean(stripeExtraSendPriceId),
 }));
 
 // Coffre minimal — pièces jointes des envois papier (chantier 2a). Pas de dépendance
 // supplémentaire à injecter : le router lit/écrit directement via req.supabaseClient (posé par
 // requireAuth), la RLS owner de la table `attachments` et du bucket `documents` suffit — voir
 // server/routes/attachments.js.
-app.use('/api/attachments', createAttachmentsRouter({ requireAuth }));
+app.use('/api/attachments', createAttachmentsRouter({ requireAuth, requireActiveDossier }));
 
 // Ancres contractuelles v2 (docs/design-v2-demonstrateur.md §8.1) : chaque lot insère son app.use
 // JUSTE AVANT son ancre, jamais ailleurs. Ne pas supprimer ni déplacer ces lignes.
@@ -283,75 +286,9 @@ function getSupabaseClient(accessToken) {
   );
 }
 
-// ==================== PRODUIT TRANSMISSION (lecture seule) ====================
-// La création (page de démo et ses trois routes serveur) a été retirée au chantier 0 —
-// produit gelé. Restent : lecture par le propriétaire et lecture par code d'accès (AccessPage).
-
-// Route pour récupérer la transmission du user connecté
-app.get('/api/user/transmission', requireAuth, async (req, res) => {
-  try {
-    const { data, error } = await req.supabaseClient
-      .from('transmissions')
-      .select('*')
-      .eq('user_id', req.user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      throw error;
-    }
-
-    res.json({
-      success: true,
-      transmission: data,
-      has_transmission: !!data
-    });
-  } catch (error) {
-    console.error('❌ Get user transmission error:', error);
-    // Remonte aussi les 500 gérés à Sentry (no-op sans DSN) — les catch avalent l'erreur sinon.
-    Sentry.captureException(error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Route pour récupérer les données avec le code d'accès
-app.get('/api/transmission/:code', requireAuth, async (req, res) => {
-  try {
-    const { code } = req.params;
-
-    // Utiliser le client avec auth pour bénéficier des policies RLS
-    const { data, error } = await req.supabaseClient
-      .from('transmissions')
-      .select('*')
-      .eq('access_code', code.toUpperCase())
-      .single();
-
-    if (error || !data) {
-      return res.status(404).json({
-        success: false,
-        error: 'Code invalide ou données non trouvées'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: JSON.parse(data.data),
-      created_at: data.created_at
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur:', error);
-    Sentry.captureException(error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
+// ==================== PRODUIT TRANSMISSION (gelé, lecture seule) ====================
+// Routes extraites dans server/routes/transmission.js (lecture par code via RPC F1).
+app.use('/api', createTransmissionRouter({ requireAuth }));
 
 // ==================== ROUTES UTILITAIRES ====================
 
@@ -377,7 +314,7 @@ if (process.env.SENTRY_DSN) {
 // Démarrage du serveur
 app.listen(PORT, () => {
   console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
-  console.log(`📝 Rédacteur questionnaire v2 : ${MISTRAL_MODEL}`);
+  console.log(`📝 Rédacteur questionnaire v2 : ${mistralClient ? MISTRAL_MODEL : 'statique (FEATURE_LLM fermé)'}`);
   console.log(`🗄️  Supabase URL: ${process.env.SUPABASE_URL ? 'Configuré' : 'Non configuré'}`);
   // Chantier 2a, Task 10 : timer serveur (setInterval, PAS pg_cron/pg_net). `start()` se désarme
   // elle-même sans MYSENDINGBOX_API_KEY (une ligne de log, rien de plus) — appel inconditionnel.

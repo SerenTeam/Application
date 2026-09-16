@@ -7,6 +7,13 @@ import { createQuestionnaireRouter } from '../server/routes/questionnaire.js'
 import { textIn } from '../server/lib/questions-catalog.js'
 // @ts-expect-error — module JS serveur
 import { DEPARTMENTS } from '../server/lib/departments.js'
+// @ts-expect-error — module JS serveur
+import { QUESTIONS_CATALOG } from '../server/lib/questions-catalog.js'
+// @ts-expect-error — module JS serveur
+import { interpolateFallback } from '../server/lib/question-writer.js'
+
+// Gate passe-plat EXPLICITE (A5 : le défaut des factories est fail-closed).
+const PASS = (_req: express.Request, _res: express.Response, next: express.NextFunction) => next()
 
 // ── Fakes ────────────────────────────────────────────────────────────────
 type Session = { id: string; user_id: string; answers: Record<string, unknown>; lang: 'fr' | 'en' }
@@ -45,7 +52,7 @@ function makeApp() {
   })
   const app = express()
   app.use(express.json())
-  app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, store, writeText }))
+  app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, requireActiveDossier: PASS, store, writeText }))
   return { app, sessions }
 }
 
@@ -160,6 +167,7 @@ describe('POST /api/questionnaire/answer', () => {
     app2.use(express.json())
     app2.use('/api/questionnaire', createQuestionnaireRouter({
       requireAuth: (req: express.Request & { user?: unknown; supabaseClient?: unknown }, _res: express.Response, next: express.NextFunction) => { req.user = { id: 'u' }; req.supabaseClient = {}; next() },
+      requireActiveDossier: PASS,
       store: {
         async createSession() { throw new Error('n/a') },
         async loadSession() { return { id: 's', user_id: 'u', answers: {} } },
@@ -297,7 +305,7 @@ describe('PII : rédacteur Mistral (chantier 2a)', () => {
     }
     const app = express()
     app.use(express.json())
-    app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, store, writeText }))
+    app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, requireActiveDossier: PASS, store, writeText }))
 
     const start = await request(app).post('/api/questionnaire/start')
     const sessionId = start.body.session_id
@@ -322,5 +330,33 @@ describe('PII : rédacteur Mistral (chantier 2a)', () => {
       expect(dump).not.toContain(deptCode)
       expect(dump).not.toContain('département') // ni le libellé de la question elle-même
     }
+  })
+})
+
+describe('FEATURE_LLM fermé → mistral null : textes relus du catalogue', () => {
+  it('/start renvoie exactement le texte de repli interpolé du catalogue', async () => {
+    const sessions = new Map<string, { id: string; user_id: string; answers: Record<string, unknown>; lang: 'fr' | 'en' }>()
+    const store = {
+      async createSession(_c: unknown, userId: string, lang: 'fr' | 'en' = 'fr') {
+        const s = { id: 'sess-llm', user_id: userId, answers: {}, lang }
+        sessions.set(s.id, s)
+        return s
+      },
+      async loadSession(_c: unknown, id: string) { return sessions.get(id) ?? null },
+      async saveAnswers() {},
+      async deleteSession() {},
+    }
+    const app = express()
+    app.use(express.json())
+    app.use('/api/questionnaire', createQuestionnaireRouter({
+      requireAuth: (req: express.Request & { user?: unknown; supabaseClient?: unknown }, _res: express.Response, next: express.NextFunction) => { req.user = { id: 'u' }; req.supabaseClient = {}; next() },
+      requireActiveDossier: PASS,
+      store,
+      mistral: null,
+    }))
+    const res = await request(app).post('/api/questionnaire/start').send({ lang: 'fr' })
+    expect(res.status).toBe(200)
+    const spec = QUESTIONS_CATALOG.find((q: { id: string }) => q.id === res.body.data.question_id)
+    expect(res.body.data.question).toBe(interpolateFallback(spec, undefined, 'fr').question)
   })
 })

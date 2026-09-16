@@ -11,6 +11,8 @@ import express, { Router } from 'express'
 import * as Sentry from '@sentry/node'
 import { createUserRateLimiter } from '../lib/rate-limit.js'
 import { msg } from '../lib/messages.js'
+import { flagOn } from '../lib/flags.js'
+import { FAIL_CLOSED_GATE } from '../lib/require-active-dossier.js'
 
 // Événements Stripe traités → effet sur purchases. Tous les autres types sont ignorés
 // (200 silencieux, voir POST /webhook).
@@ -25,12 +27,13 @@ function reqLang(req) {
 
 export function createPaymentsRouter({
   requireAuth,
+  // Gate v2 : seul checkout-extra-send est gaté (contrat §4.2) ; défaut fail-closed (A5).
+  requireActiveDossier = FAIL_CLOSED_GATE,
   store,
   stripe,
   publicClient,
+  // Lecteur de prix optionnel (plus passé par server.js en v2, note N12) : absent → price null.
   getPrice,
-  paymentsEnabled,
-  priceId,
   // Tarif « envoi supplémentaire » (chantier 2a, facturation à l'acte) : tarif Stripe DISTINCT
   // du forfait, absent → la route /checkout-extra-send est inerte en 503 (pattern maison).
   extraPriceId,
@@ -39,7 +42,6 @@ export function createPaymentsRouter({
   // forfait. Optionnel : absent → `extra_price` reste `null`, le front affiche le bouton sans
   // montant plutôt que de deviner un chiffre (patron de `getPrice`).
   getExtraPrice,
-  includedSends,
   appUrl,
 }) {
   const router = Router()
@@ -53,81 +55,28 @@ export function createPaymentsRouter({
     message: (req) => msg(reqLang(req), 'too_many_requests'),
   })
 
-  // La vente est ouverte seulement si le flag l'autorise ET que tout est configuré. Les trois
-  // conditions sont indissociables : un flag à true sans clé Stripe ne doit pas produire un
-  // demi-état où le gate se ferme alors que personne ne peut acheter.
-  const saleOpen = () => Boolean(paymentsEnabled && stripe && priceId)
-  // Même règle, appliquée au tarif à l'acte : un flag ouvert sans tarif « envoi supplémentaire »
-  // ne doit pas produire un demi-état (bouton d'achat qui mène à une erreur).
-  const extraSaleOpen = () => Boolean(paymentsEnabled && stripe && extraPriceId)
+  // Mini-paiement « envoi supplémentaire » : ouvert seulement si EXTRA_SENDS_ENABLED === 'true'
+  // (relu à chaque requête) ET SDK ET tarif. Absent en préprod ET en prod pendant la bêta.
+  const extraSaleOpen = () => Boolean(flagOn('EXTRA_SENDS_ENABLED') && stripe && extraPriceId)
+  const paymentsDisabled = (req, res) =>
+    res.status(503).json({ success: false, code: 'PAYMENTS_DISABLED', error: msg(reqLang(req), 'payments_disabled') })
 
-  router.post('/checkout', requireAuth, checkoutLimiter, async (req, res) => {
-    const lang = reqLang(req)
-    if (!saleOpen()) {
-      return res.status(503).json({ success: false, error: msg(lang, 'payments_disabled') })
-    }
-
-    try {
-      // On ne fait jamais repayer quelqu'un : si l'achat existe déjà, la route est un no-op.
-      const existing = await store.getPaidPurchase(req.supabaseClient, req.user.id)
-      if (existing) {
-        return res.json({ success: true, already_purchased: true })
-      }
-
-      const session = await stripe.checkout.sessions.create({
-        mode: 'payment',
-        line_items: [{ price: priceId, quantity: 1 }],
-        success_url: `${appUrl}/dashboard?checkout=success`,
-        cancel_url: `${appUrl}/dashboard?checkout=cancel`,
-        client_reference_id: req.user.id,
-        customer_email: req.user.email,
-        // included_sends voyage DANS les metadata plutôt qu'être relu depuis l'env au moment du
-        // webhook : le quota est ainsi figé à l'instant de l'achat, même si l'offre change entre
-        // le clic et l'encaissement (paiements différés type SEPA : plusieurs jours d'écart).
-        metadata: { user_id: req.user.id, included_sends: String(includedSends ?? 0) },
-      })
-
-      // Ligne d'attente : donne un état affichable pendant la confirmation. Si le webhook arrive
-      // d'abord, mark_purchase_paid crée la ligne directement en 'paid' (upsert) — l'ordre
-      // d'arrivée n'a aucune importance.
-      await store.createPending(publicClient, {
-        userId: req.user.id,
-        sessionId: session.id,
-        includedSends: includedSends ?? 0,
-      })
-
-      return res.json({ success: true, url: session.url })
-    } catch (error) {
-      console.error('❌ payments/checkout :', error?.message ?? error)
-      Sentry.captureException(error)
-      return res.status(502).json({ success: false, error: msg(lang, 'checkout_failed') })
-    }
-  })
+  // Forfait famille ABANDONNÉ (v2 : la PF paie Seren, la famille ne paie rien). Route gardée pour
+  // qu'un client ancien reçoive une réponse franche ; code Stripe du forfait retiré.
+  router.post('/checkout', requireAuth, paymentsDisabled)
 
   // Achat d'un envoi supplémentaire (chantier 2a, spec §4 — facturation à l'acte au-delà des
-  // envois inclus). Trois différences assumées avec /checkout :
-  //  • il EXIGE un forfait payé (403 sinon) — `getPaidPurchase` est filtré `kind='forfait'` :
-  //    sans cette garde, acheter un timbre à l'unité ouvrirait tout le produit payant, puisque
-  //    le gate cherche exactement « un achat payé » ;
+  // envois inclus). Trois propriétés assumées :
+  //  • il n'exige AUCUN forfait (v2 : le forfait famille n'existe plus) — c'est le gate dossier
+  //    actif qui garde la route, exactement comme les autres routes métier famille ;
   //  • il est répétable (pas de no-op `already_purchased`) : on achète autant d'envois qu'on veut ;
   //  • les metadata portent `kind: 'envoi_sup'` et `included_sends: '1'` — le webhook n'a rien à
   //    deviner, et la RPC (migration 20260914150000) inscrit la bonne nature d'achat.
-  router.post('/checkout-extra-send', requireAuth, checkoutLimiter, async (req, res) => {
+  router.post('/checkout-extra-send', requireAuth, requireActiveDossier, checkoutLimiter, async (req, res) => {
     const lang = reqLang(req)
-    if (!extraSaleOpen()) {
-      return res.status(503).json({ success: false, error: msg(lang, 'payments_disabled') })
-    }
+    if (!extraSaleOpen()) return paymentsDisabled(req, res)
 
     try {
-      const forfait = await store.getPaidPurchase(req.supabaseClient, req.user.id)
-      if (!forfait) {
-        return res.status(403).json({
-          success: false,
-          error: msg(lang, 'forfait_required'),
-          code: 'FORFAIT_REQUIRED',
-        })
-      }
-
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
         line_items: [{ price: extraPriceId, quantity: 1 }],
@@ -192,7 +141,8 @@ export function createPaymentsRouter({
 
       return res.json({
         success: true,
-        payments_enabled: saleOpen(),
+        // Forfait famille abandonné en v2 : la vente ne rouvre jamais côté famille.
+        payments_enabled: false,
         has_paid: Boolean(forfait),
         purchase: purchase
           ? { status: purchase.status, paid_at: purchase.paid_at, included_sends: purchase.included_sends }

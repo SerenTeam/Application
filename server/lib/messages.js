@@ -54,7 +54,7 @@ export const MESSAGES = {
     send_already_exists: 'Ce courrier a déjà été préparé pour ce destinataire',
     invalid_resend_of: 'Le courrier à renvoyer est introuvable',
     resend_already_exists: 'Ce courrier a déjà fait l’objet d’un renvoi',
-    quota_exhausted: 'Vous avez utilisé tous les envois inclus dans votre forfait',
+    quota_exhausted: 'Vous avez utilisé les envois inclus dans votre accompagnement. Contactez le support pour tout envoi supplémentaire.',
     letters_quota_error: 'Erreur lors de la lecture de votre solde d’envois',
     invalid_network: 'Réseau d’organismes inconnu',
     organisations_error: 'Erreur lors de la recherche de l’organisme',
@@ -76,6 +76,12 @@ export const MESSAGES = {
     payments_status_error: 'Erreur lors de la vérification de votre forfait',
     forfait_required: 'Le forfait Seren est nécessaire avant d’acheter un envoi supplémentaire',
     // Ancres contractuelles v2 (§8.1) : chaque lot insère ses clés JUSTE AVANT son ancre.
+    // v2 — gate dossier actif et flags (lot L2a)
+    account_error: 'Erreur lors de la lecture de votre compte',
+    dossier_not_active: 'Votre accès Seren n’est pas encore activé. Contactez votre pompe funèbre ou le support.',
+    consent_required: 'Merci de valider les conditions d’utilisation avant de continuer',
+    email_sends_disabled: 'L’envoi par e-mail n’est pas encore disponible : téléchargez le courrier pour l’envoyer vous-même',
+    attachments_disabled: 'Le dépôt de documents n’est pas encore disponible',
     // v2:messages-l2a
 
     // v2:messages-l2b
@@ -132,7 +138,7 @@ export const MESSAGES = {
     send_already_exists: 'This letter has already been prepared for this recipient',
     invalid_resend_of: 'The letter to resend cannot be found',
     resend_already_exists: 'This letter has already been resent once',
-    quota_exhausted: 'You have used every send included in your plan',
+    quota_exhausted: 'You have used the sends included in your support plan. Contact support for any additional send.',
     letters_quota_error: 'Error while reading your send balance',
     invalid_network: 'Unknown organisation network',
     organisations_error: 'Error while looking up the organisation',
@@ -154,6 +160,12 @@ export const MESSAGES = {
     payments_status_error: 'Error while checking your plan',
     forfait_required: 'The Seren plan is required before buying an extra send',
     // v2 contractual anchors (§8.1): each lot inserts its keys RIGHT BEFORE its anchor.
+    // v2 — active-case gate and flags (L2a)
+    account_error: 'Error while reading your account',
+    dossier_not_active: 'Your Seren access is not activated yet. Contact your funeral home or support.',
+    consent_required: 'Please accept the terms of use before continuing',
+    email_sends_disabled: 'Email sending is not available yet: download the letter to send it yourself',
+    attachments_disabled: 'Document upload is not available yet',
     // v2:messages-l2a
 
     // v2:messages-l2b

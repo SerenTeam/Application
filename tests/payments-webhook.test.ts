@@ -6,6 +6,10 @@ import crypto from 'crypto'
 import { createPaymentsRouter } from '../server/routes/payments.js'
 import { makePurchasesStore } from './helpers/purchases-fake'
 
+// Gate passe-plat EXPLICITE (A5 : le défaut des factories est fail-closed). Le webhook, lui,
+// n'est JAMAIS gaté — ce passe-plat ne sert qu'à construire le router.
+const PASS = (_req: express.Request, _res: express.Response, next: express.NextFunction) => next()
+
 // ── Fixtures de signature ────────────────────────────────────────────────
 // `constructEvent` est fourni par le SDK injecté, mais on reproduit ici le VRAI schéma Stripe
 // (`t=<timestamp>,v1=<HMAC-SHA256(timestamp.payload)>`) plutôt qu'un booléen : c'est ce qui rend
@@ -38,13 +42,10 @@ function makeApp(store = makePurchasesStore()) {
   const app = express()
   app.use('/api/payments', createPaymentsRouter({
     requireAuth: (_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
+    requireActiveDossier: PASS,
     store,
     stripe: makeStripe(),
     publicClient: {},
-    getPrice: async () => null,
-    paymentsEnabled: true,
-    priceId: 'price_test_123',
-    includedSends: 5,
     appUrl: 'https://app.seren-app.fr',
   }))
   return { app, store }

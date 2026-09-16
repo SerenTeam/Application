@@ -17,6 +17,8 @@ import * as Sentry from '@sentry/node'
 import { sniffMime } from '../lib/mime-sniff.js'
 import { msg } from '../lib/messages.js'
 import { createUserRateLimiter } from '../lib/rate-limit.js'
+import { FAIL_CLOSED_GATE } from '../lib/require-active-dossier.js'
+import { killSwitch } from '../lib/flags.js'
 
 const BUCKET = 'documents'
 // Miroir du CHECK size_bytes <= 5242880 de la migration : on veut un 413 propre AVANT toute
@@ -85,8 +87,17 @@ function handleUpload(req, res, next) {
   })
 }
 
-export function createAttachmentsRouter({ requireAuth }) {
+export function createAttachmentsRouter({
+  requireAuth,
+  // Gate v2 (contrat §4.2) : défaut FAIL-CLOSED (A5) — les tests injectent un passe-plat explicite.
+  requireActiveDossier = FAIL_CLOSED_GATE,
+}) {
   const router = Router()
+
+  // Coffre ouvert seulement avec le canal papier (contrat §5, D3) : sans antivirus ni rétention
+  // (chantier 3), aucun dépôt tant que PAPER_SENDS_ENABLED n'est pas 'true'. Monté AVANT le
+  // limiteur et AVANT multer : un refus ne bufferise aucun fichier et ne consomme aucun quota.
+  const attachmentsKillSwitch = killSwitch('PAPER_SENDS_ENABLED', { code: 'ATTACHMENTS_DISABLED', messageKey: 'attachments_disabled' })
 
   // 30/h par utilisateur : un dépôt de pièce jointe est un geste ponctuel (acte de décès,
   // justificatif), jamais un flux automatisé — large marge pour un dossier complet en une
@@ -99,7 +110,7 @@ export function createAttachmentsRouter({ requireAuth }) {
     message: (req) => msg(bodyLang(req), 'too_many_requests'),
   })
 
-  router.post('/', requireAuth, uploadLimiter, handleUpload, async (req, res) => {
+  router.post('/', requireAuth, requireActiveDossier, attachmentsKillSwitch, uploadLimiter, handleUpload, async (req, res) => {
     const lang = bodyLang(req)
     try {
       const file = req.file
@@ -181,7 +192,7 @@ export function createAttachmentsRouter({ requireAuth }) {
     }
   })
 
-  router.get('/', requireAuth, async (req, res) => {
+  router.get('/', requireAuth, requireActiveDossier, async (req, res) => {
     try {
       const { data, error } = await req.supabaseClient
         .from('attachments')
@@ -197,7 +208,7 @@ export function createAttachmentsRouter({ requireAuth }) {
     }
   })
 
-  router.delete('/:id', requireAuth, async (req, res) => {
+  router.delete('/:id', requireAuth, requireActiveDossier, async (req, res) => {
     const lang = bodyLang(req)
     try {
       if (!UUID_RE.test(req.params.id)) {

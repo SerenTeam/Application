@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
-// Sentry mocké pour TOUT le graphe de ce fichier (letters.js et require-purchase.js l'importent) :
-// la capture d'un dépassement de plafond fait partie du contrat de la route (spec §5), elle se
-// vérifie donc comme le reste.
+// Sentry mocké pour TOUT le graphe de ce fichier (letters.js et require-active-dossier.js
+// l'importent) : la capture d'un dépassement de plafond (spec §5) ET celle du gate fail-closed
+// font partie du contrat de la route, elles se vérifient donc comme le reste.
 vi.mock('@sentry/node', () => ({ captureException: vi.fn() }))
 
 import express from 'express'
@@ -13,13 +13,15 @@ import { createLettersRouter } from '../server/routes/letters.js'
 // @ts-expect-error — module JS serveur
 import { LETTER_CHANNELS } from '../server/lib/letter-channels.js'
 // @ts-expect-error — module JS serveur
-import { createRequirePurchase } from '../server/lib/require-purchase.js'
-import { makePurchasesStore } from './helpers/purchases-fake'
+import { createRequireActiveDossier } from '../server/lib/require-active-dossier.js'
+
+// Gate passe-plat EXPLICITE (A5 : le défaut des factories est fail-closed).
+const PASS = (_req: express.Request, _res: express.Response, next: express.NextFunction) => next()
 
 // ── Branche papier de POST /api/letters/send (chantier 2a, Task 9) ────────────────────────────
 // L'ORDRE DES GARDES EST LE CONTRAT (de l'argent réel part au bout de la chaîne) — un test par
 // garde, dans l'ordre :
-//   1. requireAuth + gate forfait (requirePurchase)      → 402
+//   1. requireAuth + requireActiveDossier (gate dossier)      → 403/500
 //   2. kill switch PAPER_SENDS_ENABLED ≠ 'true'          → 503 paper_disabled
 //   3. profil expéditeur absent/inexploitable            → 400 sender_profile_required
 //   4. adresse destinataire invalide (≤45/ligne, CP)     → 400
@@ -358,9 +360,8 @@ function makeApp(
     backend?: Backend
     store?: ReturnType<typeof makeLettersStore>
     sender?: ReturnType<typeof makePaperSender>
-    purchases?: ReturnType<typeof makePurchasesStore>
-    paymentsEnabled?: boolean
-    extraSendAvailable?: boolean
+    gate?: express.RequestHandler
+    extraSendAvailable?: boolean | (() => boolean)
   } = {},
 ) {
   const backend = opts.backend ?? makeBackend()
@@ -383,9 +384,7 @@ function makeApp(
     '/api/letters',
     createLettersRouter({
       requireAuth,
-      requirePurchase: opts.purchases
-        ? createRequirePurchase({ store: opts.purchases, paymentsEnabled: opts.paymentsEnabled ?? false })
-        : undefined,
+      requireActiveDossier: opts.gate ?? PASS,
       store,
       emailSender: {
         async send() {
@@ -395,7 +394,7 @@ function makeApp(
       channels: PAPER_CHANNELS,
       paperSender: sender,
       fetchImpl,
-      ...(opts.extraSendAvailable === undefined ? {} : { extraSendAvailable: opts.extraSendAvailable }),
+      extraSendAvailable: opts.extraSendAvailable ?? true,
     }),
   )
   return { app, backend, store, sender, fetchImpl }
@@ -428,21 +427,45 @@ afterEach(() => {
   vi.mocked(Sentry.captureException).mockClear()
 })
 
-// ── Garde 1 : gate du forfait ─────────────────────────────────────────────────────────────────
-describe('POST /api/letters/send (papier) — garde 1 : gate du forfait', () => {
-  it('vente ouverte sans forfait payé : 402 PURCHASE_REQUIRED, AUCUN envoi créé', async () => {
-    const { app, store } = makeApp({ backend: readyBackend(), purchases: makePurchasesStore(), paymentsEnabled: true })
+// ── Garde 1 : gate dossier actif ──────────────────────────────────────────────────────────────
+describe('POST /api/letters/send (papier) — garde 1 : gate dossier actif', () => {
+  /** Gate réel branché sur un `my_account()` simulé (une Error simule la panne de lecture). */
+  function gate(account: unknown) {
+    return createRequireActiveDossier({
+      loadAccount: async () => {
+        if (account instanceof Error) throw account
+        return { data: account, error: null }
+      },
+    })
+  }
+
+  it('compte sans dossier actif : 403 DOSSIER_NOT_ACTIVE, AUCUN envoi créé, aucun appel provider', async () => {
+    const { app, store, sender } = makeApp({ backend: readyBackend(), gate: gate({ role: 'none', dossier: null }) })
     const res = await request(app).post('/api/letters/send').send(basePayload())
-    expect(res.status).toBe(402)
-    expect(res.body.code).toBe('PURCHASE_REQUIRED')
+    expect(res.status).toBe(403)
+    expect(res.body.code).toBe('DOSSIER_NOT_ACTIVE')
+    expect(store.rows).toHaveLength(0)
+    expect(sender.calls).toHaveLength(0)
+  })
+
+  it('lecture du compte en échec : 500 ACCOUNT_ERROR, jamais un passage', async () => {
+    const { app, store } = makeApp({ backend: readyBackend(), gate: gate(new Error('base indisponible')) })
+    expect((await request(app).post('/api/letters/send').send(basePayload())).status).toBe(500)
     expect(store.rows).toHaveLength(0)
   })
 
-  it('vente ouverte avec forfait payé : le gate laisse passer (l’envoi aboutit)', async () => {
-    const purchases = makePurchasesStore([{ status: 'paid', kind: 'forfait', included_sends: 5, paid_at: '2026-09-01T10:00:00.000Z' }])
-    const { app } = makeApp({ backend: readyBackend(), purchases, paymentsEnabled: true })
-    const res = await request(app).post('/api/letters/send').send(basePayload())
-    expect(res.status).toBe(202)
+  it('le gate passe AVANT le kill switch (flag fermé, compte refusé → 403, pas 503)', async () => {
+    vi.stubEnv('PAPER_SENDS_ENABLED', '')
+    const { app } = makeApp({ backend: readyBackend(), gate: gate({ role: 'none', dossier: null }) })
+    expect((await request(app).post('/api/letters/send').send(basePayload())).status).toBe(403)
+  })
+
+  it('un refus du gate ne consomme pas le quota horaire (25 refus 403, jamais 429)', async () => {
+    const { app } = makeApp({ backend: readyBackend(), gate: gate({ role: 'none', dossier: null }) })
+    for (let i = 0; i < 25; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      expect((await request(app).post('/api/letters/send').send(basePayload())).status).toBe(403)
+    }
   })
 })
 
@@ -917,6 +940,7 @@ describe('POST /api/letters/send (papier) — garde 8 : débit du quota', () => 
     expect(res.status).toBe(402)
     expect(res.body.code).toBe('QUOTA_EXHAUSTED')
     expect(res.body.extra_send_available).toBe(true)
+    expect(res.body.support_email).toBe('support@seren-app.fr')
     expect(sender.calls).toHaveLength(0)
     // La ligne reste 'prepared' sans provider_ref : elle n'a rien engagé (et ne compte pas dans
     // les plafonds, cf. send_limits_status).
@@ -941,6 +965,17 @@ describe('POST /api/letters/send (papier) — garde 8 : débit du quota', () => 
     const store = makeLettersStore()
     store.consumeError = 'quota_exhausted'
     const { app } = makeApp({ backend: readyBackend(), store, extraSendAvailable: false })
+    const res = await request(app).post('/api/letters/send').send(basePayload())
+    expect(res.status).toBe(402)
+    expect(res.body.extra_send_available).toBe(false)
+  })
+
+  // N11 : en production le contrat passe une FONCTION (flag relu à chaque 402), les tests
+  // historiques un booléen — les deux formes doivent donner le même verdict.
+  it('402 : extraSendAvailable fonction évaluée à chaque requête', async () => {
+    const store = makeLettersStore()
+    store.consumeError = 'quota_exhausted'
+    const { app } = makeApp({ backend: readyBackend(), store, extraSendAvailable: () => false })
     const res = await request(app).post('/api/letters/send').send(basePayload())
     expect(res.status).toBe(402)
     expect(res.body.extra_send_available).toBe(false)
