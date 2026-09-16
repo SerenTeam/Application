@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
-// Sentry mocké pour TOUT le graphe de ce fichier (letters.js et require-purchase.js l'importent) :
-// la capture d'un dépassement de plafond fait partie du contrat de la route (spec §5), elle se
-// vérifie donc comme le reste.
+// Sentry mocké pour TOUT le graphe de ce fichier (letters.js et require-active-dossier.js
+// l'importent) : la capture d'un dépassement de plafond (spec §5) ET celle du gate fail-closed
+// font partie du contrat de la route, elles se vérifient donc comme le reste.
 vi.mock('@sentry/node', () => ({ captureException: vi.fn() }))
 
 import express from 'express'
