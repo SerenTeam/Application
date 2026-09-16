@@ -58,7 +58,8 @@ begin
   end if;
   -- 2.
   select * into v_partner from public.partners p where p.id = v_pid;
-  if v_partner.status <> 'active' then
+  -- coalesce (revue L1/L1b, m3) : une garde à trois états laisserait passer un statut null.
+  if coalesce(v_partner.status, '') <> 'active' then
     raise exception 'partner_inactive' using errcode = 'P0001';
   end if;
   -- 3. Validations, dans l'ordre du contrat (les CHECK de la table restent le filet).
@@ -92,7 +93,7 @@ begin
      or exists (select 1 from public.account_enrollments e where e.email = v_email)
      or exists (select 1
                   from auth.users u
-                 where lower(u.email) = v_email
+                 where lower(btrim(u.email)) = v_email   -- même normalisation que v_email (m3/m4)
                    and (exists (select 1 from public.partner_users pu2 where pu2.user_id = u.id)
                         or exists (select 1 from public.seren_admins sa where sa.user_id = u.id))) then
     raise exception 'email_unavailable' using errcode = 'P0001';
@@ -160,6 +161,7 @@ as $fn$
 declare
   v_pid          uuid;
   v_partner_name text;
+  v_status       text;
   v_d            public.dossiers%rowtype;
 begin
   -- 0. Secret partagé, AVANT TOUT (revue 16/09, must-fix 1) : sans lui, une PF tuerait en direct le
@@ -169,12 +171,21 @@ begin
     raise exception 'invalid_secret' using errcode = 'P0001';
   end if;
   -- 1.
-  select pu.partner_id, p.name into v_pid, v_partner_name
+  select pu.partner_id, p.name, p.status into v_pid, v_partner_name, v_status
     from public.partner_users pu
     join public.partners p on p.id = pu.partner_id
    where pu.user_id = auth.uid();
   if v_pid is null then
     raise exception 'not_a_partner' using errcode = 'P0001';
+  end if;
+  -- 1bis. Statut du partenaire (revue L1/L1b, défaut C1 ; contrat §3.3.6 et §3.3.10 étape 1bis).
+  -- Même règle et même code qu'en création : 'suspended' et 'terminated' ne renvoient plus
+  -- d'invitation. Sans cette étape, un gérant suspendu ou RÉSILIÉ relisait la PII famille et défunt
+  -- du retour, dossier par dossier, et tuait les liens d'activation en attente — la révocation
+  -- n'existait qu'à l'écran (my_account renvoie déjà role='none' pour un contrat résilié).
+  -- coalesce : un statut null ne doit jamais valoir « actif » (cf. étape 2 de la création).
+  if coalesce(v_status, '') <> 'active' then
+    raise exception 'partner_inactive' using errcode = 'P0001';
   end if;
   -- 2.
   if p_token_hash is null or p_token_hash !~ '^[0-9a-f]{64}$' then
@@ -189,8 +200,10 @@ begin
   if v_d.status <> 'invited' then
     raise exception 'dossier_not_invitable' using errcode = 'P0001';
   end if;
-  -- 5.
-  if v_d.invite_issued_at > now() - interval '10 minutes' then
+  -- 5. coalesce (revue L1/L1b, m2) : invite_issued_at n'est pas exigé par dossiers_state_check pour
+  -- un dossier 'invited' ; une ligne posée sans lui (seed, backfill) rendrait la comparaison NULL,
+  -- donc fausse, et l'étranglement de rotation serait contournable. created_at est le repli sûr.
+  if coalesce(v_d.invite_issued_at, v_d.created_at) > now() - interval '10 minutes' then
     raise exception 'rotation_too_soon' using errcode = 'P0001';
   end if;
   -- 6.
@@ -242,8 +255,15 @@ declare
   v_pid uuid;
   v_d   public.dossiers%rowtype;
 begin
-  -- 1.
-  select pu.partner_id into v_pid from public.partner_users pu where pu.user_id = auth.uid();
+  -- 1. Un contrat RÉSILIÉ ne donne plus aucun rôle PF (contrat §3.3.6, §3.3.11 étape 1 ; revue
+  -- L1/L1b, défaut C1) : plus de lecture (§3.3.12, §3.3.13) et donc plus d'écriture sur un dossier
+  -- de famille. Réponse identique à « pas partenaire » : not_a_partner. 'suspended' conserve
+  -- l'annulation, comme il conserve la lecture — seuls création et renvoi lui sont fermés.
+  select pu.partner_id into v_pid
+    from public.partner_users pu
+    join public.partners p on p.id = pu.partner_id
+   where pu.user_id = auth.uid()
+     and p.status <> 'terminated';
   if v_pid is null then
     raise exception 'not_a_partner' using errcode = 'P0001';
   end if;

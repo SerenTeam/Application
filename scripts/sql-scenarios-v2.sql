@@ -3,6 +3,10 @@
 -- ════════════════════════════════════════════════════════════════════════════════════════
 -- LOCAL UNIQUEMENT. Lancement : run-sql-checks <worktree> scripts/sql-scenarios-v2.sql
 -- (db reset --local + grants « comme l'hébergé » + ce fichier), ou psql-local < ce fichier.
+-- Sources du harnais (run-sql-checks, with-db-lock, psql-local, hosted-grants.sql, gate) : elles
+-- sont versionnées, en toutes lettres, dans docs/plan-v2-sql.md Task 0 Step 2. ⚠️ hosted-grants.sql
+-- doit être rejoué APRÈS CHAQUE db reset : sans lui, la CLI 2.109.1 n'accorde plus rien à anon ni
+-- authenticated sur les tables créées par postgres, et S12 (deny-all) devient un faux vert.
 -- Chaque scénario vit dans une transaction terminée par ROLLBACK ; l'identité est simulée par
 -- request.jwt.claims + `set local role authenticated|anon` (auth.uid() et auth.jwt() lisent ces
 -- claims). Sortie attendue : une ligne « NOTICE:  OK … » par assertion, puis
@@ -999,6 +1003,52 @@ begin
     format('select public.partner_cancel_dossier(%L::uuid)', current_setting('scenario.s3_old')), 'cancel_window_elapsed');
   r := public.partner_rotate_invitation('scenario-local-secret', current_setting('scenario.s3_old')::uuid, scenario_v2.h('s3-old2'));
   perform scenario_v2.ok('S3w une vieille invitation reste renvoyable', (r->>'rotated')::boolean, r::text);
+end $$;
+
+-- ── S3x / S3y — statut du partenaire au renvoi et à l'annulation (revue L1/L1b, défaut C1) ───────
+-- PF Scénario Suspendue (a003) n'a pas de dossier : on en pose un « invited » directement, la
+-- création par RPC lui étant déjà refusée (S2u). invite_issued_at est daté à -11 min pour que
+-- l'étranglement de rotation ne masque pas le contrôle de statut.
+reset role;
+insert into public.dossiers (partner_id, source, status, family_first_name, family_last_name, family_email,
+                             deceased_first_name, deceased_last_name, deceased_death_date,
+                             price_ttc_cents, commission_ttc_cents, invite_token_hash, invite_expires_at, invite_issued_at, created_at) values
+  ('00000000-0000-4000-8000-00000000a003', 'partner', 'invited', 'Sonia', 'Suspendue', 'susp.s3@scenario.seren-test.fr',
+   'Paul', 'Suspendu', current_date - 5, 29000, 7000, scenario_v2.h('s3-susp'), now() + interval '5 days',
+   now() - interval '11 minutes', now() - interval '2 hours');
+select set_config('scenario.s3_susp', (select id::text from public.dossiers where family_email = 'susp.s3@scenario.seren-test.fr'), true);
+
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b004', 'pfs.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$
+declare
+  v_id uuid := current_setting('scenario.s3_susp')::uuid;
+  r    jsonb;
+begin
+  perform scenario_v2.expect_error('S3x PF suspendue : renvoi refusé (§3.3.6)',
+    format('select public.partner_rotate_invitation(''scenario-local-secret'', %L::uuid, %L)', v_id, scenario_v2.h('s3-susp2')), 'partner_inactive');
+  perform scenario_v2.ok('S3x2 le lien de la famille est intact après le refus',
+    (public.invitation_preview(scenario_v2.h('s3-susp'))->>'valid')::boolean);
+  r := public.partner_list_dossiers();
+  perform scenario_v2.ok('S3x3 PF suspendue : lecture conservée',
+    r->'partner'->>'status' = 'suspended' and jsonb_array_length(r->'dossiers') = 1, r::text);
+  r := public.partner_cancel_dossier(v_id);
+  perform scenario_v2.ok('S3x4 PF suspendue : annulation conservée', (r->>'cancelled')::boolean, r::text);
+end $$;
+
+reset role;
+update public.partners set status = 'terminated' where id = '00000000-0000-4000-8000-00000000a003';
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b004', 'pfs.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$
+declare v_id uuid := current_setting('scenario.s3_susp')::uuid;
+begin
+  -- Le statut est contrôlé AVANT la lecture du dossier : le refus ne dépend pas de l'état du dossier.
+  perform scenario_v2.expect_error('S3y PF résiliée : renvoi refusé',
+    format('select public.partner_rotate_invitation(''scenario-local-secret'', %L::uuid, %L)', v_id, scenario_v2.h('s3-term')), 'partner_inactive');
+  perform scenario_v2.expect_error('S3y2 PF résiliée : annulation refusée',
+    format('select public.partner_cancel_dossier(%L::uuid)', v_id), 'not_a_partner');
+  perform scenario_v2.ok('S3y3 PF résiliée : plus aucune PII famille (liste null)', public.partner_list_dossiers() is null);
 end $$;
 rollback;
 

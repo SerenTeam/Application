@@ -217,6 +217,22 @@ describe('migrations v2 — fonctions', () => {
     }
   })
 
+  // Revue L1/L1b (défaut C1) : la révocation d'un partenaire doit exister au serveur, pas seulement
+  // à l'écran. Le renvoi refuse toute PF non 'active' (§3.3.6, §3.3.10 étape 1bis) ; l'annulation
+  // refuse une PF résiliée (§3.3.11 étape 1). Sans ces gardes, un ex-gérant relit la PII famille.
+  it('renvoi et annulation contrôlent le statut du partenaire', () => {
+    const rotate = FUNCTIONS.find((f) => f.name === 'public.partner_rotate_invitation')
+    if (rotate) {
+      const body = squash(rotate.body)
+      expect(body, 'renvoi : garde de statut absente').toContain("if coalesce(v_status, '') <> 'active' then raise exception 'partner_inactive'")
+      expect(body.indexOf("'partner_inactive'") < body.indexOf('from public.dossiers'), 'renvoi : statut contrôlé après la lecture du dossier').toBe(true)
+    }
+    const cancel = FUNCTIONS.find((f) => f.name === 'public.partner_cancel_dossier')
+    if (cancel) {
+      expect(squash(cancel.body), 'annulation : une PF résiliée garde la main').toContain("p.status <> 'terminated'")
+    }
+  })
+
   it('le secret n\'est lu que par ces 2 RPC, et jamais inscrit en dur', () => {
     for (const fn of FUNCTIONS) {
       if (SECRET_RPCS.includes(fn.name)) continue
