@@ -3,6 +3,7 @@ import { AuthProvider } from '@/hooks/useAuth'
 import { LanguageProvider } from '@/i18n/LanguageContext'
 import { useT } from '@/i18n/useT'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { RequireAccess } from '@/components/auth/RequireAccess'
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
 import { OfflineBanner } from '@/components/layout/OfflineBanner'
 import { CookieBanner } from '@/components/layout/CookieBanner'
@@ -68,13 +69,13 @@ export default function App() {
               <Route path="/maintenance" element={<MaintenancePage />} />
 
               {/* Protected routes */}
-              <Route path="/" element={<ProtectedRoute><QuestionnairePage /></ProtectedRoute>} />
+              <Route path="/" element={<ProtectedRoute><RequireAccess area="family"><QuestionnairePage /></RequireAccess></ProtectedRoute>} />
               <Route path="/access" element={<ProtectedRoute><AccessPage /></ProtectedRoute>} />
-              <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-              <Route path="/documents" element={<ProtectedRoute><DocumentsPage /></ProtectedRoute>} />
-              {/* Espace partenaire (v0-démo) : accès par URL uniquement, aucun lien de nav partagée. */}
-              <Route path="/partenaire" element={<ProtectedRoute><PartnerDashboardPage /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute><RequireAccess area="family"><DashboardPage /></RequireAccess></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><RequireAccess area="family"><ProfilePage /></RequireAccess></ProtectedRoute>} />
+              <Route path="/documents" element={<ProtectedRoute><RequireAccess area="family"><DocumentsPage /></RequireAccess></ProtectedRoute>} />
+              {/* Espace partenaire PF : réservé aux comptes partner_users (garde + RPC côté serveur). */}
+              <Route path="/partenaire" element={<ProtectedRoute><RequireAccess area="partner"><PartnerDashboardPage /></RequireAccess></ProtectedRoute>} />
               {/* v2:route-admin */}
 
               {/* 404 catch-all */}
