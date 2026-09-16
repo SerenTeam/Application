@@ -9,6 +9,8 @@ import * as Sentry from '@sentry/node'
 import { createPartnerRouter } from '../server/routes/partner.js'
 // @ts-expect-error — module JS serveur
 import { hashInviteToken } from '../server/lib/invite-token.js'
+// @ts-expect-error — module JS serveur
+import { MESSAGES } from '../server/lib/messages.js'
 
 const TOKEN = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8'
 const HASH = 'ea866a757e4c38babfa8127cbe9a409d3e1f93a00ff1488ff735fcf917afffd0'
@@ -360,5 +362,29 @@ describe('GET /api/partner/dossiers et /counters', () => {
   })
   it('compteurs : RPC null → 403', async () => {
     expect((await request(makeApp(makeClient({ partner_month_counters: () => ({ data: null, error: null }) }))).get('/api/partner/counters')).status).toBe(403)
+  })
+})
+
+// Les messages serveur ne sont pas typés (module JS), contrairement à `src/i18n` où tsc garantit la
+// parité des dictionnaires : rien n'empêchait jusqu'ici de supprimer une clé du bloc `en`, et `msg()`
+// retombe alors silencieusement sur le français. Ce contrôle couvre TOUT le fichier, donc aussi les
+// blocs ajoutés par les autres lots aux ancres `v2:messages-*`. Il vit dans un fichier de test du lot
+// L2b (périmètre §8.2) plutôt que dans un fichier neuf, pour ne rien ajouter à la liste des fichiers.
+describe('server/lib/messages.js — parité FR/EN', () => {
+  const fr = Object.keys(MESSAGES.fr)
+  const en = Object.keys(MESSAGES.en)
+  it('aucune clé absente d’un des deux blocs', () => {
+    expect(fr.filter((k) => !en.includes(k))).toEqual([])
+    expect(en.filter((k) => !fr.includes(k))).toEqual([])
+  })
+  it('mêmes clés dans le même ordre, sans doublon (relecture en revue facilitée)', () => {
+    expect(en).toEqual(fr)
+    expect(new Set(fr).size).toBe(fr.length)
+  })
+  it('aucune valeur vide', () => {
+    for (const lang of ['fr', 'en'] as const) {
+      const vides = Object.entries(MESSAGES[lang] as Record<string, unknown>).filter(([, v]) => typeof v !== 'string' || v.trim() === '')
+      expect(vides.map(([k]) => `${lang}.${k}`)).toEqual([])
+    }
   })
 })
