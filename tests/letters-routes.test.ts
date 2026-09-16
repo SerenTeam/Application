@@ -1,10 +1,13 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import express from 'express'
 import request from 'supertest'
 // @ts-expect-error — module JS serveur
 import { createLettersRouter } from '../server/routes/letters.js'
 // @ts-expect-error — module JS serveur
 import { LETTER_CHANNELS } from '../server/lib/letter-channels.js'
+
+// Gate passe-plat EXPLICITE (A5 : le défaut des factories est fail-closed).
+const PASS = (_req: express.Request, _res: express.Response, next: express.NextFunction) => next()
 
 // ── Fakes ────────────────────────────────────────────────────────────────
 // Store en mémoire qui reproduit le contrat de server/lib/letters-store.js (voir
@@ -105,7 +108,7 @@ function makeApp(opts: { store?: ReturnType<typeof makeStore>; sender?: ReturnTy
   }
   const app = express()
   app.use(express.json())
-  app.use('/api/letters', createLettersRouter({ requireAuth, store, emailSender: sender, channels: LETTER_CHANNELS }))
+  app.use('/api/letters', createLettersRouter({ requireAuth, requireActiveDossier: PASS, store, emailSender: sender, channels: LETTER_CHANNELS }))
   return { app, store, sender }
 }
 
@@ -116,6 +119,15 @@ const VALID_PAYLOAD = {
   resolved_body: 'Madame, Monsieur, je vous informe du décès de mon proche. Cordialement.',
   recipient_email: 'contact@mutuelle-exemple.fr',
 }
+
+// Le canal e-mail est désormais sous kill switch (contrat §4.2) : les tests de flux nominal
+// l'arment explicitement, son test dédié le retire.
+beforeEach(() => {
+  process.env.EMAIL_SENDS_ENABLED = 'true'
+})
+afterEach(() => {
+  delete process.env.EMAIL_SENDS_ENABLED
+})
 
 // ── Tests ────────────────────────────────────────────────────────────────
 describe('POST /api/letters/send', () => {
@@ -335,5 +347,22 @@ describe('GET /api/letters', () => {
     const res = await request(app).get('/api/letters')
     expect(res.status).toBe(200)
     expect(res.body.sends).toEqual([])
+  })
+})
+
+describe('kill switch du canal e-mail (EMAIL_SENDS_ENABLED)', () => {
+  it('flag absent : 503 EMAIL_SENDS_DISABLED, aucun envoi créé, sender jamais appelé', async () => {
+    delete process.env.EMAIL_SENDS_ENABLED
+    const { app, store, sender } = makeApp()
+    const res = await request(app).post('/api/letters/send').send(VALID_PAYLOAD)
+    expect(res.status).toBe(503)
+    expect(res.body.code).toBe('EMAIL_SENDS_DISABLED')
+    expect(store.rows).toHaveLength(0)
+    expect(sender.calls).toHaveLength(0)
+  })
+  it('un 503 de coupure ne consomme pas le quota horaire (25 refus, jamais 429)', async () => {
+    delete process.env.EMAIL_SENDS_ENABLED
+    const { app } = makeApp()
+    for (let i = 0; i < 25; i++) expect((await request(app).post('/api/letters/send').send(VALID_PAYLOAD)).status).toBe(503)
   })
 })

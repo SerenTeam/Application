@@ -14,6 +14,8 @@ import { validateAddress } from '../lib/paper-sender.js'
 import { createUserRateLimiter } from '../lib/rate-limit.js'
 import { msg } from '../lib/messages.js'
 import { verifySvixSignature } from '../lib/svix-verify.js'
+import { flagOn } from '../lib/flags.js'
+import { FAIL_CLOSED_GATE } from '../lib/require-active-dossier.js'
 
 // Regex RFC basique — suffisante pour rejeter les fautes de frappe grossières côté serveur ;
 // la vraie validation de délivrabilité vient de la réponse du provider (Resend).
@@ -25,6 +27,12 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 // qu'un pli recommandé parti au tarif et au régime juridique d'un courrier simple. 'portail'
 // (CAF/CPAM/impôts en ligne) reste une démarche guidée : jamais d'envoi papier concurrent (D6).
 const PAPER_CHANNEL = 'papier'
+// Canal e-mail : lui aussi sous kill switch en v2 (contrat §4.2) — fermé pendant la bêta, la
+// famille télécharge le courrier et l'envoie elle-même.
+const EMAIL_CHANNEL = 'email'
+// Contact affiché sur un 402 (quota épuisé) : le forfait famille étant abandonné, l'envoi
+// supplémentaire se règle avec le support, pas par un achat en self-service.
+const DEFAULT_SUPPORT_EMAIL = 'support@seren-app.fr'
 const PAPER_PROVIDER = 'mysendingbox'
 const DOCUMENTS_BUCKET = 'documents'
 // URL signée de très courte durée, générée à l'envoi et jamais stockée ni renvoyée au client
@@ -66,10 +74,6 @@ const RESEND_EVENT_STATUS = {
 function bodyLang(req) {
   return req.body?.lang === 'en' || req.query?.lang === 'en' ? 'en' : 'fr'
 }
-
-// Gate du forfait par défaut : passe-plat. Un router construit sans `requirePurchase` (tests
-// antérieurs au chantier 1, usage isolé) se comporte donc exactement comme avant.
-const NO_GATE = (req, res, next) => next()
 
 /** Chaîne d'une valeur potentiellement non-textuelle, sans jamais lever : les champs d'adresse
  * arrivent du client et peuvent être de n'importe quel type ; `validateAddress` refusera ensuite
@@ -141,13 +145,34 @@ function idempotencyKeyFor(sendId) {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-${variant}${h.slice(17, 20)}-${h.slice(20, 32)}`
 }
 
+/** Solde d'envois de l'utilisateur, lu AU TOKEN (policies SELECT owner de purchases et
+ * send_debits). Miroir de send_balance() : Σ included_sends des achats PAYÉS − débits
+ * facturables, plancher 0. Partagé avec GET /api/me (note N13) : une seule règle de calcul. */
+export async function readQuota(client, userId) {
+  const [purchases, debits] = await Promise.all([
+    client.from('purchases').select('included_sends').eq('user_id', userId).eq('status', 'paid'),
+    client
+      .from('send_debits')
+      .select('send_id, source, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false }),
+  ])
+  if (purchases.error) throw new Error(`Lecture des achats impossible : ${purchases.error.code ?? 'inconnue'}`)
+  if (debits.error) throw new Error(`Lecture des débits impossible : ${debits.error.code ?? 'inconnue'}`)
+  const includedTotal = (purchases.data ?? []).reduce((total, row) => total + (row.included_sends ?? 0), 0)
+  const debitRows = debits.data ?? []
+  const used = debitRows.filter((row) => BILLABLE_DEBIT_SOURCES.has(row.source)).length
+  return { balance: Math.max(0, includedTotal - used), included_total: includedTotal, debits: debitRows }
+}
+
 export function createLettersRouter({
   requireAuth,
   store,
   emailSender,
   channels,
   publicClient,
-  requirePurchase = NO_GATE,
+  // Gate v2 (contrat §4.2) : défaut FAIL-CLOSED (A5) — les tests injectent un passe-plat explicite.
+  requireActiveDossier = FAIL_CLOSED_GATE,
   // ── Dépendances du canal papier (chantier 2a) ──
   // `paperSender` : adaptateur MySendingBox (server/lib/paper-sender.js). Absent → la branche
   // papier répond 503 comme si la clé API manquait (le router reste utilisable seul, tests v1).
@@ -155,12 +180,12 @@ export function createLettersRouter({
   // `fetchImpl` : téléchargement des pièces jointes depuis les URL signées Storage. Injecté en
   // test — aucune requête réseau réelle n'est jamais faite depuis la suite.
   fetchImpl = fetch,
-  // Le front doit-il proposer l'achat d'un envoi à l'acte sur un 402 ? Vrai seulement si la
-  // vente ET le tarif « envoi supplémentaire » sont configurés (calculé dans server.js) — sans
-  // quoi le bouton d'achat mènerait à un 503.
-  extraSendAvailable = true,
+  // Fonction évaluée à CHAQUE 402 en production (flag relu) ; booléen accepté pour les tests (N11).
+  extraSendAvailable = () => false,
 }) {
   const router = Router()
+  const isExtraSendAvailable = () =>
+    Boolean(typeof extraSendAvailable === 'function' ? extraSendAvailable() : extraSendAvailable)
 
   // 20/h par utilisateur : un envoi correspond à une action volontaire après relecture,
   // jamais à un flux automatisé — large marge pour un usage légitime (plusieurs organismes
@@ -171,25 +196,23 @@ export function createLettersRouter({
     message: (req) => msg(bodyLang(req), 'too_many_requests'),
   })
 
-  // Kill switch du canal papier, EN MIDDLEWARE et AVANT le limiteur (correctif M5 de la revue
-  // Task 9) : couper le canal est un geste d'exploitation, il ne doit pas grignoter le quota
-  // horaire des utilisateurs — sinon, une coupure d'une heure laisse derrière elle des comptes
-  // bloqués en 429 alors qu'ils n'ont rien envoyé. Même logique que le gate forfait, monté lui
-  // aussi avant le limiteur. Lu à CHAQUE requête (jamais figé au démarrage) : rouvrir ou fermer
-  // le canal ne doit pas exiger un redéploiement.
-  const paperKillSwitch = (req, res, next) => {
-    if (channels[req.body?.template_id] !== PAPER_CHANNEL) return next()
-    if (process.env.PAPER_SENDS_ENABLED === 'true') return next()
-    return res.status(503).json({
-      success: false,
-      error: msg(bodyLang(req), 'paper_disabled'),
-      code: 'PAPER_DISABLED',
-    })
+  // Kill switch PAR CANAL (contrat §4.2), en middleware AVANT le limiteur : une coupure
+  // d'exploitation ne consomme jamais le quota horaire. Relu à chaque requête. Un canal inconnu
+  // ou un modèle inconnu passe : il est tranché (404/400) dans le handler.
+  const channelKillSwitch = (req, res, next) => {
+    const channel = channels[req.body?.template_id]
+    if (channel === PAPER_CHANNEL && !flagOn('PAPER_SENDS_ENABLED')) {
+      return res.status(503).json({ success: false, error: msg(bodyLang(req), 'paper_disabled'), code: 'PAPER_DISABLED' })
+    }
+    if (channel === EMAIL_CHANNEL && !flagOn('EMAIL_SENDS_ENABLED')) {
+      return res.status(503).json({ success: false, error: msg(bodyLang(req), 'email_sends_disabled'), code: 'EMAIL_SENDS_DISABLED' })
+    }
+    return next()
   }
 
-  // Ordre voulu : le gate ET le kill switch AVANT le limiteur — une requête qui sera refusée en
-  // 402 ou en 503 ne doit pas consommer le quota horaire d'envois de l'utilisateur.
-  router.post('/send', requireAuth, requirePurchase, paperKillSwitch, sendLimiter, async (req, res) => {
+  // Ordre contractuel : requireAuth → requireActiveDossier (ancien slot requirePurchase) →
+  // channelKillSwitch → sendLimiter → handler. Un refus 403/500/503 ne consomme pas le quota horaire.
+  router.post('/send', requireAuth, requireActiveDossier, channelKillSwitch, sendLimiter, async (req, res) => {
     const lang = bodyLang(req)
     try {
       // Aiguillage par canal AVANT toute autre lecture du corps : la branche papier n'a pas le
@@ -325,8 +348,8 @@ export function createLettersRouter({
   // L'ORDRE DES GARDES EST LE CONTRAT : au bout de cette chaîne, un pli est imprimé, affranchi
   // et posté — de l'argent réel. Chaque garde est numérotée ci-dessous et testée dans cet ordre
   // (tests/letters-paper-routes.test.ts) :
-  //   1. requireAuth + requirePurchase (middlewares de la route, déjà passés ici)
-  //   2. kill switch PAPER_SENDS_ENABLED (middleware paperKillSwitch, avant le limiteur) → 503
+  //   1. requireAuth + requireActiveDossier (middlewares de la route, déjà passés ici) → 403/500
+  //   2. kill switch PAPER_SENDS_ENABLED (middleware channelKillSwitch, avant le limiteur) → 503
   //   3. profil expéditeur présent ET postalement exploitable → 400
   //   4. adresse destinataire valide (≤45/ligne, CP 5 chiffres, jamais tronquée) → 400
   //   5. corps REGÉNÉRÉ côté serveur depuis le template      → 400 si variables manquantes
@@ -344,7 +367,7 @@ export function createLettersRouter({
     const templateId = req.body.template_id
 
     // ── 2. Kill switch du canal ───────────────────────────────────────────────────────────
-    // Déjà appliqué par le middleware `paperKillSwitch` (monté avant le limiteur) : arriver ici
+    // Déjà appliqué par le middleware `channelKillSwitch` (monté avant le limiteur) : arriver ici
     // signifie que PAPER_SENDS_ENABLED vaut exactement 'true'.
     if (!paperSender) {
       // Router construit sans adaptateur (usage isolé) : même verdict que l'absence de clé API.
@@ -605,7 +628,8 @@ export function createLettersRouter({
           success: false,
           error: msg(lang, 'quota_exhausted'),
           code: 'QUOTA_EXHAUSTED',
-          extra_send_available: Boolean(extraSendAvailable),
+          extra_send_available: isExtraSendAvailable(),
+          support_email: process.env.SUPPORT_EMAIL || DEFAULT_SUPPORT_EMAIL,
           // Legs R1 (revue Task 9) : la fenêtre pendant laquelle un retry post-achat reprend LA
           // MÊME ligne (garde 7 bis) sans qu'elle soit jugée périmée. Le front l'utilise pour
           // patienter avant de retenter automatiquement au retour du Checkout à l'acte, plutôt
@@ -757,29 +781,11 @@ export function createLettersRouter({
   // une policy SELECT owner, la RPC send_balance() est au contraire interne (révoquée) — elle
   // lirait le solde de n'importe qui à paramètre libre. Le calcul reproduit celui de la base :
   // solde = Σ included_sends des achats PAYÉS − débits comptés, jamais négatif (spec §4).
-  router.get('/quota', requireAuth, async (req, res) => {
+  router.get('/quota', requireAuth, requireActiveDossier, async (req, res) => {
     const lang = bodyLang(req)
     try {
-      const [purchases, debits] = await Promise.all([
-        req.supabaseClient.from('purchases').select('included_sends').eq('user_id', req.user.id).eq('status', 'paid'),
-        req.supabaseClient
-          .from('send_debits')
-          .select('send_id, source, created_at')
-          .eq('user_id', req.user.id)
-          .order('created_at', { ascending: false }),
-      ])
-      if (purchases.error) throw new Error(`Lecture des achats impossible : ${purchases.error.message}`)
-      if (debits.error) throw new Error(`Lecture des débits impossible : ${debits.error.message}`)
-
-      const includedTotal = (purchases.data ?? []).reduce((total, row) => total + (row.included_sends ?? 0), 0)
-      const debitRows = debits.data ?? []
-      const used = debitRows.filter((row) => BILLABLE_DEBIT_SOURCES.has(row.source)).length
-      return res.json({
-        success: true,
-        balance: Math.max(0, includedTotal - used),
-        included_total: includedTotal,
-        debits: debitRows,
-      })
+      const quota = await readQuota(req.supabaseClient, req.user.id)
+      return res.json({ success: true, ...quota })
     } catch (error) {
       console.error('❌ letters/quota :', error?.message ?? error)
       Sentry.captureException(error)
@@ -796,7 +802,7 @@ export function createLettersRouter({
   //    RÉGIONALES (department null, note post-revue Task 2) et l'utilisateur choisit la sienne
   //    par son nom de région — aucun mapping région↔départements n'est inventé ici.
   // L'adresse renvoyée n'est qu'une proposition : celle qui part est celle du corps de POST /send.
-  router.get('/organisations', requireAuth, async (req, res) => {
+  router.get('/organisations', requireAuth, requireActiveDossier, async (req, res) => {
     const lang = bodyLang(req)
     try {
       const network = String(req.query.network ?? '')
@@ -819,7 +825,7 @@ export function createLettersRouter({
     }
   })
 
-  router.get('/', requireAuth, async (req, res) => {
+  router.get('/', requireAuth, requireActiveDossier, async (req, res) => {
     try {
       const sends = await store.listSends(req.supabaseClient, req.user.id)
       res.json({ success: true, sends })

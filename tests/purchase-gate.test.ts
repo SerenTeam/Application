@@ -2,39 +2,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import express from 'express'
 import request from 'supertest'
 // @ts-expect-error — module JS serveur
-import { createLettersRouter } from '../server/routes/letters.js'
-// @ts-expect-error — module JS serveur
 import { createRequirePurchase } from '../server/lib/require-purchase.js'
 // @ts-expect-error — module JS serveur
-import { LETTER_CHANNELS } from '../server/lib/letter-channels.js'
+import { createUserRateLimiter } from '../server/lib/rate-limit.js'
 import { makePurchasesStore } from './helpers/purchases-fake'
 
-// Gating du forfait (D1) monté sur la vraie route d'envoi : c'est le seul endroit du produit où
-// « avoir payé » se vérifie aujourd'hui, et le middleware sera réutilisé tel quel par les
-// chantiers 2 et 3.
-
-function makeLettersStore() {
-  const rows: Record<string, unknown>[] = []
-  return {
-    rows,
-    async createSend(_c: unknown, fields: Record<string, unknown>) {
-      const row = { id: `send-${rows.length + 1}`, ...fields }
-      rows.push(row)
-      return { send: row }
-    },
-    async markSendResult(_c: unknown, id: string, patch: Record<string, unknown>) {
-      const row = rows.find((r) => r.id === id)!
-      Object.assign(row, patch)
-      return row
-    },
-    async listSends(_c: unknown) {
-      return rows
-    },
-  }
-}
-
+// Code mort v2 (contrat §1.4) : createRequirePurchase n'est plus monté par server.js. Il est
+// conservé, et vérifié ISOLÉMENT, jusqu'au nettoyage post-bêta.
 function makeApp({ paymentsEnabled, purchases }: { paymentsEnabled: boolean; purchases: ReturnType<typeof makePurchasesStore> }) {
-  const lettersStore = makeLettersStore()
+  const rows: unknown[] = []
   const requireAuth = (req: express.Request & { user?: unknown; supabaseClient?: unknown }, _res: express.Response, next: express.NextFunction) => {
     req.user = { id: 'user-1' }
     req.supabaseClient = {}
@@ -42,14 +18,11 @@ function makeApp({ paymentsEnabled, purchases }: { paymentsEnabled: boolean; pur
   }
   const app = express()
   app.use(express.json())
-  app.use('/api/letters', createLettersRouter({
-    requireAuth,
-    requirePurchase: createRequirePurchase({ store: purchases, paymentsEnabled }),
-    store: lettersStore,
-    emailSender: { async send() { return { providerRef: 'prov-1', status: 'sent' } } },
-    channels: LETTER_CHANNELS,
-  }))
-  return { app, lettersStore }
+  const limiter = createUserRateLimiter({ max: 20, windowMs: 60 * 60 * 1000 })
+  app.post('/api/letters/send', requireAuth, createRequirePurchase({ store: purchases, paymentsEnabled }), limiter,
+    (req: express.Request, res: express.Response) => { rows.push(req.body); res.json({ success: true }) })
+  app.get('/api/letters', requireAuth, (_req: express.Request, res: express.Response) => res.json({ success: true, sends: rows }))
+  return { app, lettersStore: { rows } }
 }
 
 const PAYLOAD = {

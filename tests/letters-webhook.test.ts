@@ -7,6 +7,10 @@ import { createLettersRouter } from '../server/routes/letters.js'
 // @ts-expect-error — module JS serveur
 import { LETTER_CHANNELS } from '../server/lib/letter-channels.js'
 
+// Gate passe-plat EXPLICITE (A5 : le défaut des factories est fail-closed). Le webhook, lui,
+// n'est JAMAIS gaté — ce passe-plat ne sert qu'à construire le router.
+const PASS = (_req: express.Request, _res: express.Response, next: express.NextFunction) => next()
+
 // ── Fixtures signature Svix ─────────────────────────────────────────────
 // Même algorithme que server/lib/svix-verify.js, recalculé indépendamment ici : secret
 // `whsec_<base64>`, contenu signé "{svix-id}.{svix-timestamp}.{corps brut}" (HMAC-SHA256,
@@ -76,6 +80,7 @@ function makeApp(opts: { store?: ReturnType<typeof makeStore> } = {}) {
     '/api/letters',
     createLettersRouter({
       requireAuth,
+      requireActiveDossier: PASS,
       store,
       emailSender: {}, // non utilisé par /webhook
       channels: LETTER_CHANNELS,
