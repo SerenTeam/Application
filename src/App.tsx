@@ -24,25 +24,29 @@ import { NotFoundPage } from '@/pages/errors/NotFoundPage'
 import { ErrorPage } from '@/pages/errors/ErrorPage'
 import { MaintenancePage } from '@/pages/errors/MaintenancePage'
 
-// Pages légales : contenu à venir. `LanguageProvider` doit envelopper `AuthProvider`
-// (et non l'inverse) pour que useAuth.ts puisse résoudre la langue active via useT()
-// dans son propre corps de composant (toast de session expirée).
-function LegalPlaceholder() {
+// Pages légales bêta (contenu : t.legalPages, valeurs relues en L7). Publiques.
+// `LanguageProvider` doit envelopper `AuthProvider` (et non l'inverse) pour que useAuth.ts
+// puisse résoudre la langue active via useT() dans son propre corps de composant (toast de
+// session expirée).
+function LegalContentPage({ page }: { page: 'legal' | 'security' }) {
   const t = useT()
+  const content = t.legalPages[page]
   return (
-    <div className="min-h-screen bg-bg p-12 max-w-3xl mx-auto">
-      <h1 className="font-display text-3xl text-accent mb-4">{t.layout.legalTitle}</h1>
-      <p className="text-text-soft">{t.layout.legalContent}</p>
-    </div>
-  )
-}
-
-function SecurityPlaceholder() {
-  const t = useT()
-  return (
-    <div className="min-h-screen bg-bg p-12 max-w-3xl mx-auto">
-      <h1 className="font-display text-3xl text-accent mb-4">{t.layout.securityTitle}</h1>
-      <p className="text-text-soft">{t.layout.securityContent}</p>
+    <div className="min-h-screen bg-bg px-4 py-12">
+      <article className="mx-auto max-w-3xl">
+        <p role="note" className="mb-6 rounded-2xl border border-warning/40 bg-warning-light px-4 py-3 text-sm text-text-secondary">
+          {t.legalPages.betaBanner}
+        </p>
+        <h1 className="mb-8 font-display text-3xl font-normal text-text">{content.title}</h1>
+        {content.blocks.map((block) => (
+          <section key={block.heading} className="mb-8">
+            <h2 className="mb-2 font-display text-xl font-normal text-text">{block.heading}</h2>
+            {block.body.split('\n\n').map((paragraph, index) => (
+              <p key={index} className="mb-3 text-text-secondary">{paragraph}</p>
+            ))}
+          </section>
+        ))}
+      </article>
     </div>
   )
 }
@@ -65,8 +69,8 @@ export default function App() {
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/reset-password/confirm" element={<ResetPasswordConfirmPage />} />
               <Route path="/reset-password/success" element={<ResetPasswordSuccessPage />} />
-              <Route path="/legal" element={<LegalPlaceholder />} />
-              <Route path="/security" element={<SecurityPlaceholder />} />
+              <Route path="/legal" element={<LegalContentPage page="legal" />} />
+              <Route path="/security" element={<LegalContentPage page="security" />} />
 
               {/* Error routes */}
               <Route path="/erreur" element={<ErrorPage />} />

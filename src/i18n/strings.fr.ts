@@ -14,10 +14,6 @@ export const STRINGS_FR = {
       documents: 'Documents',
       contacts: 'Contacts',
     },
-    legalTitle: "Conditions Générales d'Utilisation",
-    legalContent: 'Contenu à venir...',
-    securityTitle: 'Politique de confidentialité',
-    securityContent: 'Contenu à venir...',
     offlineMessage:
       'Vous semblez être hors ligne. Certaines fonctionnalités peuvent être indisponibles.',
     cookie: {
@@ -502,6 +498,26 @@ export const STRINGS_FR = {
     submitting: 'Enregistrement...',
     saveError: 'Impossible d’enregistrer votre accord, réessayez.',
     allRequired: 'Les trois cases sont nécessaires pour utiliser Seren.',
+  },
+
+  // Pages publiques /legal et /security (contrat §7.1) — VALEURS PROVISOIRES : L7 (Task 34) pose
+  // les textes définitifs après la relecture juridique ; seule la structure appartient à L3.
+  legalPages: {
+    betaBanner: 'Version bêta — relecture juridique en cours.',
+    legal: {
+      title: 'Conditions générales d’utilisation (version bêta)',
+      blocks: [
+        { heading: 'Un service en version bêta', body: 'Seren est ouvert en version bêta à des familles invitées par une pompe funèbre partenaire. Les informations et modèles de courriers sont fournis à titre indicatif et sont en cours de relecture juridique : vérifiez-les auprès des organismes concernés.' },
+        { heading: 'Contact', body: 'Pour toute question, écrivez au support : support@seren-app.fr.' },
+      ],
+    },
+    security: {
+      title: 'Politique de confidentialité (version bêta)',
+      blocks: [
+        { heading: 'Vos données', body: 'Seren traite les informations nécessaires à vos démarches, transmises par votre pompe funèbre ou saisies par vous. Le contenu de votre dossier (réponses, démarches, courriers, documents) n’est jamais visible par la pompe funèbre.' },
+        { heading: 'Vos droits', body: 'Accès, rectification, effacement, opposition : écrivez à support@seren-app.fr. Vous pouvez aussi adresser une réclamation à la CNIL (cnil.fr).' },
+      ],
+    },
   },
   // v2:ns-l3
 

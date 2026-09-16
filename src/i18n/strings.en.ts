@@ -14,10 +14,6 @@ export const STRINGS_EN: Strings = {
       documents: 'Documents',
       contacts: 'Contacts',
     },
-    legalTitle: 'Terms of Service',
-    legalContent: 'Content coming soon...',
-    securityTitle: 'Privacy Policy',
-    securityContent: 'Content coming soon...',
     offlineMessage:
       'You appear to be offline. Some features may be unavailable.',
     cookie: {
@@ -501,6 +497,26 @@ export const STRINGS_EN: Strings = {
     submitting: 'Saving...',
     saveError: 'Unable to save your agreement, please try again.',
     allRequired: 'All three boxes are required to use Seren.',
+  },
+
+  // Pages publiques /legal et /security (contrat §7.1) — VALEURS PROVISOIRES : L7 (Task 34) pose
+  // les textes définitifs après la relecture juridique ; seule la structure appartient à L3.
+  legalPages: {
+    betaBanner: 'Beta version — legal review in progress.',
+    legal: {
+      title: 'Terms of use (beta version)',
+      blocks: [
+        { heading: 'A service in beta', body: 'Seren is open in beta to families invited by a partner funeral home. Information and letter templates are provided as guidance and are under legal review: please check them with the organisations concerned.' },
+        { heading: 'Contact', body: 'For any question, write to support: support@seren-app.fr.' },
+      ],
+    },
+    security: {
+      title: 'Privacy policy (beta version)',
+      blocks: [
+        { heading: 'Your data', body: 'Seren processes the information needed for your formalities, provided by your funeral home or entered by you. The content of your file (answers, steps, letters, documents) is never visible to the funeral home.' },
+        { heading: 'Your rights', body: 'Access, rectification, erasure, objection: write to support@seren-app.fr. You can also lodge a complaint with the CNIL (cnil.fr).' },
+      ],
+    },
   },
   // v2:ns-l3
 
