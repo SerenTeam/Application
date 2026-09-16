@@ -1,7 +1,7 @@
 # Checklist U1+U2 fusionnée — déploiement complet en préprod (~1 h 45)
 
 > **Remplace `docs/checklist-push.md`** (qui découpait en deux créneaux). Tout le code v2 est intégré et
-> vérifié sur `integration/v2-demo`, tag **`preprod-v2-rc1`** : on déploie donc 2a **et** v2 en une seule passe,
+> vérifié sur `integration/v2-demo`, tag **`preprod-v2-rc2`** : on déploie donc 2a **et** v2 en une seule passe,
 > soit **12 migrations** au lieu de 8 + 4.
 >
 > Écrit le 16/09 à 11h05, après le constat qu'U1 n'avait pas été déroulé. Aucune action sur la prod hormis
@@ -52,18 +52,18 @@ select id from webhook_config;
 ```bash
 cd /Users/arnaudgay/Documents/git/Seren/Application
 git fetch origin
-git rev-parse preprod-v2-rc1
+git rev-parse preprod-v2-rc2
 ```
 
 ✅ Un SHA. 🛑 STOP si `unknown revision`.
 
 ```bash
-git push origin preprod-v2-rc1
-git push origin 'preprod-v2-rc1^{commit}:refs/heads/integration/v2-demo'
+git push origin preprod-v2-rc2
+git push origin 'preprod-v2-rc2^{commit}:refs/heads/integration/v2-demo'
 gh run list --branch integration/v2-demo --limit 1
 ```
 
-> ⚠️ `preprod-v2-rc1` est un tag **annoté** : la forme `^{commit}` est obligatoire pour écrire sur une branche,
+> ⚠️ `preprod-v2-rc2` est un tag **annoté** : la forme `^{commit}` est obligatoire pour écrire sur une branche,
 > sinon le serveur refuse (« trying to write non-commit object »).
 
 ✅ La CI (tsc + vitest + build) passe à `completed success` en ~5 min. **Attendre ce vert avant D** : les migrations sont irréversibles. 🛑 STOP si rouge → coller le lien du run.
@@ -74,7 +74,7 @@ gh run list --branch integration/v2-demo --limit 1
 
 ```bash
 cd /Users/arnaudgay/Documents/git/Seren/Application
-git worktree add --detach ../push-preprod preprod-v2-rc1
+git worktree add --detach ../push-preprod preprod-v2-rc2
 cd ../push-preprod
 supabase link --project-ref kvtzhyxlqouvpwasedbe
 cat supabase/.temp/project-ref
@@ -178,7 +178,7 @@ Puis, CI verte et D terminé :
 
 ```bash
 cd /Users/arnaudgay/Documents/git/Seren/Application
-git push origin 'preprod-v2-rc1^{commit}:refs/heads/pre-prod'
+git push origin 'preprod-v2-rc2^{commit}:refs/heads/pre-prod'
 ```
 
 ✅ Fast-forward depuis `bda6952`. 🛑 STOP si `non-fast-forward` — ne jamais forcer.
