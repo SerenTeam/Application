@@ -217,6 +217,16 @@ ERROR: DRY-RUN (rien n'est écrit) — candidats : N, conflits d'adresse ignoré
 ```
 
 3. **Comparer** le nombre de candidats au comptage des comptes réels fait en U1 (étape B de `docs/checklist-push.md`). 🛑 **STOP si l'écart est inexpliqué.**
+
+> ⚠️ **Avant de basculer `v_dry_run` à `false`**, lister dans `v_excluded` (en minuscules) les adresses
+> des **gérants PF** et des **admins Seren** qui seront enrôlés à l'**étape 8**. En production, ces
+> enrôlements n'existent pas encore au moment du backfill : l'exclusion « comptes internes » du script
+> interroge `account_enrollments`, qui est encore **vide**, et ne peut donc pas les voir. Sans cette
+> liste, une adresse de gérant ou d'admin qui est déjà un compte réel confirmé reçoit ici un dossier
+> `direct` actif — et `link_enrollments` refusera alors **toute** la liaison de l'étape 8, pour tout le
+> monde (garde `enrollment_conflict_family`, globale et évaluée avant toute écriture), pas seulement
+> pour l'adresse en cause.
+
 4. **SECTION 1 en écriture** — dans le bloc collé, remplacer **une seule ligne** :
 
 ```sql
@@ -343,6 +353,7 @@ select public.link_enrollments('[{"email":"<gérant>","user_id":"<UUID>"},
 
 ✅ **Attendu** : `pending: 0` **et `untrusted: 0`**.
 🛑 **STOP si** `untrusted > 0` : une adresse enrôlée est déjà détenue par un compte non apparié — enquête (`created_at`, `last_sign_in_at`, `email_change`) avant toute ouverture. Aucun rôle n'a été donné.
+🛑 **Erreur `enrollment_conflict_family`** : une adresse enrôlée porte un **dossier famille** — le cas le plus probable en U4 est un dossier `direct` créé par le **backfill de l'étape 5** (voir l'avertissement du §6). Cette garde est **globale** : tant qu'elle est vraie, **aucune** liaison ne passe, ni pour les gérants ni pour les admins. Remède, au choix : clore ce dossier avec la **PARTIE B** de `scripts/erase-family.sql`, ou enrôler une autre adresse pour cette personne (`delete from public.account_enrollments where email = '<adresse>';` puis rejouer le bloc 1). **Aucun rôle n'a été donné** : la garde s'évalue avant toute écriture.
 
 **5. Mot de passe du gérant réel** : **et seulement après la liaison**, Authentication → Users → « **Send password recovery** » pour chaque gérant, qui fixe lui-même son mot de passe. (Cette procédure est réservée aux vrais gérants de PF : les comptes de démo et de probes de la préprod ont reçu le leur à la création.)
 

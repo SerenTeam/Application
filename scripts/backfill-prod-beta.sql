@@ -16,6 +16,13 @@
 -- bannis, jamais confirmés ni connectés, comptes portant déjà un dossier, adresses déjà portées par un
 -- dossier ouvert (comptées en « conflits », à traiter à la main), adresses listées dans v_excluded.
 --
+-- ⚠️ ORDRE (runbook prod §6 et §9) : en production, les enrôlements n'existent PAS encore quand ce
+-- script tourne — ils sont créés à l'étape 8. L'exclusion « internes » ci-dessus lit
+-- account_enrollments, encore vide : elle ne peut donc pas voir les futurs gérants PF et admins Seren.
+-- Lister leurs adresses dans v_excluded (en minuscules) AVANT l'écriture. Sinon celles qui sont déjà
+-- des comptes réels reçoivent un dossier « direct », et link_enrollments refuse ensuite TOUTE la
+-- liaison de l'étape 8 (enrollment_conflict_family : garde globale, pas seulement l'adresse fautive).
+--
 -- SECTION 0 (lecture) → SECTION 1 en DRY-RUN (défaut) → relire les compteurs → SECTION 1 avec
 -- v_dry_run = false → SECTION 2 (contrôle). Rejouable : un 2ᵉ passage ne crée rien.
 -- Sorties agrégées uniquement : aucune adresse affichée.
