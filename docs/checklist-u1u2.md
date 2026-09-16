@@ -8,8 +8,8 @@
 > une **lecture** (étape B). Chaque étape a une sortie attendue et une condition 🛑 STOP : on s'arrête et on
 > colle la sortie dans la session. Ne jamais coller de clé, de mot de passe ni de `.env` dans le chat.
 >
-> **État vérifié du code** : tsc OK · 779 tests / 44 fichiers · build OK · 18 migrations rejouées depuis zéro ·
-> 253 assertions SQL · 9 invariants de sécurité sur 9 tenus.
+> **État vérifié du code (rc2)** : tsc OK · 790 tests / 45 fichiers · build OK · 18 migrations rejouées depuis zéro ·
+> 259 assertions SQL (252 v2 + 7 F1, aucun scénario sauté) · 9 invariants de sécurité sur 9 tenus · zéro régression.
 
 ---
 
