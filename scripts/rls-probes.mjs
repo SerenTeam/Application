@@ -67,6 +67,31 @@ function refuseProdTarget() {
 
 refuseProdTarget()
 
+// Seconde cible réseau possible : le serveur Express (PROBE_API_URL). TARGET_IS_PROD ne regarde que
+// PROBE_SUPABASE_URL ; sans ce contrôle, un PROBE_API_URL de prod couplé à une base locale passerait la
+// garde (revue du 16/09, mineur 2). Même règle que scripts/e2e-v2.mjs, qui refuse déjà app.seren-app.fr.
+const PROD_APP_HOST = 'app.seren-app.fr'
+
+function refuseProdApi() {
+  const raw = (process.env.PROBE_API_URL ?? '').trim()
+  if (!raw) return
+  let host = ''
+  try {
+    host = new URL(raw).hostname.toLowerCase()
+  } catch {
+    host = ''
+  }
+  // Le regex couvre la forme sans schéma (new URL() échoue alors), que fetch rejetterait de toute façon.
+  const looksProd = isProdTarget(raw) || host === PROD_APP_HOST || new RegExp(`(?:^|//)${PROD_APP_HOST.replace(/\./g, '\\.')}(?::\\d+)?(?:/|$)`, 'i').test(raw)
+  if (!looksProd) return
+  console.error(`REFUS : PROBE_API_URL vise le serveur de PRODUCTION (${host || raw}).`)
+  console.error('Les sondes HTTP (gate serveur, création du dossier des sondes de hook) ne visent jamais la prod :')
+  console.error('cibler le serveur local ou celui de la préprod. Voir docs/runbook-rls-probes.md § Garde anti-prod.')
+  process.exit(1)
+}
+
+refuseProdApi()
+
 // ----------------------------------------------------------------------
 // Configuration / environnement
 // ----------------------------------------------------------------------
