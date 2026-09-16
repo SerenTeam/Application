@@ -1,3 +1,7 @@
+-- ⚠️ OBSOLÈTE DEPUIS LE DÉMONSTRATEUR v2 (2026-09-15) — ne plus exécuter.
+-- Remplacé par scripts/seed-demo-v2.sql (partenaires v2, allowlist d'enrôlement, dossiers, pont).
+-- Conservé pour l'historique et le rollback éventuel de la page PF v0 (partner_dashboard).
+
 -- ====================================================================
 -- SEED DÉMO — Espace partenaire PF (PRÉPROD UNIQUEMENT)
 -- ====================================================================
