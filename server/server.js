@@ -18,6 +18,7 @@ import { createPaperSender } from './lib/paper-sender.js';
 import { createPaperResync } from './lib/paper-resync.js';
 import { createStripeClient, createPriceReader } from './lib/stripe-client.js';
 import { createRequirePurchase } from './lib/require-purchase.js';
+import { flagOn } from './lib/flags.js';
 import * as lettersStore from './lib/letters-store.js';
 import * as purchasesStore from './lib/purchases-store.js';
 import { LETTER_CHANNELS } from './lib/letter-channels.js';
@@ -159,15 +160,17 @@ async function requireAuth(req, res, next) {
   }
 }
 
-// Client Mistral
-const client = new Mistral({
-  apiKey: process.env.MISTRAL_API_KEY,
-});
+// Rédacteur LLM du questionnaire (chantier 5) : coupé par défaut. Le client Mistral n'est
+// INSTANCIÉ que si FEATURE_LLM === 'true' ET qu'une clé existe — lu une seule fois au démarrage
+// (contrat §5, exception documentée). Sans lui, question-writer.js renvoie les textes relus du
+// catalogue et aucune donnée ne sort vers Mistral.
+const llmEnabled = flagOn('FEATURE_LLM') && Boolean(process.env.MISTRAL_API_KEY)
+const mistralClient = llmEnabled ? new Mistral({ apiKey: process.env.MISTRAL_API_KEY }) : null
 
 const MISTRAL_MODEL = process.env.MISTRAL_MODEL || 'mistral-small-latest'; // rédacteur du questionnaire v2
 
 // Questionnaire v2 : flux piloté par le moteur (server/lib), IA limitée à la rédaction des textes.
-app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, mistral: client, model: MISTRAL_MODEL }));
+app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, mistral: mistralClient, model: MISTRAL_MODEL }));
 
 // ==================== PAIEMENT DU FORFAIT (chantier 1) ====================
 // PAYMENTS_ENABLED gouverne la vente ET le gating d'un seul geste : non défini (défaut) → la
@@ -377,7 +380,7 @@ if (process.env.SENTRY_DSN) {
 // Démarrage du serveur
 app.listen(PORT, () => {
   console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
-  console.log(`📝 Rédacteur questionnaire v2 : ${MISTRAL_MODEL}`);
+  console.log(`📝 Rédacteur questionnaire v2 : ${mistralClient ? MISTRAL_MODEL : 'statique (FEATURE_LLM fermé)'}`);
   console.log(`🗄️  Supabase URL: ${process.env.SUPABASE_URL ? 'Configuré' : 'Non configuré'}`);
   // Chantier 2a, Task 10 : timer serveur (setInterval, PAS pg_cron/pg_net). `start()` se désarme
   // elle-même sans MYSENDINGBOX_API_KEY (une ligne de log, rien de plus) — appel inconditionnel.
