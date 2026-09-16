@@ -193,7 +193,10 @@ Statut : brouillon bêta — à valider (U2) — relecture juridique requise ava
 
 > J'accepte que Seren traite les informations sensibles nécessaires à mes démarches (décès, situation familiale, patrimoine)
 
-**Notice affichée à côté de la case** :
+**Notice proposée — À CE JOUR NON AFFICHÉE** : le namespace `consent` de L3 ne porte que les trois
+cases (`terms`, `privacy`, `sensitiveData`) et leurs deux liens ; aucune clé ne rend ce paragraphe.
+Ouvrir la clé côté L3 (`consent.sensitiveDataNotice`, FR + EN) **avant** de soumettre ce texte au
+conseil : ne pas faire valider juridiquement une notice que l'application n'affiche pas.
 
 > Ces informations sont celles que vous nous donnerez sur le décès, votre situation familiale et le patrimoine de votre proche. Elles servent uniquement à préparer vos démarches et à remplir vos courriers. Vous pouvez retirer votre accord à tout moment en demandant l'effacement de votre compte à `[E]`.
 
