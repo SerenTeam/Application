@@ -14,10 +14,6 @@ export const STRINGS_FR = {
       documents: 'Documents',
       contacts: 'Contacts',
     },
-    legalTitle: "Conditions Générales d'Utilisation",
-    legalContent: 'Contenu à venir...',
-    securityTitle: 'Politique de confidentialité',
-    securityContent: 'Contenu à venir...',
     offlineMessage:
       'Vous semblez être hors ligne. Certaines fonctionnalités peuvent être indisponibles.',
     cookie: {
@@ -64,23 +60,8 @@ export const STRINGS_FR = {
       submit: 'Se connecter',
       submitting: 'Connexion...',
       forgotPassword: 'Mot de passe oublié ?',
-      noAccount: 'Pas encore de compte ?',
-      createAccount: 'Créer un compte',
       incorrectCredentials: 'Email ou mot de passe incorrect',
       connectionError: 'Erreur de connexion au serveur. Veuillez réessayer.',
-    },
-    signup: {
-      title: 'Créer un compte',
-      subtitle: 'Rejoignez Seren pour préparer l’avenir de vos proches.',
-      emailLabel: 'Email',
-      passwordLabel: 'Mot de passe',
-      submit: 'Créer mon compte',
-      submitting: 'Création du compte...',
-      emailUsedMessage: 'Cette adresse email est déjà utilisée.',
-      signIn: 'Se connecter',
-      alreadyHaveAccount: 'Déjà un compte ?',
-      connectionError: 'Erreur de connexion au serveur. Veuillez réessayer.',
-      accountCreatedMessage: 'Compte créé ! Vérifiez votre email pour confirmer.',
     },
     resetRequest: {
       title: 'Mot de passe oublié',
@@ -113,14 +94,6 @@ export const STRINGS_FR = {
       description:
         'Votre mot de passe a bien été modifié. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.',
       signIn: 'Se connecter',
-    },
-    cgu: {
-      acceptPrefix: "J'accepte les",
-      termsOfService: "conditions générales d'utilisation",
-      andThe: 'et la',
-      privacyPolicy: 'politique de confidentialité',
-      dataProtected:
-        'Vos données sont protégées et ne seront jamais partagées sans votre consentement.',
     },
     passwordConfirm: {
       label: 'Confirmer le mot de passe',
@@ -361,22 +334,6 @@ export const STRINGS_FR = {
     copyFailedDescription: 'Veuillez sélectionner le texte manuellement.',
   },
 
-  // Forfait Seren (chantier 1). Aucun montant n'est écrit ici : le prix vient de Stripe et
-  // s'insère dans `priceSuffix` / `ctaWithPrice` au moment du rendu.
-  payments: {
-    paywallTitle: 'L’envoi fait partie du forfait Seren',
-    paywallDescription:
-      'Vous pouvez consulter et télécharger ce courrier librement. Le forfait ajoute l’envoi par Seren et le suivi des réponses.',
-    cta: 'Débloquer l’envoi',
-    ctaWithPrice: 'Débloquer l’envoi — {price}',
-    opening: 'Ouverture du paiement...',
-    checkoutFailed: 'Impossible d’ouvrir la page de paiement. Vous pouvez réessayer.',
-    confirming: 'Paiement reçu, confirmation en cours...',
-    confirmingSlow:
-      'La confirmation peut prendre une minute. Vous pouvez continuer, votre forfait s’activera tout seul.',
-    confirmed: 'Votre forfait Seren est actif.',
-  },
-
   // Espace partenaire PF (v0-démo, docs/design-pf-dashboard-demo.md) — accès par URL uniquement,
   // page hors navigation partagée.
   partner: {
@@ -481,6 +438,95 @@ export const STRINGS_FR = {
   },
   // Ancres contractuelles v2 (docs/design-v2-demonstrateur.md §8.1) : un namespace NEUF s'insère
   // JUSTE AVANT l'ancre de son lot ; les namespaces existants se modifient en place.
+
+  // Accès v2 (contrat §7.1, §7.2) : écran « accès non activé » rendu par RequireAccess, et
+  // remplacement du lien d'inscription sur /login (il n'y a plus d'inscription publique).
+  access: {
+    loginNoAccount: 'Votre accès vous est ouvert par votre pompe funèbre.',
+    notActivatedTitle: 'Votre accès n’est pas encore activé',
+    notActivatedBody:
+      'Seren est proposé par les pompes funèbres partenaires. Si vous avez reçu une invitation, ouvrez le lien de l’e-mail. Sinon, contactez votre pompe funèbre ou le support.',
+    supportLine: 'Support : {email}',
+    signOut: 'Se déconnecter',
+    backToLogin: 'Retour à la connexion',
+  },
+
+  // Page publique /activation (contrat §7.3) : tous les états de la machine d'activation.
+  activation: {
+    title: 'Activer votre accès Seren',
+    checking: 'Vérification de votre lien...',
+    invitedBy: '{partner} vous ouvre un accompagnement Seren.',
+    invitedByGeneric: 'Votre accompagnement Seren vous attend.',
+    greeting: 'Bonjour {name},',
+    emailLabel: 'Votre adresse e-mail',
+    emailHint: 'C’est l’adresse à laquelle vous avez reçu l’invitation.',
+    passwordLabel: 'Choisissez un mot de passe',
+    submit: 'Activer mon accès',
+    submitting: 'Activation en cours...',
+    claiming: 'Ouverture de votre espace...',
+    weakPassword: 'Ce mot de passe est trop faible : choisissez-en un plus long.',
+    missingTitle: 'Lien incomplet',
+    missingBody: 'Rouvrez le lien reçu par e-mail, sans le modifier.',
+    invalidTitle: 'Lien non valide',
+    invalidBody: 'Ce lien n’est plus valide ou a déjà été utilisé.',
+    alreadyActivated: 'Déjà activé ? Connectez-vous',
+    expiredTitle: 'Lien expiré',
+    expiredBody: 'Demandez un nouveau lien à {partner}.',
+    expiredBodyGeneric: 'Demandez un nouveau lien à votre pompe funèbre.',
+    closedTitle: 'Activation momentanément indisponible',
+    closedBody: 'Réessayez dans quelques instants.',
+    otherSessionTitle: 'Un autre compte est connecté',
+    otherSessionBody: 'Ce lien concerne une autre adresse e-mail. Déconnectez-vous pour continuer.',
+    otherSessionCta: 'Se déconnecter et continuer',
+    existingAccountTitle: 'Un compte existe déjà avec cette adresse',
+    existingAccountBody: 'Saisissez le mot de passe de ce compte, ou réinitialisez-le.',
+    existingAccountPasswordLabel: 'Mot de passe de votre compte',
+    existingAccountSubmit: 'Me connecter et activer',
+    resetPassword: 'Réinitialiser mon mot de passe',
+    errorTitle: 'Une erreur est survenue',
+    errorBody: 'Vous pouvez réessayer dans un instant.',
+    retry: 'Réessayer',
+    support: 'Besoin d’aide ? Écrivez à {email}',
+  },
+
+  // Page /bienvenue (contrat §7.4) : les 3 consentements obligatoires, horodatés par record_consents.
+  consent: {
+    title: 'Bienvenue',
+    providedBy: 'Votre accompagnement Seren vous est proposé par {partner}.',
+    providedByGeneric: 'Votre accompagnement Seren.',
+    deceasedLine: 'Nous sommes à vos côtés pour les démarches liées au décès de {name}.',
+    intro: 'Avant de commencer, merci de prendre connaissance de ces trois points.',
+    terms: 'J’accepte les conditions générales d’utilisation (version bêta)',
+    termsLink: 'Lire les conditions',
+    privacy: 'J’ai pris connaissance de la politique de confidentialité',
+    privacyLink: 'Lire la politique',
+    sensitiveData:
+      'J’accepte que Seren traite les informations sensibles nécessaires à mes démarches (décès, situation familiale, patrimoine)',
+    cta: 'Commencer',
+    submitting: 'Enregistrement...',
+    saveError: 'Impossible d’enregistrer votre accord, réessayez.',
+    allRequired: 'Les trois cases sont nécessaires pour utiliser Seren.',
+  },
+
+  // Pages publiques /legal et /security (contrat §7.1) — VALEURS PROVISOIRES : L7 (Task 34) pose
+  // les textes définitifs après la relecture juridique ; seule la structure appartient à L3.
+  legalPages: {
+    betaBanner: 'Version bêta — relecture juridique en cours.',
+    legal: {
+      title: 'Conditions générales d’utilisation (version bêta)',
+      blocks: [
+        { heading: 'Un service en version bêta', body: 'Seren est ouvert en version bêta à des familles invitées par une pompe funèbre partenaire. Les informations et modèles de courriers sont fournis à titre indicatif et sont en cours de relecture juridique : vérifiez-les auprès des organismes concernés.' },
+        { heading: 'Contact', body: 'Pour toute question, écrivez au support : support@seren-app.fr.' },
+      ],
+    },
+    security: {
+      title: 'Politique de confidentialité (version bêta)',
+      blocks: [
+        { heading: 'Vos données', body: 'Seren traite les informations nécessaires à vos démarches, transmises par votre pompe funèbre ou saisies par vous. Le contenu de votre dossier (réponses, démarches, courriers, documents) n’est jamais visible par la pompe funèbre.' },
+        { heading: 'Vos droits', body: 'Accès, rectification, effacement, opposition : écrivez à support@seren-app.fr. Vous pouvez aussi adresser une réclamation à la CNIL (cnil.fr).' },
+      ],
+    },
+  },
   // v2:ns-l3
 
   // v2:ns-l4

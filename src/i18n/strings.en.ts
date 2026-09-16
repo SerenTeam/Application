@@ -14,10 +14,6 @@ export const STRINGS_EN: Strings = {
       documents: 'Documents',
       contacts: 'Contacts',
     },
-    legalTitle: 'Terms of Service',
-    legalContent: 'Content coming soon...',
-    securityTitle: 'Privacy Policy',
-    securityContent: 'Content coming soon...',
     offlineMessage:
       'You appear to be offline. Some features may be unavailable.',
     cookie: {
@@ -64,23 +60,8 @@ export const STRINGS_EN: Strings = {
       submit: 'Sign in',
       submitting: 'Signing in...',
       forgotPassword: 'Forgot your password?',
-      noAccount: "Don't have an account yet?",
-      createAccount: 'Create an account',
       incorrectCredentials: 'Incorrect email or password',
       connectionError: 'Server connection error. Please try again.',
-    },
-    signup: {
-      title: 'Create an account',
-      subtitle: "Join Seren to prepare for your loved ones' future.",
-      emailLabel: 'Email',
-      passwordLabel: 'Password',
-      submit: 'Create my account',
-      submitting: 'Creating account...',
-      emailUsedMessage: 'This email address is already in use.',
-      signIn: 'Sign in',
-      alreadyHaveAccount: 'Already have an account?',
-      connectionError: 'Server connection error. Please try again.',
-      accountCreatedMessage: 'Account created! Check your email to confirm.',
     },
     resetRequest: {
       title: 'Forgot your password?',
@@ -113,14 +94,6 @@ export const STRINGS_EN: Strings = {
       description:
         'Your password has been successfully changed. You can now sign in with your new password.',
       signIn: 'Sign in',
-    },
-    cgu: {
-      acceptPrefix: 'I accept the',
-      termsOfService: 'terms of service',
-      andThe: 'and the',
-      privacyPolicy: 'privacy policy',
-      dataProtected:
-        'Your data is protected and will never be shared without your consent.',
     },
     passwordConfirm: {
       label: 'Confirm password',
@@ -360,22 +333,6 @@ export const STRINGS_EN: Strings = {
     copyFailedDescription: 'Please select the text manually.',
   },
 
-  // Seren plan (chantier 1). No amount is written here: the price comes from Stripe and is
-  // interpolated into `ctaWithPrice` at render time.
-  payments: {
-    paywallTitle: 'Sending is part of the Seren plan',
-    paywallDescription:
-      'You can read and download this letter freely. The plan adds sending by Seren and reply tracking.',
-    cta: 'Unlock sending',
-    ctaWithPrice: 'Unlock sending — {price}',
-    opening: 'Opening payment...',
-    checkoutFailed: 'Unable to open the payment page. You can try again.',
-    confirming: 'Payment received, confirming...',
-    confirmingSlow:
-      'Confirmation may take a minute. Feel free to carry on — your plan will activate on its own.',
-    confirmed: 'Your Seren plan is active.',
-  },
-
   // Partner space (v0 demo, docs/design-pf-dashboard-demo.md) — URL-only access, page outside
   // the shared navigation.
   partner: {
@@ -477,6 +434,95 @@ export const STRINGS_EN: Strings = {
   },
   // v2 contractual anchors (docs/design-v2-demonstrateur.md §8.1): a NEW namespace is inserted
   // RIGHT BEFORE its lot's anchor; existing namespaces are edited in place.
+
+  // Accès v2 (contrat §7.1, §7.2) : écran « accès non activé » rendu par RequireAccess, et
+  // remplacement du lien d'inscription sur /login (il n'y a plus d'inscription publique).
+  access: {
+    loginNoAccount: 'Your access is opened for you by your funeral home.',
+    notActivatedTitle: 'Your access is not activated yet',
+    notActivatedBody:
+      'Seren is offered by partner funeral homes. If you received an invitation, open the link in the email. Otherwise, contact your funeral home or support.',
+    supportLine: 'Support: {email}',
+    signOut: 'Sign out',
+    backToLogin: 'Back to sign in',
+  },
+
+  // Page publique /activation (contrat §7.3) : tous les états de la machine d'activation.
+  activation: {
+    title: 'Activate your Seren access',
+    checking: 'Checking your link...',
+    invitedBy: '{partner} is opening a Seren support account for you.',
+    invitedByGeneric: 'Your Seren support is waiting for you.',
+    greeting: 'Hello {name},',
+    emailLabel: 'Your email address',
+    emailHint: 'This is the address the invitation was sent to.',
+    passwordLabel: 'Choose a password',
+    submit: 'Activate my access',
+    submitting: 'Activating...',
+    claiming: 'Opening your space...',
+    weakPassword: 'This password is too weak: please choose a longer one.',
+    missingTitle: 'Incomplete link',
+    missingBody: 'Open the link from the email again, without changing it.',
+    invalidTitle: 'Invalid link',
+    invalidBody: 'This link is no longer valid or has already been used.',
+    alreadyActivated: 'Already activated? Sign in',
+    expiredTitle: 'Link expired',
+    expiredBody: 'Ask {partner} for a new link.',
+    expiredBodyGeneric: 'Ask your funeral home for a new link.',
+    closedTitle: 'Activation temporarily unavailable',
+    closedBody: 'Please try again in a few moments.',
+    otherSessionTitle: 'Another account is signed in',
+    otherSessionBody: 'This link belongs to another email address. Sign out to continue.',
+    otherSessionCta: 'Sign out and continue',
+    existingAccountTitle: 'An account already exists with this address',
+    existingAccountBody: 'Enter the password of this account, or reset it.',
+    existingAccountPasswordLabel: 'Your account password',
+    existingAccountSubmit: 'Sign in and activate',
+    resetPassword: 'Reset my password',
+    errorTitle: 'Something went wrong',
+    errorBody: 'You can try again in a moment.',
+    retry: 'Try again',
+    support: 'Need help? Write to {email}',
+  },
+
+  // Page /bienvenue (contrat §7.4) : les 3 consentements obligatoires, horodatés par record_consents.
+  consent: {
+    title: 'Welcome',
+    providedBy: 'Your Seren support is provided by {partner}.',
+    providedByGeneric: 'Your Seren support.',
+    deceasedLine: 'We are by your side for the formalities following the death of {name}.',
+    intro: 'Before you start, please read these three points.',
+    terms: 'I accept the terms of use (beta version)',
+    termsLink: 'Read the terms',
+    privacy: 'I have read the privacy policy',
+    privacyLink: 'Read the policy',
+    sensitiveData:
+      'I agree that Seren processes the sensitive information needed for my formalities (death, family situation, assets)',
+    cta: 'Start',
+    submitting: 'Saving...',
+    saveError: 'Unable to save your agreement, please try again.',
+    allRequired: 'All three boxes are required to use Seren.',
+  },
+
+  // Pages publiques /legal et /security (contrat §7.1) — VALEURS PROVISOIRES : L7 (Task 34) pose
+  // les textes définitifs après la relecture juridique ; seule la structure appartient à L3.
+  legalPages: {
+    betaBanner: 'Beta version — legal review in progress.',
+    legal: {
+      title: 'Terms of use (beta version)',
+      blocks: [
+        { heading: 'A service in beta', body: 'Seren is open in beta to families invited by a partner funeral home. Information and letter templates are provided as guidance and are under legal review: please check them with the organisations concerned.' },
+        { heading: 'Contact', body: 'For any question, write to support: support@seren-app.fr.' },
+      ],
+    },
+    security: {
+      title: 'Privacy policy (beta version)',
+      blocks: [
+        { heading: 'Your data', body: 'Seren processes the information needed for your formalities, provided by your funeral home or entered by you. The content of your file (answers, steps, letters, documents) is never visible to the funeral home.' },
+        { heading: 'Your rights', body: 'Access, rectification, erasure, objection: write to support@seren-app.fr. You can also lodge a complaint with the CNIL (cnil.fr).' },
+      ],
+    },
+  },
   // v2:ns-l3
 
   // v2:ns-l4

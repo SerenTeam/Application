@@ -3,9 +3,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PillBadge } from '@/components/ui/pill-badge'
-import { Send, Loader2, Lock } from 'lucide-react'
+import { Send, Loader2 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
-import { usePayments, formatPrice } from '@/hooks/usePayments'
+import { useAccount } from '@/hooks/useAccount'
 import { useT } from '@/i18n/useT'
 import { useLang } from '@/i18n/LanguageContext'
 import { PaperSendPanel } from './PaperSendPanel'
@@ -36,10 +36,9 @@ interface LetterSendPanelProps {
   subject: string
   body: string
   isComplete: boolean
-  // Canal du template (chantier 2a) : 'email' rend le bloc historique 1 clic ci-dessous ;
-  // 'papier' délègue entièrement à PaperSendPanel (profil expéditeur, adresse, PJ, quota…).
-  // Le paywall du forfait (D1), lui, reste commun aux deux canaux — c'est l'ACTION d'envoi qui
-  // est retenue, jamais l'aperçu ni la préparation du courrier.
+  // Canal du template : 'email' rend le bloc historique 1 clic ci-dessous ; 'papier' délègue à
+  // PaperSendPanel (profil expéditeur, adresse, PJ, quota…). Aucun paywall en v2 : l'accès est
+  // vérifié côté serveur (gate dossier actif).
   channel: 'email' | 'papier'
   // ── Props consommées UNIQUEMENT par la branche papier ──
   variables?: Record<string, string>
@@ -67,14 +66,10 @@ export function LetterSendPanel({
 }: LetterSendPanelProps) {
   const t = useT()
   const { lang } = useLang()
+  const { me } = useAccount()
   const [email, setEmail] = useState('')
   const [sending, setSending] = useState(false)
   const [status, setStatus] = useState<SendStatus>({ kind: 'idle' })
-  // Gating du forfait (D1) : l'envoi est la seule chose que le paywall retient ici — l'aperçu,
-  // les variables, la copie et le PDF du courrier restent intégralement accessibles.
-  const { loading: paymentsLoading, paymentsEnabled, hasPaid, price, startCheckout } = usePayments()
-  const [opening, setOpening] = useState(false)
-  const [checkoutError, setCheckoutError] = useState(false)
 
   // Au montage : dernier envoi existant pour ce courrier (statut sent/delivered/failed).
   // Pas de polling (hors périmètre v1) — simple snapshot. Canal papier UNIQUEMENT : c'est
@@ -101,21 +96,7 @@ export function LetterSendPanel({
   }, [channel, templateId, stepId])
 
   const emailValid = EMAIL_RE.test(email.trim())
-  // Tant que le statut du forfait n'est pas connu, le bouton reste inactif plutôt que d'inviter
-  // à un clic qui repartirait en 402. Ne coûte rien en pratique : le statut est mis en cache au
-  // premier montage (usePayments), les courriers suivants partent d'un état déjà résolu.
-  const canSend = isComplete && emailValid && !sending && !paymentsLoading
-
-  const handleUnlock = useCallback(async () => {
-    setOpening(true)
-    setCheckoutError(false)
-    const ok = await startCheckout(lang)
-    // Succès → la page est en train de partir vers Stripe, on garde l'état « ouverture ».
-    if (!ok) {
-      setCheckoutError(true)
-      setOpening(false)
-    }
-  }, [startCheckout, lang])
+  const canSend = isComplete && emailValid && !sending
 
   const handleSend = useCallback(async () => {
     if (!canSend) return
@@ -154,36 +135,15 @@ export function LetterSendPanel({
     }
   }, [canSend, templateId, stepId, subject, body, email, lang])
 
-  // Paywall : vente ouverte et forfait non acquis. Placé APRÈS tous les hooks (le retour
-  // anticipé ne doit jamais sauter un useCallback). Vente fermée → le composant rend
-  // exactement ce qu'il rendait avant le chantier 1.
-  if (paymentsEnabled && !hasPaid) {
-    const formatted = formatPrice(price, lang)
-    return (
-      <div className="space-y-3 rounded-lg border border-border-card bg-white p-4">
-        <div className="flex items-start gap-3">
-          <Lock className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" />
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-text-primary">{t.payments.paywallTitle}</p>
-            <p className="text-xs text-text-muted">{t.payments.paywallDescription}</p>
-          </div>
-        </div>
-        <Button size="sm" onClick={handleUnlock} disabled={opening} className="gap-2">
-          {opening && <Loader2 className="h-4 w-4 animate-spin" />}
-          {opening
-            ? t.payments.opening
-            : formatted
-              ? t.payments.ctaWithPrice.replace('{price}', formatted)
-              : t.payments.cta}
-        </Button>
-        {checkoutError && <p className="text-xs text-text-muted">{t.payments.checkoutFailed}</p>}
-      </div>
-    )
+  // Canal e-mail fermé (EMAIL_SENDS_ENABLED absent) : le courrier reste consultable et téléchargeable
+  // (LetterActions, rendu à côté), seul l'envoi par Seren est remplacé par un message.
+  if (channel === 'email' && me?.flags.email_sends_enabled === false) {
+    return <p className="text-xs italic text-text-muted">{t.lettersPage.send.notConfigured}</p>
   }
 
   // Canal papier (chantier 2a) : toute la logique (profil expéditeur, adresse, PJ, quota,
   // statuts, reprise après Checkout) vit dans PaperSendPanel — ce composant-ci ne fait que
-  // dispatcher, une fois le paywall commun franchi.
+  // dispatcher.
   if (channel === 'papier') {
     if (!userId) return null // garde de défense : jamais atteint en pratique (RoadmapView le fournit toujours)
     return (

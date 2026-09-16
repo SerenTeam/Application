@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/hooks/use-toast'
 import { resetPaymentsCache } from '@/hooks/usePayments'
+import { resetAccountCache } from '@/hooks/useAccount'
 import { useT } from '@/i18n/useT'
 import type { User, Session } from '@supabase/supabase-js'
 import React from 'react'
@@ -44,9 +45,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null)
         setIsLoading(false)
 
-        // Le statut du forfait est mis en cache au niveau du module (usePayments) : on le purge
+        // Statut du forfait ET compte v2 en cache de module (usePayments, useAccount) : purgés
         // à tout changement de session, pour ne jamais montrer l'état d'un compte à un autre.
-        if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') resetPaymentsCache()
+        if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') { resetPaymentsCache(); resetAccountCache() }
 
         // Session expired or token refreshed failed — redirect with returnUrl
         if (

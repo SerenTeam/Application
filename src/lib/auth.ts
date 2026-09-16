@@ -1,16 +1,7 @@
 import { supabase } from './supabase'
 
-export async function signUp(email: string, password: string) {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${window.location.origin}/`,
-    },
-  })
-  return { data, error }
-}
-
+// Pas de `signUp` ici en v2 : la création de compte famille passe UNIQUEMENT par l'activation
+// d'une invitation (src/pages/ActivationPage.tsx), qui doit joindre le hash du jeton au signUp.
 export async function signIn(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,

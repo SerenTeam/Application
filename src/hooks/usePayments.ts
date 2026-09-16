@@ -2,9 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/api'
 import type { Lang } from '@/i18n'
 
-// État du forfait côté client (chantier 1). La source de vérité est TOUJOURS le serveur, qui
-// lit la table purchases : aucun paramètre d'URL, aucun état local ne débloque quoi que ce soit
-// — c'était précisément la faille du paiement précédent (?payment=success).
+// État du mini-paiement « envoi supplémentaire » (chantier 2a) ; le forfait famille est abandonné
+// en v2 (le dossier est ouvert et payé par la pompe funèbre). La source de vérité est TOUJOURS le
+// serveur, qui lit la table purchases : aucun paramètre d'URL, aucun état local ne débloque quoi
+// que ce soit — c'était précisément la faille du paiement précédent (?payment=success).
 
 export interface PaymentsPrice {
   amount_total: number // centimes, tels que facturés par Stripe
@@ -115,36 +116,11 @@ export function usePayments() {
     }
   }, [])
 
-  /** Ouvre la page de paiement Stripe. Renvoie false si la vente n'est pas ouverte ou si la
-   * session n'a pas pu être créée — l'appelant affiche alors un message, sans jamais rediriger. */
-  const startCheckout = useCallback(async (lang: Lang): Promise<boolean> => {
-    try {
-      const res = await apiFetch('/api/payments/checkout', {
-        method: 'POST',
-        body: JSON.stringify({ lang }),
-      })
-      const data = await res.json().catch(() => null)
-      if (res.ok && data?.url) {
-        window.location.href = data.url
-        return true
-      }
-      // Achat déjà encaissé (double onglet, retour arrière) : on resynchronise plutôt que
-      // d'envoyer l'utilisateur payer une seconde fois.
-      if (res.ok && data?.already_purchased) {
-        await refresh()
-        return true
-      }
-      return false
-    } catch {
-      return false
-    }
-  }, [refresh])
-
   /** Ouvre la page de paiement Stripe pour UN envoi supplémentaire (chantier 2a, facturation à
-   * l'acte — 402 QUOTA_EXHAUSTED du panneau papier). Contrairement à `startCheckout`, cette
-   * route est répétable (pas de no-op « already_purchased » : on peut acheter plusieurs envois
-   * à l'acte) et exige un forfait payé (403 FORFAIT_REQUIRED) — l'appelant distingue ce cas via
-   * le code retourné plutôt qu'un simple booléen. */
+   * l'acte — 402 QUOTA_EXHAUSTED du panneau papier). Seul checkout restant en v2 : cette route
+   * est répétable (on peut acheter plusieurs envois à l'acte) et exige un forfait payé
+   * (403 FORFAIT_REQUIRED) — l'appelant distingue ce cas via le code retourné plutôt qu'un
+   * simple booléen. */
   const startExtraSendCheckout = useCallback(async (lang: Lang): Promise<{ ok: boolean; code?: string }> => {
     try {
       const res = await apiFetch('/api/payments/checkout-extra-send', {
@@ -165,7 +141,6 @@ export function usePayments() {
   return {
     ...state, // `hasPaid` compris — il vient du serveur, jamais d'un calcul local (voir PaymentsState)
     refresh,
-    startCheckout,
     startExtraSendCheckout,
   }
 }
