@@ -220,6 +220,12 @@ describe('POST /api/partner/dossiers', () => {
     const resend = await request(app).post(`/api/partner/dossiers/${DOSSIER_ID}/resend`).send({})
     expect(resend.status).toBe(500)
     expect(client.calls).toHaveLength(0)
+    // Contrat §4.4 : l'alerte n'est émise qu'AU PREMIER APPEL — la réponse 500, elle, reste due à
+    // chaque requête. Sans ce verrou, un secret manquant en production émettrait un événement Sentry
+    // par tentative de création de dossier.
+    expect((await request(app).post('/api/partner/dossiers').send(BODY)).status).toBe(500)
+    expect(Sentry.captureException).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(Sentry.captureException).mock.calls[0][0]).toMatchObject({ message: 'partner_rpc_secret_missing' })
   })
   it('code SQL invalid_secret (serveur et base désaccordés) : 500 PARTNER_ERROR, jamais exposé', async () => {
     process.env.PARTNER_ACTIVATIONS_ENABLED = 'true'

@@ -80,9 +80,20 @@ export function createPartnerRouter({
   // jeton d'activation. Elles exigent le secret partagé webhook_config, que seul ce serveur détient —
   // sans quoi une PF les appellerait en direct via PostgREST, choisirait un jeton qu'elle connaît et
   // prendrait le compte de la famille. Absent → fail-closed 500, AVANT tout appel base et tout e-mail.
+  // Contrat §4.4 : l'alerte Sentry est émise « au premier appel », pas à chaque requête — une
+  // variable d'environnement manquante est un état permanent, un événement par tentative de
+  // création noierait le quota Sentry le jour où le secret manque en production. Le verrou est
+  // porté par le routeur (une instance par processus) ; la réponse, elle, reste identique à
+  // chaque appel : 500 fail-closed, sans appel base ni e-mail.
+  let secretAlerted = false
   function requireRpcSecret(req, res, next) {
     if (typeof rpcSecret === 'string' && rpcSecret.length > 0) return next()
-    return partnerError(res, reqLang(req), 'rpc_secret_missing', null)
+    console.error('❌ partner : rpc_secret_missing (sans code)')
+    if (!secretAlerted) {
+      secretAlerted = true
+      Sentry.captureException(new Error('partner_rpc_secret_missing'))
+    }
+    return res.status(500).json({ success: false, code: 'PARTNER_ERROR', error: msg(reqLang(req), 'partner_error') })
   }
   const createLimiter = createUserRateLimiter({ max: 30, windowMs: 60 * 60 * 1000, message: (req) => msg(reqLang(req), 'too_many_requests') })
   const resendLimiter = createUserRateLimiter({ max: 20, windowMs: 60 * 60 * 1000, message: (req) => msg(reqLang(req), 'too_many_requests') })
