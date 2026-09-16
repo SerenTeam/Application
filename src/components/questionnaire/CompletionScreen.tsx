@@ -4,14 +4,22 @@ import { useT } from '@/i18n/useT'
 import { fmt } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import { IconBadge } from '@/components/ui/icon-badge'
+import { PillBadge } from '@/components/ui/pill-badge'
+import { useAccount } from '@/hooks/useAccount'
 
 interface CompletionScreenProps {
   stepsCount: number
   doneCount: number
+  lettersCount: number
 }
 
-export function CompletionScreen({ stepsCount, doneCount }: CompletionScreenProps) {
+export function CompletionScreen({ stepsCount, doneCount, lettersCount }: CompletionScreenProps) {
   const t = useT()
+  // v2 (contrat §7.6) : l'offre n'est affichée que si le compte porte réellement un dossier —
+  // au palier plancher, /api/me n'existe pas encore, `me` est null et rien ne s'affiche. Jamais
+  // de prix, jamais de mention LRAR : la famille ne paie rien.
+  const { me } = useAccount()
+  const dossier = me?.account?.dossier ?? null
   return (
     <section className="animate-[fadeIn_0.8s_ease-out] px-4 py-8 sm:py-16">
       <div className="mx-auto max-w-[560px] rounded-card bg-white p-10 text-center shadow-card max-sm:p-7">
@@ -37,6 +45,23 @@ export function CompletionScreen({ stepsCount, doneCount }: CompletionScreenProp
         <p className="mx-auto mt-2 max-w-[440px] font-body text-[17px] italic leading-[1.6] text-text-muted">
           {t.completion.dashboardHint}
         </p>
+
+        {lettersCount > 0 && (
+          <p className="mx-auto mt-4 font-body text-[17px] font-medium text-text">
+            {fmt(t.completion.lettersReady, { count: lettersCount, s: lettersCount > 1 ? 's' : '' })}
+          </p>
+        )}
+        {dossier && (
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            <PillBadge tone="neutral">
+              {dossier.partner_name ? fmt(t.offer.providedBy, { partner: dossier.partner_name }) : t.offer.providedByGeneric}
+            </PillBadge>
+            <PillBadge tone="neutral">{t.offer.unlimitedAccess}</PillBadge>
+            {dossier.included_sends > 0 && (
+              <PillBadge tone="neutral">{fmt(t.offer.includedSends, { count: dossier.included_sends })}</PillBadge>
+            )}
+          </div>
+        )}
 
         <Button asChild className="group mt-10 gap-2">
           <Link to="/dashboard">

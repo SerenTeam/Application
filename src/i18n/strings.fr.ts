@@ -208,6 +208,7 @@ export const STRINGS_FR = {
     dashboardHint:
       'Retrouvez votre parcours détaillé avec les courriers pré-remplis sur votre tableau de bord.',
     viewRoadmap: 'Voir mon parcours',
+    lettersReady: '{count} courrier{s} prêt{s}',
   },
 
   dashboardPage: {
@@ -483,6 +484,13 @@ export const STRINGS_FR = {
 
   // v2:ns-l4c
 
+  // Offre v2 côté famille (contrat §7.6) : jamais de prix, jamais de mention LRAR.
+  offer: {
+    unlimitedAccess: 'Accès sans limite de durée',
+    includedSends: '{count} envois postaux inclus',
+    providedBy: 'Proposé par {partner}',
+    providedByGeneric: 'Votre accompagnement Seren',
+  },
   // v2:ns-l5
 }
 

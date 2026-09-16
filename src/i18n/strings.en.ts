@@ -208,6 +208,7 @@ export const STRINGS_EN: Strings = {
     dashboardHint:
       'Find your detailed roadmap with pre-filled letters on your dashboard.',
     viewRoadmap: 'View my roadmap',
+    lettersReady: '{count} letter{s} ready',
   },
 
   dashboardPage: {
@@ -482,5 +483,12 @@ export const STRINGS_EN: Strings = {
 
   // v2:ns-l4c
 
+  // v2 family-facing offer (contract §7.6): never a price, never an LRAR mention.
+  offer: {
+    unlimitedAccess: 'Access with no time limit',
+    includedSends: '{count} postal sends included',
+    providedBy: 'Provided by {partner}',
+    providedByGeneric: 'Your Seren support',
+  },
   // v2:ns-l5
 }
