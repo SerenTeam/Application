@@ -1,80 +1,66 @@
 import { Navigate } from 'react-router-dom'
 import { usePartnerDashboard } from '@/hooks/usePartnerDashboard'
+import { useAccount } from '@/hooks/useAccount'
 import { useT } from '@/i18n/useT'
-import { AppHeader, HeaderNavLink } from '@/components/layout/AppHeader'
+import { AppHeader } from '@/components/layout/AppHeader'
 import { SectionHeading } from '@/components/ui/section-heading'
+import { PillBadge } from '@/components/ui/pill-badge'
+import { Button } from '@/components/ui/button'
+import { PartnerCounters } from '@/components/partner/PartnerCounters'
+import { DossierForm } from '@/components/partner/DossierForm'
+import { DossierCard } from '@/components/partner/DossierCard'
 
-// Espace partenaire (v0-démo, docs/design-pf-dashboard-demo.md). Accès par URL uniquement —
-// AUCUN lien n'existe vers /partenaire dans la navigation partagée (Sidebar/AppHeader) : c'est
-// une décision de spec, pas un oubli, le risque pour l'app famille doit rester nul.
+// Espace partenaire v2 (contrat §2.2, §4.4). Règle rouge : identité de la famille et du défunt
+// seulement, JAMAIS le contenu. Gardé par RequireAccess area="partner" + RPC côté serveur.
 export function PartnerDashboardPage() {
-  const { loading, data, error } = usePartnerDashboard()
   const t = useT()
+  const { me } = useAccount()
+  const { loading, error, notPartner, partner, dossiers, counters, refresh, createDossier, resendInvitation, cancelDossier } = usePartnerDashboard()
+  const activationsEnabled = me?.flags.partner_activations_enabled !== false
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-bg">
-        <AppHeader>
-          <HeaderNavLink to="/dashboard">{t.layout.dashboard}</HeaderNavLink>
-        </AppHeader>
-        <div className="flex min-h-[calc(100vh-82px)] items-center justify-center">
-          <div className="h-12 w-12 animate-spin rounded-full border-[3px] border-border border-t-primary" />
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-bg">
-        <AppHeader>
-          <HeaderNavLink to="/dashboard">{t.layout.dashboard}</HeaderNavLink>
-        </AppHeader>
-        <div className="flex min-h-[calc(100vh-82px)] flex-col items-center justify-center px-6 text-center">
-          <h1 className="mb-3 font-display text-2xl font-normal text-text">
-            {t.errors.somethingWrongTitle}
-          </h1>
-          <p className="max-w-md text-text-secondary">{t.errors.somethingWrongDescription}</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Compte non rattaché à une PF (`partner_users` vide pour cet utilisateur) : pas d'espace
-  // partenaire pour ce compte, retour au dashboard famille.
-  if (data === null) {
-    return <Navigate to="/dashboard" replace />
-  }
-
-  // Palier PLANCHER (contrat §1.2) : plus AUCUN montant côté PF. Le CA, la commission et le taux
-  // étaient calculés sur des achats famille — le modèle v2 les supprime (Seren ne vend plus rien
-  // à la famille), ils seraient donc faux autant qu'indiscrets.
-  const tiles: { key: string; label: string; value: string }[] = [
-    { key: 'attributed', label: t.partner.tiles.attributed, value: String(data.attributed_count) },
-  ]
+  if (notPartner) return <Navigate to="/" replace />
 
   return (
     <div className="min-h-screen bg-bg">
-      <AppHeader>
-        <HeaderNavLink to="/dashboard">{t.layout.dashboard}</HeaderNavLink>
-      </AppHeader>
-
-      <main className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
-        <SectionHeading as="h1" className="mb-10 max-w-none" title={t.partner.title} lead={data.partner_name} />
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {tiles.map((tile) => (
-            <div
-              key={tile.key}
-              className="rounded-card border border-border-card bg-white p-6 shadow-card-border"
-            >
-              <p className="mb-2 text-sm font-medium text-text-secondary">{tile.label}</p>
-              <p className="font-display text-[28px] font-normal text-text">{tile.value}</p>
-            </div>
-          ))}
-        </div>
-
-        <p className="mt-10 text-center text-sm italic text-text-muted">{t.partner.previewNotice}</p>
+      <AppHeader />
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:py-12">
+        {loading && (
+          <div className="flex min-h-[40vh] items-center justify-center">
+            <div className="h-12 w-12 animate-spin rounded-full border-[3px] border-border border-t-primary" />
+          </div>
+        )}
+        {!loading && error && (
+          <div className="flex min-h-[40vh] flex-col items-center justify-center text-center">
+            <p className="mb-4 text-text-secondary">{t.partner.loadError}</p>
+            <Button onClick={() => void refresh()}>{t.partner.retry}</Button>
+          </div>
+        )}
+        {!loading && !error && partner && counters && (
+          <>
+            <SectionHeading as="h1" className="mb-3 max-w-none" title={t.partner.title} lead={partner.name} />
+            <PillBadge tone="neutral" className="mb-8">
+              {partner.user_role === 'manager' ? t.partner.roleManager : t.partner.roleAdvisor}
+            </PillBadge>
+            <PartnerCounters counters={counters} />
+            {/* v2:billing-preview */}
+            <section className="mt-10">
+              <DossierForm onCreate={createDossier} activationsEnabled={activationsEnabled} />
+            </section>
+            <section className="mt-10">
+              <h2 className="mb-4 font-display text-2xl font-normal text-text">{t.partner.list.title}</h2>
+              {dossiers.length === 0 ? (
+                <p className="text-text-muted">{t.partner.list.empty}</p>
+              ) : (
+                <div className="space-y-4">
+                  {dossiers.map((dossier) => (
+                    <DossierCard key={dossier.id} dossier={dossier} onResend={resendInvitation} onCancel={cancelDossier} activationsEnabled={activationsEnabled} />
+                  ))}
+                </div>
+              )}
+            </section>
+            <p className="mt-10 text-center text-sm italic text-text-muted">{t.partner.privacyNotice}</p>
+          </>
+        )}
       </main>
     </div>
   )

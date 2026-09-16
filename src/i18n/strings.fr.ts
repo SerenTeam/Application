@@ -373,15 +373,85 @@ export const STRINGS_FR = {
     confirmed: 'Votre forfait Seren est actif.',
   },
 
-  // Espace partenaire PF (v0-démo, docs/design-pf-dashboard-demo.md) — accès par URL uniquement,
-  // page hors navigation partagée. Palier PLANCHER v2 : plus aucun montant (le CA et la commission
-  // étaient calculés sur des achats famille, que le modèle v2 supprime).
+  // Espace partenaire PF v2 (contrat §2.2, §4.4) : la PF ouvre le dossier de la famille, suit ses
+  // invitations et ses compteurs. Aucun libellé de montant, aucun libellé de contenu : la PF ne
+  // voit jamais ce que la famille remplit.
   partner: {
     title: 'Espace partenaire',
-    tiles: {
-      attributed: 'Dossiers accompagnés',
+    roleManager: 'Gérant',
+    roleAdvisor: 'Conseiller',
+    loadError: 'Impossible de charger votre espace partenaire.',
+    retry: 'Réessayer',
+    privacyNotice:
+      'Vous ne voyez jamais le contenu du dossier de la famille : ni ses réponses, ni ses démarches, ni ses courriers, ni ses documents.',
+    counters: {
+      title: 'Vos dossiers',
+      createdThisMonth: 'Créés ce mois',
+      createdTotal: 'Créés au total',
+      activatedTotal: 'Activés par la famille',
+      pendingActivation: 'En attente d’activation',
+      expiredInvitations: '{count} invitation{s} expirée{s}',
+      cancelledTotal: '{count} annulé{s}',
     },
-    previewNotice: 'Préversion — dispositif partenaire complet à venir',
+    form: {
+      title: 'Ouvrir un dossier famille',
+      familySection: 'La famille',
+      deceasedSection: 'Le défunt',
+      firstName: 'Prénom',
+      lastName: 'Nom',
+      email: 'E-mail',
+      emailHint: 'L’invitation part à cette adresse : elle doit être personnelle à la famille.',
+      phone: 'Téléphone (optionnel)',
+      deathDate: 'Date du décès',
+      submit: 'Créer et envoyer l’invitation',
+      submitting: 'Création...',
+      duplicateTitle: 'Un dossier existe déjà pour ce défunt à cette date',
+      duplicateBody: 'Confirmez si vous souhaitez tout de même créer un nouveau dossier.',
+      duplicateConfirm: 'Créer quand même',
+      duplicateCancel: 'Annuler',
+      created: 'Dossier créé. L’invitation a été envoyée à {email}.',
+      createdEmailFailed: 'Dossier créé, mais l’e-mail n’a pas pu partir : utilisez « Renvoyer l’invitation ».',
+      copyLink: 'Copier le lien d’activation (préproduction)',
+      linkCopied: 'Lien copié',
+      activationsClosed: 'La création de dossiers est momentanément fermée.',
+      genericError: 'La création a échoué, réessayez.',
+      errors: {
+        required: 'Champ obligatoire',
+        tooLong: '100 caractères maximum',
+        invalidEmail: 'Adresse e-mail invalide',
+        invalidPhone: 'Numéro de téléphone invalide',
+        futureDate: 'La date ne peut pas être dans le futur',
+        tooOld: 'Décès de plus de 2 ans : contactez Seren',
+      },
+    },
+    list: {
+      title: 'Dossiers',
+      empty: 'Aucun dossier pour le moment.',
+      family: 'Famille',
+      deceased: 'Défunt : {name} — décès le {date}',
+      createdOn: 'Créé le {date}',
+      activatedOn: 'Activé le {date}',
+      cancelledOn: 'Annulé le {date}',
+      invitationValidUntil: 'Invitation valable jusqu’au {date}',
+    },
+    status: {
+      invited: 'Invitation envoyée',
+      invitedExpired: 'Invitation expirée',
+      active: 'Activé',
+      closed: 'Clos',
+      cancelled: 'Annulé',
+    },
+    actions: {
+      resend: 'Renvoyer l’invitation',
+      resending: 'Envoi...',
+      resent: 'Invitation renvoyée.',
+      cancel: 'Annuler le dossier',
+      cancelConfirm: 'Confirmer l’annulation',
+      cancelKeep: 'Garder',
+      cancelling: 'Annulation...',
+      cancelUntil: 'Annulable jusqu’au {date}',
+      actionError: 'L’action a échoué, réessayez.',
+    },
   },
 
   // Envoi papier (chantier 2a) — panneau d'envoi pour les courriers au canal `papier`

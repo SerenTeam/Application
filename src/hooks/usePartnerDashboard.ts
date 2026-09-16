@@ -1,53 +1,92 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useCallback, useEffect, useState } from 'react'
+import { apiFetch } from '@/lib/api'
+import { useLang } from '@/i18n/LanguageContext'
+import type { DossierFormValues, PartnerCountersData, PartnerDossier, PartnerInfo } from '@/lib/partner-dossier'
 
-// Agrégats renvoyés par la RPC `partner_dashboard()` (migration
-// supabase/migrations/20260913200000_pf_dashboard_demo.sql). AUCUN détail par dossier,
-// AUCUNE PII (règle rouge T13 de docs/design-pf-dashboard-demo.md) : uniquement des agrégats.
-export interface PartnerDashboardData {
-  partner_name: string
-  commission_rate: number // ex. 0.2 = 20 %
-  attributed_count: number
-  paid_count: number
-  revenue_cents: number
-  commission_cents: number
-}
+// Espace PF v2 : toutes les lectures et écritures passent par l'API (/api/partner/*), elle-même
+// adossée aux RPC security definer. Le hook ne reçoit JAMAIS de contenu famille.
+export type PartnerActionResult =
+  | { ok: true; emailSent: boolean; activationUrl?: string; alreadyCancelled?: boolean }
+  | { ok: false; code: string; message: string; field?: string; duplicateCount?: number }
 
 interface PartnerDashboardState {
   loading: boolean
-  data: PartnerDashboardData | null
   error: boolean
+  notPartner: boolean
+  partner: PartnerInfo | null
+  dossiers: PartnerDossier[]
+  counters: PartnerCountersData | null
 }
 
-const INITIAL: PartnerDashboardState = { loading: true, data: null, error: false }
+const INITIAL: PartnerDashboardState = { loading: true, error: false, notPartner: false, partner: null, dossiers: [], counters: null }
 
-/**
- * Espace partenaire (v0-démo) : un seul appel à la RPC `partner_dashboard()` au montage — elle
- * lit l'identité via `auth.uid()` côté serveur (security definer), aucun paramètre à passer.
- *
- * `data === null` signifie « ce compte n'est pas rattaché à une PF » (`partner_users` vide) :
- * c'est un résultat valide, distinct d'une erreur réseau/serveur signalée par `error` — c'est au
- * composant appelant de rediriger dans le premier cas et d'afficher un message dans le second.
- */
-export function usePartnerDashboard(): PartnerDashboardState {
+async function readJson(res: Response) {
+  return res.json().catch(() => null)
+}
+
+function failure(res: Response, data: Record<string, unknown> | null): PartnerActionResult {
+  return {
+    ok: false,
+    code: typeof data?.code === 'string' ? data.code : `HTTP_${res.status}`,
+    message: typeof data?.error === 'string' ? data.error : '',
+    field: typeof data?.field === 'string' ? data.field : undefined,
+    duplicateCount: typeof data?.duplicate_count === 'number' ? data.duplicate_count : undefined,
+  }
+}
+
+export function usePartnerDashboard() {
+  const { lang } = useLang()
   const [state, setState] = useState<PartnerDashboardState>(INITIAL)
 
-  useEffect(() => {
-    let cancelled = false
-
-    supabase.rpc('partner_dashboard').then(({ data, error }) => {
-      if (cancelled) return
-      if (error) {
-        setState({ loading: false, data: null, error: true })
+  const refresh = useCallback(async () => {
+    try {
+      const [listRes, countersRes] = await Promise.all([
+        apiFetch(`/api/partner/dossiers?lang=${lang}`),
+        apiFetch(`/api/partner/counters?lang=${lang}`),
+      ])
+      const [list, counters] = await Promise.all([readJson(listRes), readJson(countersRes)])
+      if (listRes.status === 403 || countersRes.status === 403) {
+        setState({ ...INITIAL, loading: false, notPartner: true })
         return
       }
-      setState({ loading: false, data: (data as PartnerDashboardData | null) ?? null, error: false })
-    })
-
-    return () => {
-      cancelled = true
+      if (!listRes.ok || !countersRes.ok || !list?.success || !counters?.success) {
+        setState((prev) => ({ ...prev, loading: false, error: true }))
+        return
+      }
+      setState({ loading: false, error: false, notPartner: false, partner: list.partner, dossiers: list.dossiers ?? [], counters: counters.counters })
+    } catch {
+      setState((prev) => ({ ...prev, loading: false, error: true }))
     }
-  }, [])
+  }, [lang])
 
-  return state
+  useEffect(() => {
+    void refresh()
+  }, [refresh])
+
+  const post = useCallback(async (url: string, body: Record<string, unknown>): Promise<PartnerActionResult> => {
+    try {
+      const res = await apiFetch(url, { method: 'POST', body: JSON.stringify({ ...body, lang }) })
+      const data = await readJson(res)
+      if (!res.ok || !data?.success) return failure(res, data)
+      void refresh()
+      return { ok: true, emailSent: Boolean(data.email_sent), activationUrl: data.activation_url, alreadyCancelled: data.already_cancelled }
+    } catch {
+      return { ok: false, code: 'NETWORK', message: '' }
+    }
+  }, [lang, refresh])
+
+  const createDossier = useCallback(
+    (values: DossierFormValues, confirmDuplicate: boolean) =>
+      post('/api/partner/dossiers', {
+        ...values,
+        family_email: values.family_email.trim().toLowerCase(),
+        family_phone: values.family_phone.trim() || null,
+        confirm_duplicate: confirmDuplicate,
+      }),
+    [post],
+  )
+  const resendInvitation = useCallback((id: string) => post(`/api/partner/dossiers/${id}/resend`, {}), [post])
+  const cancelDossier = useCallback((id: string) => post(`/api/partner/dossiers/${id}/cancel`, {}), [post])
+
+  return { ...state, refresh, createDossier, resendInvitation, cancelDossier }
 }

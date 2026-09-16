@@ -373,15 +373,85 @@ export const STRINGS_EN: Strings = {
     confirmed: 'Your Seren plan is active.',
   },
 
-  // Partner space (v0 demo, docs/design-pf-dashboard-demo.md) — URL-only access, page outside
-  // the shared navigation. v2 FLOOR tier: no amounts left (revenue and commission were computed
-  // on family purchases, which the v2 model removes).
+  // v2 partner space (contract §2.2, §4.4): the funeral home opens the family's case and follows
+  // its invitations and counters. No amount labels, no content labels: the partner never sees
+  // what the family fills in.
   partner: {
-    title: 'Partner space',
-    tiles: {
-      attributed: 'Cases supported',
+    title: 'Partner area',
+    roleManager: 'Manager',
+    roleAdvisor: 'Advisor',
+    loadError: 'Unable to load your partner area.',
+    retry: 'Try again',
+    privacyNotice:
+      'You never see the content of the family’s file: not their answers, steps, letters or documents.',
+    counters: {
+      title: 'Your cases',
+      createdThisMonth: 'Created this month',
+      createdTotal: 'Created in total',
+      activatedTotal: 'Activated by the family',
+      pendingActivation: 'Awaiting activation',
+      expiredInvitations: '{count} expired invitation{s}',
+      cancelledTotal: '{count} cancelled',
     },
-    previewNotice: 'Preview — full partner program coming soon',
+    form: {
+      title: 'Open a family case',
+      familySection: 'The family',
+      deceasedSection: 'The deceased',
+      firstName: 'First name',
+      lastName: 'Last name',
+      email: 'Email',
+      emailHint: 'The invitation is sent to this address: it must belong to the family.',
+      phone: 'Phone (optional)',
+      deathDate: 'Date of death',
+      submit: 'Create and send the invitation',
+      submitting: 'Creating...',
+      duplicateTitle: 'A case already exists for this deceased person on this date',
+      duplicateBody: 'Confirm if you still want to create a new case.',
+      duplicateConfirm: 'Create anyway',
+      duplicateCancel: 'Cancel',
+      created: 'Case created. The invitation was sent to {email}.',
+      createdEmailFailed: 'Case created, but the email could not be sent: use “Resend invitation”.',
+      copyLink: 'Copy the activation link (pre-production)',
+      linkCopied: 'Link copied',
+      activationsClosed: 'Case creation is temporarily closed.',
+      genericError: 'Creation failed, please try again.',
+      errors: {
+        required: 'Required field',
+        tooLong: '100 characters maximum',
+        invalidEmail: 'Invalid email address',
+        invalidPhone: 'Invalid phone number',
+        futureDate: 'The date cannot be in the future',
+        tooOld: 'Death more than 2 years ago: contact Seren',
+      },
+    },
+    list: {
+      title: 'Cases',
+      empty: 'No cases yet.',
+      family: 'Family',
+      deceased: 'Deceased: {name} — died on {date}',
+      createdOn: 'Created on {date}',
+      activatedOn: 'Activated on {date}',
+      cancelledOn: 'Cancelled on {date}',
+      invitationValidUntil: 'Invitation valid until {date}',
+    },
+    status: {
+      invited: 'Invitation sent',
+      invitedExpired: 'Invitation expired',
+      active: 'Activated',
+      closed: 'Closed',
+      cancelled: 'Cancelled',
+    },
+    actions: {
+      resend: 'Resend invitation',
+      resending: 'Sending...',
+      resent: 'Invitation resent.',
+      cancel: 'Cancel the case',
+      cancelConfirm: 'Confirm cancellation',
+      cancelKeep: 'Keep',
+      cancelling: 'Cancelling...',
+      cancelUntil: 'Can be cancelled until {date}',
+      actionError: 'The action failed, please try again.',
+    },
   },
 
   // Paper sending (chantier 2a) — send panel for `papier` channel letters (simple mail,
