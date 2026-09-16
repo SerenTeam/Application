@@ -5077,6 +5077,18 @@ Revue : **unique**. Branche `feature/v2-l7-app` (SF2.7). **Validation scindée (
     ```
 
     ✅ `0`. 🛑 Sinon : corriger ou supprimer ces lignes d'`attributions` avant de pousser (déjà fait en U1 étape E si U1 s'est déroulé normalement).
+
+    Puis, **dans le même créneau et toujours AVANT le `db push`**, la **sonde de collision d'adresses après normalisation** (écart E7 complété le 16/09, revue L1/L1b m6 — `docs/plan-v2-sql.md` § Écarts) : deux comptes d'`attributions` dont les e-mails ne diffèrent que par la **casse** ou des **espaces** sont normalisés par `lower(btrim())` en une seule et même adresse, violent `dossiers_family_email_open_uidx` et font échouer **tout** le push exactement comme une adresse invalide :
+
+    ```sql
+    select lower(btrim(u.email)) as email_normalise, count(*)
+    from public.attributions a
+    join auth.users u on u.id = a.user_id
+    group by 1
+    having count(*) > 1;
+    ```
+
+    ✅ **0 ligne**. 🛑 Toute ligne renvoyée : corriger ou exclure le compte de démo en cause **avant** le `db push` (la requête de format ci-dessus ne voit pas ce cas).
     4. **Dry-run, liste CONDITIONNELLE** (SF2.4) : `supabase migration list` puis `supabase db push --dry-run`.
        - **GNG1 vert** (U1 a poussé les 8 migrations 2a) → **exactement 4 fichiers** : `20260915200000_v2_core.sql`, `20260915201000_v2_partner_rpc.sql`, `20260915202000_v2_admin.sql`, `20260915210000_transmissions_f1.sql`.
        - **GNG1 NO-GO** (U1 n'a pas poussé les migrations) → **exactement 12 fichiers** : les 8 de `docs/checklist-push.md` §D (`20260725120000_purchases.sql`, `20260913200000_pf_dashboard_demo.sql`, `20260914100000_sender_profiles_organisations.sql`, `20260914110000_organisations_seed.sql`, `20260914120000_letter_sends_papier.sql`, `20260914150000_purchases_kind_writer.sql`, `20260914160000_attachments.sql`, `20260914170000_resync_reader.sql`) **puis** les 4 v2 ci-dessus.
