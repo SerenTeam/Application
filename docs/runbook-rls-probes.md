@@ -3,117 +3,194 @@
 > Chantier transverse Sécurité/RGPD, priorité n°1 : « deux utilisateurs — vérifier que A ne
 > lit jamais les données de B ; et qu'un partenaire ne lit jamais une famille » (identifié en
 > juillet dans `docs/audit-rls.md`, jamais industrialisé jusqu'ici — ce runbook documente le
-> script qui l'automatise). Rédigé le 2026-09-14.
+> script qui l'automatise). Rédigé le 2026-09-14, réécrit en v2 le 2026-09-16 (démonstrateur
+> partenaire : dossiers, consentements, enrôlements, hook d'inscription).
 
 ## Pourquoi ce script et pas Vitest
 
-Le repo n'a pas de harnais BDD-live (`npm test` = Vitest, entièrement mocké — 199 tests, 0
-requête réseau). L'isolation RLS ne se prouve que contre un **vrai** projet Supabase (RLS
-appliquée par Postgres, pas par un mock). L'approche du projet depuis juillet : des sondes
-REST manuelles contre dev/préprod avec deux comptes de test (voir `docs/audit-rls.md`) —
-`scripts/rls-probes.mjs` industrialise ces sondes en script rejouable, lisible, et prêt à
-rejoindre la CI plus tard (voir § CI ci-dessous).
+Le repo n'a pas de harnais BDD-live (`npm test` = Vitest, entièrement mocké — aucune requête
+réseau). L'isolation RLS ne se prouve que contre un **vrai** projet Supabase (RLS appliquée par
+Postgres, pas par un mock). `scripts/rls-probes.mjs` industrialise en script rejouable les sondes
+REST manuelles pratiquées depuis juillet (voir `docs/audit-rls.md`), et reste prêt à rejoindre la
+CI (voir § Intégration CI future).
 
-## Ce que le script prouve
+## Ce que le script prouve (v2)
 
-Sortie TAP (`ok`/`not ok`, plan en fin de run). Le script écrit : un document marqueur (voir
-§ Écriture), le signup éventuel du compte B et des tentatives d'écriture censées être refusées —
-d'où la garde anti-prod (voir § Garde anti-prod). Chaque ligne TAP documente en une phrase la propriété RGPD/RLS qu'elle établit :
+Sortie TAP (`ok`/`not ok`, plan en fin de run), `exit 1` si une sonde échoue. Un `SKIP` ne fait
+**jamais** échouer un run : il signale une dépendance absente (table, RPC, compte optionnel,
+`PROBE_API_URL`) ou le mode lecture seule. Les 14 familles de sondes :
 
-1. **Familles A↔B** — pour chaque table de données famille (`questionnaires`, `roadmaps`,
-   `steps`, `step_actions`, `documents`, `questionnaire_sessions`, `letter_sends`,
-   `purchases`, `attachments`, `sender_profiles`) : B fait un `SELECT * limit 5`, le résultat
-   ne doit contenir aucune ligne de A. Table absente de l'environnement (`attachments` et
-   `sender_profiles` ne sont pas encore migrées à ce jour, chantier 2a) → `SKIP` propre, pas
-   un échec.
-2. **Marqueur + écritures croisées** — A insère un document marqueur (seule écriture non
-   best-effort du run) ; B ne peut ni le lire, ni l'`UPDATE`, ni `INSERT` un document en
-   usurpant le `user_id` de A (`WITH CHECK` RLS).
-3. **Tables sans policy d'écriture** — `purchases`, `send_debits`, `partners`, `attributions`
-   (si présentes) : même un `INSERT` avec son **propre** `user_id` est refusé, ces tables ne
-   se mutent que par RPC `security definer` à secret vérifié en base. **`letter_sends` est
-   volontairement exclue de cette liste** : au 2026-09-14, cette table porte encore la policy
-   v1 `"own sends" FOR ALL USING/WITH CHECK auth.uid() = user_id`
-   (`supabase/migrations/20260716120000_letter_sends.sql`) — un self-insert y réussit
-   **légitimement** aujourd'hui (c'est ainsi que la route d'envoi crée une ligne). Le
-   durcissement en RPC-only (suppression de cette policy) est déjà planifié et documenté au
-   chantier 2a (`docs/design-chantier-2a-envoi-papier.md` §3.5), pas encore livré. Le script
-   sonde à la place la propriété qui, elle, est déjà vraie aujourd'hui : un `INSERT` avec le
-   `user_id` de **A** est refusé par le `WITH CHECK` même sous la policy actuelle. Quand la
-   migration de durcissement du 2a sera posée, il suffira d'ajouter `letter_sends` à
-   `NO_WRITE_POLICY_TABLES` dans le script (le test « self-insert refusé » deviendra vrai) —
-   c'est une note de déviation, pas un bug à corriger ici.
-4. **Partenaire** (sauté avec avertissement si `PROBE_PARTNER_EMAIL`/`PROBE_PARTNER_PASSWORD`
-   absents, ou si les tables/RPC n'existent pas encore) : `SELECT` direct sur
-   `partners`/`partner_users`/`attributions` → vide/refusé ; `rpc/partner_dashboard` → aucune
-   PII pour le partenaire, `null`/vide pour un compte famille ; aucune table famille lisible
-   par le partenaire.
-5. **Anonyme** — sans token : `SELECT` sur 3 tables sensibles → vide/refusé ;
-   `rpc/partner_dashboard` → refusé.
+1. **Familles A↔B — tables et storage.** Pour chacune des 13 tables de données famille
+   (`questionnaires`, `roadmaps`, `steps`, `step_actions`, `documents`,
+   `questionnaire_sessions`, `letter_sends`, `send_debits`, `purchases`, `attachments`,
+   `sender_profiles`, `consents`, `transmissions`) : B fait un `SELECT *`, aucune ligne de A ne
+   doit apparaître. Plus le storage : B ne liste aucun objet sous le préfixe `A/` du bucket
+   `documents`. *SKIP* : table absente de l'environnement, ou bucket indisponible.
+2. **Comptes famille (`my_account`).** A et B ont chacun un dossier **actif**, un consentement à
+   la version courante, et la projection n'expose aucun champ interdit (`family_email`,
+   `invite_token_hash`, `price_ttc`, `commission_ttc`). Les deux dossiers sont distincts et
+   `has_active_dossier()` est vrai. *SKIP* : RPC `my_account` absente (migration v2 non appliquée).
+3. **Marqueur et écritures croisées.** A insère un document marqueur : B ne peut ni le lire, ni
+   l'`UPDATE`, ni `INSERT` un document en usurpant le `user_id` de A (`WITH CHECK` RLS).
+   *SKIP* : mode lecture seule.
+4. **Deny-all.** En lecture : ni une famille ni un gérant PF ne lisent `dossiers`,
+   `account_enrollments`, `seren_admins`, `partners`, `partner_users`, `attributions`,
+   `webhook_config`, `send_limits`, `provider_events`. En écriture : un `INSERT` direct est
+   refusé sur 10 tables (`purchases`, `send_debits`, `letter_sends`, `dossiers`, `consents`,
+   `account_enrollments`, `seren_admins`, `partners`, `partner_users`, `attributions`) — **même
+   avec son propre `user_id`** : ces tables ne se mutent que par RPC `security definer`.
+   *SKIP* (écriture) : mode lecture seule, ou table absente.
+5. **RPC internes et secrets.** `send_balance`, `send_limits_status`, `link_enrollments`,
+   `hook_before_user_created`, `letter_send_transition_allowed` ne sont pas exécutables par un
+   compte famille ; `consume_send`, `release_debit`, `check_send_limits` refusent un faux secret.
+   *SKIP* : prod (sonde non jouée).
+6. **Correctif F1 — `transmissions`.** B ne lit aucune transmission d'autrui en direct ; le
+   partage ne passe que par `get_transmission_by_code` avec le code **exact** (un mauvais code
+   ne renvoie rien). *SKIP* : table ou RPC absente, mode lecture seule pour la partie partage.
+7. **Partenaire PF-X — la règle rouge.** PF-X est `role partner` sans dossier ; sa liste
+   (`partner_list_dossiers`) et ses compteurs (`partner_month_counters`) ne contiennent **aucune**
+   clé de contenu ni de secret ; et surtout PF-X ne lit **aucune ligne** des 13 tables famille de
+   **sa propre famille activée A**, ni aucun objet de son storage. *SKIP* : compte PF-X absent.
+8. **PF-Y contre PF-X.** PF-Y ne liste aucun dossier de PF-X, et ne peut ni renvoyer l'invitation
+   (`POST /api/partner/dossiers/:id/resend` → **404 `DOSSIER_NOT_FOUND`**, jamais 403 : aucun
+   indice d'existence) ni annuler (`partner_cancel_dossier` → `dossier_not_found`) un dossier de
+   PF-X. *SKIP* : compte PF-Y absent, mode lecture seule.
+9. **Admin Seren.** `admin_partner_overview` ne renvoie que des compteurs par partenaire (liste de
+   clés figée, aucune adresse e-mail), et renvoie `null` pour une famille comme pour un gérant PF.
+   *SKIP* : compte admin absent, ou RPC absente (L4c non déployé).
+10. **Anonyme.** Sans token : les tables sensibles sont vides ou refusées ; `invitation_preview`
+    d'un hash inconnu répond `{valid:false, reason:'invalid'}` **sans oracle** (aucune autre clé) ;
+    `claim_dossier`, `partner_create_dossier` et `my_account` sont refusés.
+11. **Compte sans dossier actif.** `role none`, `has_active_dossier` faux, `record_consents`
+    refusé (`dossier_not_active`), et le **gate serveur** répond **403 `DOSSIER_NOT_ACTIVE`** sur
+    `GET /api/letters/quota` et `POST /api/questionnaire/start` ; en miroir, `GET /api/me` de la
+    famille A répond 200 avec son quota. *SKIP* : compte sans dossier absent, `PROBE_API_URL`
+    absente.
+12. **Hook « Before User Created ».** Trois branches : inscription d'un e-mail **non invité**
+    refusée (`signup_requires_invitation`) ; e-mail **invité sans hash** refusée ; e-mail **invité
+    avec le bon hash** acceptée. *SKIP* : mode lecture seule, `PROBE_API_URL` absente (le dossier
+    de sonde est créé par le serveur, voir § Sondes neuves).
+13. **Écritures famille idempotentes.** Rejeu de `record_consents` → `recorded: 0` ; rejeu de
+    `claim_dossier` sur un compte déjà actif → `{claimed:false, already_active:true}`.
+    *SKIP* : mode lecture seule.
+14. **`partner_dashboard` v0 (rollback).** Ni une famille ni un anonyme n'en obtiennent de
+    données (`null` ou refus). *SKIP* : RPC absente.
 
-## Écriture (la seule autorisée)
+## Modes
 
-Un document marqueur inséré par A (`crosswrite:documents`), supprimé en best-effort en fin de
-run (`# cleanup : …` dans la sortie, hors comptage TAP — un échec de nettoyage n'annule pas un
-run par ailleurs vert, mais laisse une ligne de log à vérifier manuellement).
+| Mode | Ce qui part | Ce qui est refusé |
+| --- | --- | --- |
+| **défaut (lecture seule)** | connexions, `SELECT`, RPC de lecture | toute inscription, tout `INSERT`/`UPDATE`/`DELETE`, toute RPC mutante — les sondes concernées sortent en `# SKIP mode lecture seule` |
+| **`PROBE_WRITE=1`** | en plus : marqueur, tentatives d'écriture censées être refusées, sondes de hook, F1, `partner:secret` | rien de plus, mais **refusé sur la prod sans dérogation possible** |
+| **prod + `PROD_OK=1`** | lecture seule uniquement (smoke U4) | l'écriture ; et dans `rawFetch()`, tout verbe non `GET`/`HEAD` hors connexion et hors liste fermée de RPC |
+
+Liste fermée des RPC de lecture autorisées vers la prod (`READONLY_RPCS`) : `my_account`,
+`has_active_dossier`, `consent_version`, `partner_list_dossiers`, `partner_month_counters`,
+`admin_partner_overview`, `partner_dashboard`, `invitation_preview`. `claim_dossier`,
+`record_consents` et `partner_create_dossier` n'y figureront **jamais**.
+
+Toutes les écritures de sonde sont nettoyées en fin de run (`# cleanup : …`, hors comptage TAP) :
+marqueur, transmission de sonde, dossier de sonde du hook.
+
+## Provisionnement (`scripts/provision-v2.mjs`)
+
+Depuis le hook d'inscription, **aucun compte ne peut plus être créé à la volée** : les comptes de
+probes sont produits par le **vrai parcours d'invitation** (RPC du contrat, jamais un seed).
+
+Prérequis, **dans cet ordre strict** :
+
+1. **Partie 1 du seed** (`scripts/seed-demo-v2.sql`) : partenaires + allowlist `account_enrollments`.
+   L'enrôlement précède **toujours** la création des comptes.
+2. **Hook** `Before User Created` branché sur le projet.
+3. **« Add user »** (Dashboard → Authentication, auto-confirm) par Arnaud pour chaque compte
+   interne (gérants PF, admin), **en posant le mot de passe à la création** — jamais une
+   inscription par l'app : un compte né d'un `signUp` public n'est pas fiable et sera refusé
+   (`enrollment_account_untrusted`, revue du 16/09).
+4. **Partie 2 du seed** (`link_enrollments`) avec les paires `{email, user_id}`, **AVANT le premier
+   lancement du script** : `provision-v2.mjs` se connecte réellement et poserait `last_sign_in_at`,
+   que `link_enrollments` refuse. Il n'y a donc **pas** de premier passage en `exit 2`.
+5. **`PROVISION_API_URL`** et les **`PROVISION_*_PASSWORD`** : les dossiers sont créés par
+   `POST /api/partner/dossiers`, la RPC `partner_create_dossier` exigeant le secret serveur
+   (must-fix 1). Le serveur visé doit porter `PARTNER_ACTIVATIONS_ENABLED=true`,
+   `SHOW_ACTIVATION_LINK=true` (pour récupérer le jeton dans `activation_url`) et un
+   `WEBHOOK_RPC_SECRET` **égal** à `webhook_config.rpc_secret` de la base visée.
+
+```bash
+# Local
+PROBE_SUPABASE_URL=http://127.0.0.1:54321 PROBE_SUPABASE_KEY=sb_publishable_... \
+PROVISION_API_URL=http://127.0.0.1:3000 \
+PROVISION_PFX_EMAIL=… PROVISION_PFY_EMAIL=… PROVISION_PFX_PASSWORD=… PROVISION_PFY_PASSWORD=… \
+node scripts/provision-v2.mjs
+
+# Préprod : ajouter E2E_TARGET=preprod et l'URL kvtzhyxlqouvpwasedbe (adresses @seren-test.fr only)
+# Vérification en lecture seule (12 contrôles) :
+node --env-file="$HOME/.seren-probes.env" scripts/provision-v2.mjs --verify
+```
+
+- **Code de sortie 2** = action d'Arnaud requise (« Add user », partie 2 du seed, ou mot de passe
+  manquant), puis relancer. `0` = OK, `1` = erreur.
+- Les identifiants produits sont écrits dans **`~/.seren-probes.env`** (`PROBE_ENV_FILE`), **mode
+  600, hors dépôt**. Aucun mot de passe, jeton ni hash n'est jamais affiché.
+- Comptes résiduels `rls-probe-*@seren-test.fr` (préprod) : **à exclure du backfill** bêta.
+- La prod est refusée **dans tous les modes**, `--verify` compris.
+
+## Sondes neuves de la revue du 16/09
+
+- **`partner:secret`** : preuve que les deux RPC où l'appelant choisit le hash du jeton
+  (`partner_create_dossier`, `partner_rotate_invitation`) ne sont plus utilisables en direct —
+  sans secret et avec un faux secret → `invalid_secret`. Sans cette barrière, une PF fabriquerait
+  un jeton connu d'elle et prendrait le compte de sa propre famille. Le vrai secret n'est **jamais**
+  donné aux probes.
+- **Les 3 sondes de hook** exigent désormais `PROBE_API_URL` **et** `SHOW_ACTIVATION_LINK=true`
+  sur le serveur visé (le dossier de sonde est créé par `POST /api/partner/dossiers`) — sinon
+  `SKIP` explicite.
 
 ## Lancer le script
 
 ```bash
-PROBE_SUPABASE_URL=https://<ref>.supabase.co \
-PROBE_SUPABASE_KEY=sb_publishable_... \
-PROBE_USER_A_EMAIL=test.e2e.claude@seren-test.fr \
-PROBE_USER_A_PASSWORD='...' \
-PROBE_USER_B_EMAIL=test.e2e.claude+b@seren-test.fr \
-PROBE_USER_B_PASSWORD='...' \
-node scripts/rls-probes.mjs
+node --env-file="$HOME/.seren-probes.env" scripts/rls-probes.mjs              # lecture seule
+PROBE_WRITE=1 node --env-file="$HOME/.seren-probes.env" scripts/rls-probes.mjs # écriture
 ```
 
-- Toutes les valeurs viennent de variables d'environnement, **aucune valeur par défaut codée
-  en dur** dans le script — l'absence d'une variable requise est un échec immédiat et
-  explicite (pas une sonde lancée par erreur contre le mauvais projet).
-- Le compte B est créé à la volée (`POST /auth/v1/signup`) s'il n'existe pas encore, avec
-  `PROBE_USER_B_PASSWORD`. Ne fonctionne que sur un projet où la confirmation email est
-  désactivée : la **préprod** (`kvtzhyxlqouvpwasedbe`) ou un **Supabase local**
-  (`supabase start`). **Jamais la prod** : voir § Garde anti-prod ci-dessous.
-  ⚠️ Correction du 2026-09-15 : `oltwzvfjazwjvghpzhia` n'est PAS un projet de dev, c'est la
-  **PROD** (branche `main`, `app.seren-app.fr`, utilisateurs réels — cf. `CLAUDE.md`). Les runs
-  antérieurs lancés avec l'URL du `.env` du dépôt principal ont donc visé la prod : compte B
-  (`…+b@seren-test.fr`) et éventuels documents marqueurs `rls-probe-%` résiduels sont à
-  inventorier et à exclure du backfill bêta (requête de détection du lot L9).
-- Après le hook `Before User Created` (plan v2, U2), le signup à la volée du compte B sera refusé
-  par construction : les comptes de probes seront provisionnés par le vrai parcours d'invitation
-  (lot L6, `scripts/provision-v2.mjs`).
-- `PROBE_PARTNER_EMAIL`/`PROBE_PARTNER_PASSWORD` sont optionnels : absents → les 4 sondes
-  partenaire sont sautées avec un avertissement explicite, le reste du run continue et le exit
-  code reste 0 si tout le reste passe. C'est l'état actuel de dev/préprod (aucun compte PF
-  n'y existe) et un run sans ces variables doit finir **vert**.
+- Requises : `PROBE_SUPABASE_URL`, `PROBE_SUPABASE_KEY`, `PROBE_USER_A_EMAIL`/`PASSWORD`,
+  `PROBE_USER_B_EMAIL`/`PASSWORD`. Aucune valeur par défaut codée en dur.
+- Optionnelles (sondes sautées avec avertissement si absentes) : `PROBE_PARTNER_*` (PF-X),
+  `PROBE_PARTNER_Y_*`, `PROBE_NODOSSIER_*`, `PROBE_ADMIN_*`.
+- `PROBE_API_URL` : serveur Express — `https://preprod-app.seren-app.fr` (les routes `/api` sont
+  hors Basic Auth) ou `http://localhost:3000`. Absente → les sondes HTTP du gate et du hook
+  sortent en `SKIP`.
 
 ## Garde anti-prod
 
-Ajoutée le 2026-09-15 (lot L0 du plan v2-démonstrateur). Deux barrières, sans dérogation :
+**Trois barrières**, sans dérogation pour l'écriture :
 
-1. **Garde de tête** (`refuseProdTarget()`, première instruction exécutée, avant même la
-   validation des variables) : si `PROBE_SUPABASE_URL` contient `oltwzvfjazwjvghpzhia`, le
-   script affiche `REFUS : …` sur stderr et sort en **code 1**, sans aucun appel réseau.
-   Aujourd'hui tous les modes du script écrivent (signup du compte B, document marqueur,
-   tentatives d'`INSERT`/`PATCH` des sondes deny-all et d'usurpation), donc **toute** exécution
-   contre la prod est refusée. Il n'y a volontairement pas de `PROD_OK` ici (contrairement à
-   `scripts/check-env-target.mjs`) : aucune de ces écritures n'a sa place sur des données réelles.
-2. **Seconde barrière** (`assertNoProdWrite()`, dans `rawFetch()`) : vers la prod, seules les
-   lectures (`GET`/`HEAD`) et la connexion (`POST /auth/v1/token`) partent ; signup, `INSERT`,
-   `PATCH`, `DELETE` et appels RPC lèvent avant l'envoi. Elle est inatteignable tant que la garde
-   de tête sort en premier ; elle protège le futur mode lecture seule du lot L6 (smoke prod en
-   lecture du lot L9), qui devra rendre `RUN_WRITES` conditionnel et étendre explicitement la
-   liste des RPC de lecture autorisées.
+1. **Garde de tête** (`refuseProdTarget()`, première instruction exécutée, avant la validation des
+   variables) : si `PROBE_SUPABASE_URL` contient `oltwzvfjazwjvghpzhia`, l'écriture
+   (`PROBE_WRITE=1`) est refusée **sans dérogation possible**, et la lecture seule exige
+   `PROD_OK=1` explicite. Sortie `REFUS : …` sur stderr, **exit 1, aucun appel réseau**.
+2. **`assertNoProdWrite()`** (dans `rawFetch()`) : vers la prod, seuls partent `GET`/`HEAD`, la
+   connexion `POST /auth/v1/token`, le listing storage et les RPC de `READONLY_RPCS`. Tout le
+   reste lève **avant** l'envoi.
+3. **`api()`** : aucune requête mutante vers le serveur Express quand la cible est la prod
+   (l'URL du serveur ne contient pas le project-ref, d'où cette barrière dédiée).
+
+`scripts/provision-v2.mjs` **refuse la prod dans tous ses modes** (il crée comptes et dossiers), et
+hors `127.0.0.1`/`localhost` exige `E2E_TARGET=preprod` **et** l'URL préprod, n'accepte que des
+adresses `@seren-test.fr`, et refuse toute clé secrète (`sb_secret_…`/`service_role`).
 
 La détection repose sur le project-ref dans l'URL (fonction partagée `isProdTarget()` de
 `scripts/check-env-target.mjs`) : un domaine personnalisé pointant sur la prod ne serait pas
 détecté (aucun n'est configuré à ce jour). Tests : `tests/check-env-target.test.ts` (sous-processus
 sur `127.0.0.1`, jamais de réseau vers Supabase).
 
-Avant de lancer le script, contrôler aussi son propre shell : `npm run check:env` (refuse si
-`SUPABASE_URL`/`VITE_SUPABASE_URL` visent la prod).
+Avant de lancer le script, contrôler aussi son propre shell : `npm run check:env`.
+
+## Écart local / hébergé
+
+En **local**, réappliquer `hosted-grants.sql` **après chaque `supabase db reset`** : la CLI ne
+donne plus `SELECT/INSERT/UPDATE/DELETE` à `anon`/`authenticated` sur les tables créées par
+`postgres`, alors que les projets hébergés les accordent (la RLS restant la seule barrière). Sans
+ce rejeu, toutes les sondes `family:*` sortent en « refusé » et le run est un **faux vert**.
 
 ## Quand le lancer
 
@@ -130,16 +207,11 @@ Pas encore branché à `.github/workflows/ci.yml` (qui tourne aujourd'hui sans r
 des mocks — cf. `CLAUDE.md` § Points d'attention). Pour l'intégrer :
 
 1. Un projet Supabase **dédié aux probes** (pas dev, pas préprod, pas prod) — éviter tout
-   run concurrent qui piétinerait les données d'un autre usage du même projet, et isoler le
-   coup de `signup` automatique du compte B.
-2. Deux comptes de test permanents sur ce projet (A et B), confirmation email désactivée ; un
-   compte partenaire si/quand `partners`/`partner_users`/`attributions` existent.
-3. Secrets GitHub Actions : `PROBE_SUPABASE_URL`, `PROBE_SUPABASE_KEY`,
-   `PROBE_USER_A_EMAIL`/`PASSWORD`, `PROBE_USER_B_EMAIL`/`PASSWORD`, et plus tard
-   `PROBE_PARTNER_EMAIL`/`PASSWORD`.
+   run concurrent qui piétinerait les données d'un autre usage du même projet.
+2. Les comptes de probes provisionnés une fois par `scripts/provision-v2.mjs` (le hook interdit
+   toute création à la volée) : familles A et B, PF-X, PF-Y, compte sans dossier, admin.
+3. Secrets GitHub Actions : `PROBE_SUPABASE_URL`, `PROBE_SUPABASE_KEY`, `PROBE_USER_A_*`,
+   `PROBE_USER_B_*`, `PROBE_PARTNER_*`, `PROBE_PARTNER_Y_*`, `PROBE_NODOSSIER_*`, `PROBE_ADMIN_*`,
+   et `PROBE_API_URL` pour les sondes HTTP du gate et du hook.
 4. Un job séparé (pas le job Vitest existant, qui doit rester réseau-nul) :
-   `node scripts/rls-probes.mjs`, déclenché sur push vers `main` et/ou en planifié
-   (le run n'est pas assez rapide/isolé pour tourner sur chaque PR d'un repo à plusieurs
-   contributeurs sans un projet dédié — d'où le point 1).
-5. Quand `letter_sends` sera durcie (chantier 2a §3.5), retirer la note de déviation
-   ci-dessus et déplacer sa sonde dans `NO_WRITE_POLICY_TABLES`.
+   `node scripts/rls-probes.mjs`, déclenché sur push vers `main` et/ou en planifié.
