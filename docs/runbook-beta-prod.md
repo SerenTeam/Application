@@ -420,6 +420,8 @@ select count(*) from letter_sends where channel = 'papier' and created_at > now(
    ✅ `NOTICE: PARTIE B OK — 1 dossier(s) anonymisé(s) ; compte auth : <uuid> → Dashboard Auth → Delete user`
    🛑 `STOP : N objet(s) Storage sous <uuid>/` → revenir à l'étape 2.
    🛑 `REFUS : compte interne (PF ou admin Seren)` → ce n'est pas une famille : ne pas insister.
+   🛑 `REFUS : remplacer l'adresse d'exemple` → l'adresse `famille@exemple.fr` est restée dans le bloc :
+      la remplacer par celle de la demande. Cette garde est ce qui empêche d'anonymiser un dossier au hasard.
 4. **Dashboard → Authentication → Users → Delete user.** La cascade supprime questionnaires, roadmaps, étapes, actions, documents, sessions, transmissions, envois (et leurs événements fournisseur), débits, achats, pièces jointes, profil d'expéditeur et consentements.
 5. **PARTIE C — vérification** : bloc `-- >>> PARTIE C` … `-- <<< FIN PARTIE C`. ✅ **Attendu : `0`, `0`, `≥ 1`.**
 6. Répondre à la personne sous 30 jours et **tenir la trace hors base** (date de réception, date d'exécution).

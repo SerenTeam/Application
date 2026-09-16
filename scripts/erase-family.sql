@@ -18,9 +18,13 @@
 --   5. PARTIE C (lecture) : vérifier qu'il ne reste rien de nominatif.
 -- Conservé : la ligne dossiers anonymisée (partenaire, source, statut, dates, snapshots prix/commission),
 -- nécessaire à la facturation PF, sans aucune donnée d'identification.
+-- Statut de clôture : « closed », y compris depuis « invited » — c'est le contrat §9.2-2 qui fait foi
+-- (le plan, Task 42.1-5, écrit « cancelled » : écart assumé, tranché en faveur du contrat).
 --
 -- Remplacer l'adresse « famille@exemple.fr » dans CHAQUE partie (1 occurrence par partie, repère ←).
--- Tant que l'adresse n'est pas remplacée, la partie B s'arrête d'elle-même (« Rien à effacer »).
+-- Tant que l'adresse d'exemple n'est pas remplacée, la partie B REFUSE de s'exécuter : garde explicite
+-- en tête du bloc (« REFUS : remplacer l'adresse d'exemple »). Ne jamais la retirer — l'arrêt
+-- « Rien à effacer » ne protège que si l'adresse est absente de la base, pas si elle existe.
 
 -- >>> PARTIE A — Inventaire (lecture seule)
 with target as (select lower(btrim('famille@exemple.fr')) as email),   -- ← adresse de la demande
@@ -55,6 +59,13 @@ declare
   v_objects integer;
   v_n       integer;
 begin
+  -- Garde de paramètre : refuse tant que l'adresse d'exemple n'a pas été remplacée. Sans elle, un
+  -- lancement « pour voir » anonymiserait et clorait le dossier d'une vraie famille si cette adresse
+  -- existait en base — le garde-fou « Rien à effacer » ne joue que sur une adresse absente.
+  if v_email = 'famille@exemple.fr' then
+    raise exception 'REFUS : remplacer l''adresse d''exemple par celle de la demande';
+  end if;
+
   select id into v_uid from auth.users where lower(email) = v_email;
 
   if v_uid is not null then
