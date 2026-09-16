@@ -315,7 +315,7 @@ export const STRINGS_EN: Strings = {
       alreadySentBadge: 'Already sent',
       inProgress: 'This letter is already being sent, please wait a moment.',
       failedBadge: 'Sending failed',
-      notConfigured: 'Email sending is not yet available at the moment.',
+      notConfigured: 'Sending through Seren is not available for this letter yet: download it to send it yourself.',
       networkError: 'Something went wrong. You can try again.',
     },
   },
@@ -451,8 +451,10 @@ export const STRINGS_EN: Strings = {
 
     // Quota and pay-per-send
     quotaLoading: 'Checking your balance...',
-    quotaRemaining: '{count} included send{s} left',
+    quotaRemaining: '{count} included send{s} left out of {total}',
     quotaExhausted: 'You have used every included send.',
+    quotaExhaustedSupport: 'You have used your included sends. For any additional send, contact support: {email}.',
+    channelClosed: 'Sending through Seren is not available for this letter yet: download it to send it yourself.',
     quotaBuyCta: 'Buy an extra send',
     quotaBuyCtaWithPrice: 'Buy an extra send — {price}',
     quotaBuyOpening: 'Opening payment...',

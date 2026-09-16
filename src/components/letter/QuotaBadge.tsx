@@ -21,6 +21,8 @@ interface QuotaBadgeProps {
 export function QuotaBadge({ refreshKey }: QuotaBadgeProps) {
   const t = useT()
   const [balance, setBalance] = useState<number | null>(null)
+  // v2 (contrat §7.6) : le total inclus du dossier, pour un compteur « N sur M » explicite.
+  const [total, setTotal] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -28,9 +30,10 @@ export function QuotaBadge({ refreshKey }: QuotaBadgeProps) {
     setLoading(true)
     apiFetch('/api/letters/quota')
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { balance?: number } | null) => {
+      .then((data: { balance?: number; included_total?: number } | null) => {
         if (cancelled) return
         setBalance(typeof data?.balance === 'number' ? data.balance : null)
+        setTotal(typeof data?.included_total === 'number' ? data.included_total : null)
       })
       .catch(() => {
         // Lecture non bloquante — le badge reste simplement absent, l'envoi n'en dépend pas.
@@ -48,7 +51,9 @@ export function QuotaBadge({ refreshKey }: QuotaBadgeProps) {
   if (balance === null) return null
 
   return balance > 0 ? (
-    <PillBadge tone="neutral">{fmt(t.paperSend.quotaRemaining, { count: balance, s: balance > 1 ? 's' : '' })}</PillBadge>
+    <PillBadge tone="neutral">
+      {fmt(t.paperSend.quotaRemaining, { count: balance, s: balance > 1 ? 's' : '', total: total ?? balance })}
+    </PillBadge>
   ) : (
     <PillBadge tone="warning">{t.paperSend.quotaExhausted}</PillBadge>
   )
