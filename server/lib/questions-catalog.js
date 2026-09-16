@@ -100,7 +100,7 @@ export const QUESTIONS_CATALOG = [
     applicable_when: {},
     obligatoire: true,
     fallback_text: {
-      question: { fr: 'À quelle date {prenom} est-il/elle décédé(e) ?', en: 'On what date did {prenom} pass away?' },
+      question: { fr: 'Quelle est la date du décès de {prenom} ?', en: 'On what date did {prenom} pass away?' },
       aide: {
         fr: 'Cette date nous permet de calculer les délais légaux de chaque démarche.',
         en: 'This date lets us calculate the legal deadlines for each step.',
@@ -133,10 +133,10 @@ export const QUESTIONS_CATALOG = [
     id: 'statut_professionnel',
     type: 'select',
     options: [
-      { value: 'salarie', label: { fr: 'Salarié(e)', en: 'Employee' } },
+      { value: 'salarie', label: { fr: 'En emploi salarié', en: 'Employee' } },
       { value: 'fonctionnaire', label: { fr: 'Fonctionnaire', en: 'Civil servant' } },
-      { value: 'independant', label: { fr: 'Indépendant(e) ou chef d\'entreprise', en: 'Self-employed or business owner' } },
-      { value: 'retraite', label: { fr: 'Retraité(e)', en: 'Retired' } },
+      { value: 'independant', label: { fr: 'À son compte ou chef d\'entreprise', en: 'Self-employed or business owner' } },
+      { value: 'retraite', label: { fr: 'À la retraite', en: 'Retired' } },
       { value: 'demandeur_emploi', label: { fr: 'En recherche d\'emploi', en: 'Job seeker' } },
       { value: 'sans_activite', label: { fr: 'Sans activité professionnelle', en: 'Not working' } },
     ],
@@ -162,7 +162,7 @@ export const QUESTIONS_CATALOG = [
     options: [
       { value: 'locataire', label: { fr: 'Locataire de son logement', en: 'Renting their home' } },
       { value: 'proprietaire', label: { fr: 'Propriétaire de son logement', en: 'Owned their home' } },
-      { value: 'heberge_ou_autre', label: { fr: 'Hébergé(e) ou autre situation', en: 'Living with someone else, or another situation' } },
+      { value: 'heberge_ou_autre', label: { fr: 'Hébergement chez un proche ou autre situation', en: 'Living with someone else, or another situation' } },
     ],
     applicable_when: {},
     obligatoire: true,
@@ -187,7 +187,7 @@ export const QUESTIONS_CATALOG = [
     applicable_when: {},
     obligatoire: true,
     fallback_text: {
-      question: { fr: '{prenom} avait-il/elle des enfants ?', en: 'Did {prenom} have children?' },
+      question: { fr: 'Est-ce que {prenom} avait des enfants ?', en: 'Did {prenom} have children?' },
       aide: {
         fr: 'S\'il y a un enfant mineur héritier, certaines décisions de succession nécessitent l\'accord du juge des tutelles.',
         en: 'If a minor child is an heir, some estate decisions require approval from the guardianship judge.',
@@ -223,7 +223,7 @@ export const QUESTIONS_CATALOG = [
     fallback_text: {
       question: { fr: 'Savez-vous si {prenom} avait souscrit une assurance vie ?', en: 'Do you know if {prenom} had a life insurance policy?' },
       aide: {
-        fr: 'Si vous n\'êtes pas sûr(e), pas d\'inquiétude : une recherche gratuite existe via l\'AGIRA.',
+        fr: 'En cas de doute, pas d\'inquiétude : une recherche gratuite existe via l\'AGIRA.',
         en: 'If you\'re not sure, no worries: a free search is available through AGIRA.',
       },
     },
@@ -257,7 +257,7 @@ export const QUESTIONS_CATALOG = [
     applicable_when: {},
     obligatoire: true,
     fallback_text: {
-      question: { fr: '{prenom} possédait-il/elle un véhicule ?', en: 'Did {prenom} own a vehicle?' },
+      question: { fr: 'Est-ce que {prenom} possédait un véhicule ?', en: 'Did {prenom} own a vehicle?' },
       aide: {
         fr: 'La carte grise devra être mise à jour avant toute vente ou utilisation du véhicule.',
         en: 'The registration certificate (carte grise) will need to be updated before the vehicle is sold or used.',
@@ -273,7 +273,7 @@ export const QUESTIONS_CATALOG = [
     obligatoire: true,
     fallback_text: {
       question: {
-        fr: '{prenom} avait-il/elle des crédits en cours (immobilier ou consommation) ?',
+        fr: 'Est-ce que {prenom} avait des crédits en cours (immobilier ou consommation) ?',
         en: 'Did {prenom} have any outstanding loans (mortgage or consumer credit)?',
       },
       aide: {
@@ -295,7 +295,7 @@ export const QUESTIONS_CATALOG = [
     obligatoire: true,
     fallback_text: {
       question: {
-        fr: '{prenom} employait-il/elle une aide à domicile (ménage, garde, assistance) ?',
+        fr: 'Est-ce que {prenom} employait une aide à domicile (ménage, garde, assistance) ?',
         en: 'Did {prenom} employ home help (cleaning, care, assistance)?',
       },
       aide: {
@@ -338,7 +338,7 @@ export const QUESTIONS_CATALOG = [
     obligatoire: true,
     fallback_text: {
       question: {
-        fr: 'Dernière question : avez-vous déjà contacté certains de ces organismes ? (aucun, un ou plusieurs)',
+        fr: 'Dernière question : avez-vous déjà contacté certains de ces organismes ?',
         en: 'Last question: have you already contacted any of these organizations? (none, one, or several)',
       },
       aide: {
