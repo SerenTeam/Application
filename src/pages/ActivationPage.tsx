@@ -186,6 +186,11 @@ export function ActivationPage() {
         return setState({ kind: 'ready', invitation })
       }
       if (error.name === 'AuthRetryableFetchError') return setState({ kind: 'error', retry: 'check' })
+      // Erreurs transitoires (429 over_email_send_rate_limit, panne 5xx côté Auth) : elles ne disent
+      // RIEN sur l'existence du compte. Les faire tomber dans le repli ci-dessous afficherait
+      // « un compte existe déjà avec cette adresse », factuellement faux, et demanderait un mot de
+      // passe que la famille n'a jamais choisi. Écran d'erreur avec reprise.
+      if (error.status === 429 || (error.status ?? 0) >= 500) return setState({ kind: 'error', retry: 'check' })
       // user_already_exists (422) et, par prudence (H4), toute autre erreur non 403 : tentative de connexion.
       return signInThenClaim(invitation, password)
     }
