@@ -608,15 +608,23 @@ async function probePartnerSecretRequired() {
     p_family_phone: null, p_deceased_first_name: 'Probe', p_deceased_last_name: 'Secret',
     p_deceased_death_date: new Date(Date.now() - 86_400_000).toISOString().slice(0, 10), p_token_hash: randomHash(), p_confirm_duplicate: true,
   }
+  // p_secret est le 1er paramètre sans valeur par défaut : OMIS, il ne résout AUCUNE signature et
+  // PostgREST répond 404 PGRST202 — le contrôle du secret n'est jamais atteint. La sonde l'asserte
+  // donc pour ce qu'elle prouve (l'appel échoue faute de signature), et ajoute p_secret null, qui
+  // résout la signature et atteint réellement le contrôle de l'étape 0 (revue du 16/09, mineur 3).
   const noSecret = await rpc('partner_create_dossier', PFX.token, identity)
-  assert(!noSecret.ok, 'partner_create_dossier acceptée SANS secret')
+  assert(!noSecret.ok && noSecret.data?.code === 'PGRST202',
+    `appel sans p_secret : ${describeError(noSecret)} (attendu 404 PGRST202, signature non résolue)`)
+  const nullSecret = await rpc('partner_create_dossier', PFX.token, { p_secret: null, ...identity })
+  assert(!nullSecret.ok && nullSecret.data?.message === 'invalid_secret',
+    `création avec p_secret null : ${describeError(nullSecret)} (attendu invalid_secret)`)
   const wrongSecret = await rpc('partner_create_dossier', PFX.token, { p_secret: 'rls-probe-wrong', ...identity })
   assert(!wrongSecret.ok && wrongSecret.data?.message === 'invalid_secret',
     `création avec un faux secret : ${describeError(wrongSecret)} (attendu invalid_secret)`)
   const rotate = await rpc('partner_rotate_invitation', PFX.token, { p_secret: 'rls-probe-wrong', p_dossier_id: randomUUID(), p_token_hash: randomHash() })
   assert(!rotate.ok && rotate.data?.message === 'invalid_secret',
     `renvoi avec un faux secret : ${describeError(rotate)} (attendu invalid_secret)`)
-  return 'création et renvoi en direct refusés (invalid_secret)'
+  return 'sans p_secret : signature non résolue (PGRST202) ; p_secret null ou faux : invalid_secret'
 }
 
 // ----------------------------------------------------------------------
