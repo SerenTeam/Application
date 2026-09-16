@@ -332,6 +332,13 @@ begin
   if v_name = 'RAISON SOCIALE À RENSEIGNER' or v_manager like '%.invalid' then
     raise exception 'renseigner la raison sociale et l''e-mail du gérant';
   end if;
+  -- Même garde que la PARTIE 1 de scripts/seed-demo-v2.sql : une adresse déjà portée par un dossier
+  -- famille ne peut pas être enrôlée, sinon link_enrollments refuse TOUTE la liaison (point 4).
+  if exists (select 1 from public.dossiers d where d.family_email = v_manager and d.status <> 'cancelled')
+     or exists (select 1 from auth.users u join public.dossiers d on d.user_id = u.id
+                 where lower(btrim(u.email)) = v_manager) then
+    raise exception 'E-mail % déjà porté par un dossier famille : il ne peut pas devenir gérant PF', v_manager;
+  end if;
   insert into public.partners (name, siret, billing_email, status, contract_signed_at)
   values (v_name, v_siret, v_billing, 'active', current_date)
   returning id into v_pid;
@@ -340,7 +347,25 @@ begin
 end $$;
 ```
 
-**2. Admins Seren** : `insert into public.account_enrollments (email, role) values (lower(btrim('<adresse de l''admin>')), 'seren_admin');`
+**2. Admins Seren** — même garde, donc même forme :
+
+```sql
+do $$
+declare
+  v_admin constant text := lower(btrim('<adresse de l''admin>'));
+begin
+  if exists (select 1 from public.dossiers d where d.family_email = v_admin and d.status <> 'cancelled')
+     or exists (select 1 from auth.users u join public.dossiers d on d.user_id = u.id
+                 where lower(btrim(u.email)) = v_admin) then
+    raise exception 'E-mail % déjà porté par un dossier famille : il ne peut pas devenir admin Seren', v_admin;
+  end if;
+  insert into public.account_enrollments (email, role) values (v_admin, 'seren_admin')
+  on conflict (email, role) do nothing;
+end $$;
+```
+
+> Ces deux blocs sont la transposition, **une PF à la fois**, de la PARTIE 1 de `scripts/seed-demo-v2.sql`
+> (mêmes gardes, mêmes écritures). Utiliser l'un **ou** l'autre, jamais les deux.
 
 **3. Comptes** : Authentication → Users → **« Add user » (auto-confirm)** pour chaque gérant et chaque admin, puis **copier les UUID**. 🛑 « already registered » = **STOP**, enquête : l'adresse enrôlée est déjà détenue par quelqu'un.
 

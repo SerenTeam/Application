@@ -16,7 +16,9 @@
 --                  --verify → partie 3 UNIQUEMENT si le provisionnement échoue.
 --                  ⚠️ La partie 2 précède TOUTE connexion à ces comptes : provision-v2.mjs se connecte
 --                  réellement et poserait last_sign_in_at, que link_enrollments refuse.
---   PROD (U4)    : parties 1 et 2 avec les PF pilotes réelles (adapter les constantes de la partie 1),
+--   PROD (U4)    : parties 1 et 2 avec les PF pilotes réelles (adapter les constantes de la partie 1)
+--                  — ou, une PF à la fois, les blocs équivalents du runbook prod §9, qui portent les
+--                  mêmes gardes : l'un OU l'autre, jamais les deux —,
 --                  puis « Send password recovery » pour chaque gérant réel — APRÈS la partie 2, jamais
 --                  avant (le gérant fixe lui-même son mot de passe : procédure réservée aux vrais
 --                  gérants de PF, les comptes de démo et de probes ayant le leur depuis « Add user »).
