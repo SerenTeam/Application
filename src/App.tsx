@@ -88,7 +88,7 @@ export default function App() {
               {/* Espace partenaire PF : réservé aux comptes partner_users (garde + RPC côté serveur). */}
               <Route path="/partenaire" element={<ProtectedRoute><RequireAccess area="partner"><PartnerDashboardPage /></RequireAccess></ProtectedRoute>} />
               {/* Vue admin Seren (lot L4c) : compteurs par partenaire, gardée côté serveur (403 NOT_ADMIN). */}
-              <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+              <Route path="/admin" element={<ProtectedRoute><RequireAccess area="admin"><AdminPage /></RequireAccess></ProtectedRoute>} />
               {/* v2:route-admin */}
 
               {/* 404 catch-all */}
