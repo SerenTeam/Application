@@ -492,7 +492,9 @@ export const STRINGS_FR = {
   // Offre v2 côté famille (contrat §7.6) : jamais de prix, jamais de mention LRAR.
   offer: {
     unlimitedAccess: 'Accès sans limite de durée',
+    // Deux formes : « postal » ne se pluralise pas avec un simple {s} (postal → postaux).
     includedSends: '{count} envois postaux inclus',
+    includedSendsOne: '1 envoi postal inclus',
     providedBy: 'Proposé par {partner}',
     providedByGeneric: 'Votre accompagnement Seren',
   },

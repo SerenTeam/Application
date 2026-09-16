@@ -58,7 +58,11 @@ export function CompletionScreen({ stepsCount, doneCount, lettersCount }: Comple
             </PillBadge>
             <PillBadge tone="neutral">{t.offer.unlimitedAccess}</PillBadge>
             {dossier.included_sends > 0 && (
-              <PillBadge tone="neutral">{fmt(t.offer.includedSends, { count: dossier.included_sends })}</PillBadge>
+              <PillBadge tone="neutral">
+                {dossier.included_sends === 1
+                  ? t.offer.includedSendsOne
+                  : fmt(t.offer.includedSends, { count: dossier.included_sends })}
+              </PillBadge>
             )}
           </div>
         )}

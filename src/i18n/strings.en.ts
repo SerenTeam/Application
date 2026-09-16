@@ -489,6 +489,7 @@ export const STRINGS_EN: Strings = {
   offer: {
     unlimitedAccess: 'Access with no time limit',
     includedSends: '{count} postal sends included',
+    includedSendsOne: '1 postal send included',
     providedBy: 'Provided by {partner}',
     providedByGeneric: 'Your Seren support',
   },
