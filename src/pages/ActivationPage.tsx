@@ -95,6 +95,10 @@ export function ActivationPage() {
         return
       }
       if (data?.code === 'EMAIL_MISMATCH') return setState({ kind: 'other_session' })
+      // 403 ACCOUNT_ROLE_FORBIDDEN : la session est celle d'un compte interne (gérant de PF, admin).
+      // La RPC refusera à chaque tentative, par construction : proposer « Réessayer » enfermerait
+      // dans une boucle sans issue. Écran d'erreur sans reprise, l'adresse de support fait le relais.
+      if (res.status === 403) return setState({ kind: 'error', retry: null })
       if (res.status === 410) return setState({ kind: 'expired', partnerName: invitationRef.current?.partner_name ?? null })
       if (res.status === 404) return setState({ kind: 'invalid' })
       if (res.status === 503) return setState({ kind: 'closed' })
