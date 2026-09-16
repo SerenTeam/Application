@@ -97,6 +97,9 @@ begin
   get diagnostics v_inserted = row_count;
 
   if v_with_bridge then
+    -- Pas de filtre included_sends > 0 à ajouter ici : backfill_candidates exclut déjà tout compte
+    -- portant un dossier, donc au rejeu les dossiers écrits au passage précédent ne sont plus
+    -- candidats et la jointure ne ramène rien. Un pont « paid » à 0 envoi est impossible.
     insert into public.purchases (user_id, status, kind, stripe_session_id, included_sends, amount_total, currency, paid_at)
     select d.user_id, 'paid', 'forfait', 'partner_dossier:' || d.id::text, d.included_sends, null, null, now()
       from public.dossiers d
