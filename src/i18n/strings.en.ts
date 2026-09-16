@@ -575,8 +575,9 @@ export const STRINGS_EN: Strings = {
 
   // Pages publiques /legal et /security (contrat §7.1) — traduction du texte porté in extenso
   // depuis docs/textes-beta-v2.md §1.1→1.10 (CGU) et §2.1→2.10 (confidentialité), lot TEXTES.
-  // Même nombre de blocs que la version FR (10 + 10) : la parité est tenue à la main, tsc ne
-  // vérifie pas la longueur d'un tableau. Marqueurs d'identité d'éditeur conservés tels quels.
+  // Même nombre de blocs que la version FR (10 + 10) : tsc ne vérifie pas la longueur d'un
+  // tableau, la parité est donc verrouillée par tests/i18n.test.ts (« parité FR/EN des pages
+  // légales »). Marqueurs d'identité d'éditeur conservés tels quels.
   legalPages: {
     betaBanner: 'Beta version — legal review in progress.',
     legal: {
