@@ -320,7 +320,14 @@ export function ActivationPage() {
       return (
         <>
           <h1 className={TITLE}>{t.activation.missingTitle}</h1>
-          <p className="text-center text-text-secondary">{t.activation.missingBody}</p>
+          <p className="mb-6 text-center text-text-secondary">{t.activation.missingBody}</p>
+          {/* Cas le plus fréquent de cet écran : retour arrière du navigateur APRÈS une activation
+              réussie — le jeton a été effacé, mais le compte, lui, existe. */}
+          <p className="text-center text-sm">
+            <Link to="/login" className="font-medium text-primary underline hover:text-primary-hover">
+              {t.activation.alreadyActivated}
+            </Link>
+          </p>
         </>
       )
     }
