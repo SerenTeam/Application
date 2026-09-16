@@ -163,13 +163,22 @@ describe('POST /api/partner/dossiers', () => {
     expect(res.body.field).toBe(field)
     expect(sender.sent).toHaveLength(0)
   })
-  it('code SQL inconnu (ex. invalid_token_hash) : 500 PARTNER_ERROR + Sentry, message brut jamais renvoyé', async () => {
+  it('code SQL inconnu (ex. invalid_token_hash) : 500 PARTNER_ERROR + Sentry, message brut ni renvoyé ni journalisé', async () => {
     process.env.PARTNER_ACTIVATIONS_ENABLED = 'true'
+    // Un message Postgres imprévu peut porter une valeur saisie (adresse, nom) : il ne doit sortir
+    // NI dans la réponse, NI dans les journaux, NI dans Sentry — seuls `reason` et le code SQL.
+    const logs: string[] = []
+    for (const level of ['log', 'info', 'warn', 'error'] as const) {
+      vi.spyOn(console, level).mockImplementation((...args: unknown[]) => { logs.push(args.map((a) => (a instanceof Error ? a.message : JSON.stringify(a))).join(' ')) })
+    }
     const res = await request(makeApp(makeClient({ partner_create_dossier: sqlError('invalid_token_hash') }))).post('/api/partner/dossiers').send(BODY)
     expect(res.status).toBe(500)
     expect(res.body.code).toBe('PARTNER_ERROR')
     expect(JSON.stringify(res.body)).not.toContain('invalid_token_hash')
+    expect(logs.join('\n')).not.toContain('invalid_token_hash')
     expect(Sentry.captureException).toHaveBeenCalledTimes(1)
+    const captured = JSON.stringify(vi.mocked(Sentry.captureException).mock.calls.map(([err, ctx]) => [(err as Error).message, ctx]))
+    expect(captured).not.toContain('invalid_token_hash')
   })
   it('date de décès mal formée : 400 INVALID_INPUT death_date, SANS appel base', async () => {
     process.env.PARTNER_ACTIVATIONS_ENABLED = 'true'
