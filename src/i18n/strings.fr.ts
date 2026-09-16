@@ -248,6 +248,8 @@ export const STRINGS_FR = {
     generateLetter: 'Générer le courrier — {organisme}',
     letterTitle: 'Courrier — {organisme}',
     collapse: 'Replier',
+    legalReviewNotice:
+      'Informations indicatives, en cours de relecture juridique : vérifiez auprès de l’organisme concerné.',
   },
 
   lettersPage: {

@@ -248,6 +248,8 @@ export const STRINGS_EN: Strings = {
     generateLetter: 'Generate letter — {organisme}',
     letterTitle: 'Letter — {organisme}',
     collapse: 'Collapse',
+    legalReviewNotice:
+      'Guidance only, currently under legal review: please check with the organisation concerned.',
   },
 
   lettersPage: {

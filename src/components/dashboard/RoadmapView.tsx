@@ -57,6 +57,15 @@ export function RoadmapView({
     <div className="animate-fade-in">
       <SectionHeading as="h1" className="mb-8 max-w-none" title={t.roadmap.title} lead={t.roadmap.subtitle} />
 
+      {/* v2 (contrat §7.6) : avertissement permanent, tant que la relecture juridique des étapes
+          éditoriales n'est pas faite. Jamais masqué par un flag — c'est une mention de prudence. */}
+      <p
+        role="note"
+        className="mb-8 max-w-[900px] rounded-2xl border border-warning/40 bg-warning-light px-4 py-3 text-sm text-text-secondary"
+      >
+        {t.roadmap.legalReviewNotice}
+      </p>
+
       <div className="max-w-[900px]">
         {phases.map((phase) => (
           <div key={phase.phase} className="mb-10">
