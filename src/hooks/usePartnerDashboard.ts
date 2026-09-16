@@ -7,6 +7,10 @@ import type { DossierFormValues, PartnerCountersData, PartnerDossier, PartnerInf
 // adossée aux RPC security definer. Le hook ne reçoit JAMAIS de contenu famille.
 export type PartnerActionResult =
   | { ok: true; emailSent: boolean; activationUrl?: string; alreadyCancelled?: boolean }
+  // `duplicateCount` vient du 409 DUPLICATE_DECEASED (contrat §7, charge utile de la route). Il est
+  // remonté mais VOLONTAIREMENT pas affiché : le texte de doublon du contrat (message
+  // `duplicate_deceased`, §8.3) ne porte aucun nombre, et en inventer un sortirait du contrat figé.
+  // Champ conservé — il est contractuel, et un lot ultérieur pourra l'exposer avec son propre texte.
   | { ok: false; code: string; message: string; field?: string; duplicateCount?: number }
 
 interface PartnerDashboardState {
