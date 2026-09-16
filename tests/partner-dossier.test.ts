@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { canCancel, cancelDeadline, validateDossierForm, EMPTY_DOSSIER_FORM, type DossierFormValues } from '@/lib/partner-dossier'
 
-const NOW = new Date('2026-09-17T12:00:00Z')
+// NOW est construit en heure LOCALE, et les `created_at` en découlent par soustraction : le
+// formulaire compare des JOURS CALENDAIRES locaux (`isoDay`) à un instant. Figer NOW en UTC ferait
+// basculer « date future » et « exactement 2 ans » d'un jour dans les fuseaux éloignés (TZ ≥ UTC+12),
+// et le fichier passerait rouge selon la machine. Ici il est vert dans tous les fuseaux.
+const NOW = new Date(2026, 8, 17, 12, 0, 0)
+const agoIso = (ms: number) => new Date(NOW.getTime() - ms).toISOString()
+const HOUR = 60 * 60 * 1000
 const VALID: DossierFormValues = {
   family_first_name: 'Claire', family_last_name: 'Martin', family_email: 'claire.martin@exemple.fr', family_phone: '',
   deceased_first_name: 'Jean', deceased_last_name: 'Dupont', deceased_death_date: '2026-09-10',
@@ -9,13 +15,13 @@ const VALID: DossierFormValues = {
 
 describe('canCancel (48 h, invités seulement)', () => {
   it('invité créé il y a 47 h 59 : annulable', () => {
-    expect(canCancel({ status: 'invited', created_at: '2026-09-15T12:01:00Z' }, NOW)).toBe(true)
+    expect(canCancel({ status: 'invited', created_at: agoIso(47 * HOUR + 59 * 60 * 1000) }, NOW)).toBe(true)
   })
   it('invité créé il y a exactement 48 h : NON annulable (borne SQL « created_at > now() - 48 h »)', () => {
-    expect(canCancel({ status: 'invited', created_at: '2026-09-15T12:00:00Z' }, NOW)).toBe(false)
+    expect(canCancel({ status: 'invited', created_at: agoIso(48 * HOUR) }, NOW)).toBe(false)
   })
   it.each(['active', 'closed', 'cancelled'] as const)('statut %s : jamais annulable', (status) => {
-    expect(canCancel({ status, created_at: '2026-09-17T11:00:00Z' }, NOW)).toBe(false)
+    expect(canCancel({ status, created_at: agoIso(HOUR) }, NOW)).toBe(false)
   })
   it('date invalide : non annulable', () => {
     expect(canCancel({ status: 'invited', created_at: 'n/a' }, NOW)).toBe(false)
