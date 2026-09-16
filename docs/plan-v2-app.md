@@ -5852,3 +5852,7 @@ Amendements des **deux revues adversariales** appliqués au plan AVANT exécutio
 > **Note post-revue (Task 40, 2026-09-16) :** SF2.8 — **40.1 bis** ajoutée : premier appel réel à MySendingBox juste après GNG3 (~13h30), fenêtre de plan B `buildMultipart` jusqu'à 17h ; SF2.5 — commandes de probes normalisées sur `PROBE_WRITE=1` et `PROBE_API_URL` (le `--write` du runbook était ignoré par le script : les preuves de hook n'auraient jamais tourné).
 > **Note post-revue (Task 41, 2026-09-16) :** SF2.10 — les **14 captures FR desktop** sont prises par les agents pendant la recette visuelle (41.1) ; Arnaud ne complète que les manquantes en U3.
 > **Note post-revue (Task 44, 2026-09-16) :** SF2.9 — `webhook_config` prod **lu à l'étape 0** et réutilisé s'il existe ; MF2.5 — tableau « Prérequis hors créneaux » P1-P12 et option (a)/(b) du papier live repris en §0 ; SF2.11 — remède écrit si le fast-forward vers `main` échoue.
+
+Exécution des lots :
+
+> **Note post-revue (Task 29, 2026-09-16) :** vérification 400 px du lot L4 — la classe de tuile prescrite en 29.2 (`rounded-card border border-border-card bg-white p-5 shadow-card-border`) laisse les **valeurs désalignées** dès qu'un libellé passe à deux lignes, ce qui arrive à 400 px pour « En attente d’activation » : le nombre de cette tuile descend sous celui de sa voisine — ajout de `flex h-full flex-col justify-between` sur la tuile, qui plaque les valeurs en bas et les réaligne — écart purement visuel, aucune donnée, aucune clé i18n ni signature touchée.

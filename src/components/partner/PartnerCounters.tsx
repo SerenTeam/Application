@@ -30,7 +30,10 @@ export function PartnerCounters({ counters }: PartnerCountersProps) {
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {tiles.map((tile) => (
-          <div key={tile.key} className="rounded-card border border-border-card bg-white p-5 shadow-card-border">
+          <div
+            key={tile.key}
+            className="flex h-full flex-col justify-between rounded-card border border-border-card bg-white p-5 shadow-card-border"
+          >
             <p className="mb-2 text-sm font-medium text-text-secondary">{tile.label}</p>
             <p className="font-display text-[28px] font-normal text-text">{tile.value}</p>
           </div>
