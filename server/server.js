@@ -12,7 +12,6 @@ import { createLettersRouter } from './routes/letters.js';
 import { createPaymentsRouter } from './routes/payments.js';
 import { createAttachmentsRouter } from './routes/attachments.js';
 import { createProviderWebhookRouter } from './routes/provider-webhook.js';
-import { createAdminRouter } from './routes/admin.js';
 import { createBasicAuthGate } from './lib/basic-auth.js';
 import { createEmailSender } from './lib/email-sender.js';
 import { createPaperSender } from './lib/paper-sender.js';
@@ -22,6 +21,10 @@ import { createRequirePurchase } from './lib/require-purchase.js';
 import * as lettersStore from './lib/letters-store.js';
 import * as purchasesStore from './lib/purchases-store.js';
 import { LETTER_CHANNELS } from './lib/letter-channels.js';
+// Vue admin Seren (lot L4c). Import volontairement placé en fin de bloc, loin des imports du lot
+// L2b (juste après `createProviderWebhookRouter`) : deux insertions au même endroit produisent un
+// conflit à l'intégration (§8.3 n'ancre que les `app.use`).
+import { createAdminRouter } from './routes/admin.js';
 
 dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.env') });
 
