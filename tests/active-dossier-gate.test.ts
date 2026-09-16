@@ -80,6 +80,11 @@ describe('createRequireActiveDossier', () => {
     ['my_account null', null],
     ['rôle partner', { ...ACTIVE_ACCOUNT, role: 'partner', dossier: null }],
     ['rôle none', { ...ACTIVE_ACCOUNT, role: 'none', dossier: null }],
+    // Défense en profondeur (contrat §4.1) : un compte NON famille est refusé même s'il porte un
+    // dossier actif et un consentement à jour. Cas invraisemblable via `my_account()` (qui ne
+    // renvoie un dossier qu'à une famille), et c'est précisément pour cela qu'il doit être pinné :
+    // sans lui, la clause `role !== 'family'` pourrait disparaître sans qu'aucun test ne rougisse.
+    ['rôle partner AVEC dossier actif (défense en profondeur)', { ...ACTIVE_ACCOUNT, role: 'partner' }],
     ['dossier clos', { ...ACTIVE_ACCOUNT, dossier: { ...ACTIVE_ACCOUNT.dossier, status: 'closed' } }],
     ['famille sans objet dossier', { ...ACTIVE_ACCOUNT, dossier: null }],
   ])('%s : 403 DOSSIER_NOT_ACTIVE', async (_label, data) => {
