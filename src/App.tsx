@@ -18,6 +18,7 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { AccessPage } from '@/pages/AccessPage'
 import { DocumentsPage } from '@/pages/DocumentsPage'
 import { PartnerDashboardPage } from '@/pages/PartnerDashboardPage'
+import { AdminPage } from '@/pages/AdminPage'
 import { NotFoundPage } from '@/pages/errors/NotFoundPage'
 import { ErrorPage } from '@/pages/errors/ErrorPage'
 import { MaintenancePage } from '@/pages/errors/MaintenancePage'
@@ -75,6 +76,8 @@ export default function App() {
               <Route path="/documents" element={<ProtectedRoute><DocumentsPage /></ProtectedRoute>} />
               {/* Espace partenaire (v0-démo) : accès par URL uniquement, aucun lien de nav partagée. */}
               <Route path="/partenaire" element={<ProtectedRoute><PartnerDashboardPage /></ProtectedRoute>} />
+              {/* Vue admin Seren (lot L4c) : compteurs par partenaire, gardée côté serveur (403 NOT_ADMIN). */}
+              <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
               {/* v2:route-admin */}
 
               {/* 404 catch-all */}

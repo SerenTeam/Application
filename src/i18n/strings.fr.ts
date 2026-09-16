@@ -479,6 +479,30 @@ export const STRINGS_FR = {
 
   // v2:ns-l4b
 
+  // Vue admin Seren (lot L4c) — compteurs par partenaire, jamais de donnée de famille.
+  admin: {
+    title: 'Administration Seren',
+    lead: 'Compteurs par partenaire — aucune donnée des familles.',
+    generatedAt: 'Mis à jour le {date}',
+    month: 'Mois en cours : {month}',
+    refresh: 'Actualiser',
+    empty: 'Aucun partenaire.',
+    forbidden: 'Accès réservé à l’équipe Seren.',
+    loadError: 'Impossible de charger les compteurs.',
+    never: '—',
+    totals: 'Total',
+    columns: {
+      partner: 'Partenaire',
+      status: 'Statut',
+      total: 'Dossiers créés',
+      thisMonth: 'Créés ce mois',
+      pending: 'Invités en attente',
+      activated: 'Activés',
+      cancelled: 'Annulés',
+      lastDossier: 'Dernier dossier',
+    },
+    statusLabels: { prospect: 'Prospect', active: 'Actif', suspended: 'Suspendu', terminated: 'Résilié' },
+  },
   // v2:ns-l4c
 
   // v2:ns-l5
