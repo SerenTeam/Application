@@ -126,12 +126,7 @@ export function LoginPage() {
               {t.auth.login.forgotPassword}
             </Link>
           </p>
-          <p>
-            {t.auth.login.noAccount}{' '}
-            <Link to="/signup" className="font-medium text-primary underline hover:text-primary-hover">
-              {t.auth.login.createAccount}
-            </Link>
-          </p>
+          <p>{t.access.loginNoAccount}</p>
         </div>
       </div>
     </AuthLayout>

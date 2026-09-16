@@ -64,23 +64,8 @@ export const STRINGS_FR = {
       submit: 'Se connecter',
       submitting: 'Connexion...',
       forgotPassword: 'Mot de passe oublié ?',
-      noAccount: 'Pas encore de compte ?',
-      createAccount: 'Créer un compte',
       incorrectCredentials: 'Email ou mot de passe incorrect',
       connectionError: 'Erreur de connexion au serveur. Veuillez réessayer.',
-    },
-    signup: {
-      title: 'Créer un compte',
-      subtitle: 'Rejoignez Seren pour préparer l’avenir de vos proches.',
-      emailLabel: 'Email',
-      passwordLabel: 'Mot de passe',
-      submit: 'Créer mon compte',
-      submitting: 'Création du compte...',
-      emailUsedMessage: 'Cette adresse email est déjà utilisée.',
-      signIn: 'Se connecter',
-      alreadyHaveAccount: 'Déjà un compte ?',
-      connectionError: 'Erreur de connexion au serveur. Veuillez réessayer.',
-      accountCreatedMessage: 'Compte créé ! Vérifiez votre email pour confirmer.',
     },
     resetRequest: {
       title: 'Mot de passe oublié',
@@ -113,14 +98,6 @@ export const STRINGS_FR = {
       description:
         'Votre mot de passe a bien été modifié. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.',
       signIn: 'Se connecter',
-    },
-    cgu: {
-      acceptPrefix: "J'accepte les",
-      termsOfService: "conditions générales d'utilisation",
-      andThe: 'et la',
-      privacyPolicy: 'politique de confidentialité',
-      dataProtected:
-        'Vos données sont protégées et ne seront jamais partagées sans votre consentement.',
     },
     passwordConfirm: {
       label: 'Confirmer le mot de passe',
@@ -357,22 +334,6 @@ export const STRINGS_FR = {
     copyFailedDescription: 'Veuillez sélectionner le texte manuellement.',
   },
 
-  // Forfait Seren (chantier 1). Aucun montant n'est écrit ici : le prix vient de Stripe et
-  // s'insère dans `priceSuffix` / `ctaWithPrice` au moment du rendu.
-  payments: {
-    paywallTitle: 'L’envoi fait partie du forfait Seren',
-    paywallDescription:
-      'Vous pouvez consulter et télécharger ce courrier librement. Le forfait ajoute l’envoi par Seren et le suivi des réponses.',
-    cta: 'Débloquer l’envoi',
-    ctaWithPrice: 'Débloquer l’envoi — {price}',
-    opening: 'Ouverture du paiement...',
-    checkoutFailed: 'Impossible d’ouvrir la page de paiement. Vous pouvez réessayer.',
-    confirming: 'Paiement reçu, confirmation en cours...',
-    confirmingSlow:
-      'La confirmation peut prendre une minute. Vous pouvez continuer, votre forfait s’activera tout seul.',
-    confirmed: 'Votre forfait Seren est actif.',
-  },
-
   // Espace partenaire PF (v0-démo, docs/design-pf-dashboard-demo.md) — accès par URL uniquement,
   // page hors navigation partagée.
   partner: {
@@ -473,6 +434,18 @@ export const STRINGS_FR = {
   },
   // Ancres contractuelles v2 (docs/design-v2-demonstrateur.md §8.1) : un namespace NEUF s'insère
   // JUSTE AVANT l'ancre de son lot ; les namespaces existants se modifient en place.
+
+  // Accès v2 (contrat §7.1, §7.2) : écran « accès non activé » rendu par RequireAccess, et
+  // remplacement du lien d'inscription sur /login (il n'y a plus d'inscription publique).
+  access: {
+    loginNoAccount: 'Votre accès vous est ouvert par votre pompe funèbre.',
+    notActivatedTitle: 'Votre accès n’est pas encore activé',
+    notActivatedBody:
+      'Seren est proposé par les pompes funèbres partenaires. Si vous avez reçu une invitation, ouvrez le lien de l’e-mail. Sinon, contactez votre pompe funèbre ou le support.',
+    supportLine: 'Support : {email}',
+    signOut: 'Se déconnecter',
+    backToLogin: 'Retour à la connexion',
+  },
   // v2:ns-l3
 
   // v2:ns-l4

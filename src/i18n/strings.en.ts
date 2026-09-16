@@ -64,23 +64,8 @@ export const STRINGS_EN: Strings = {
       submit: 'Sign in',
       submitting: 'Signing in...',
       forgotPassword: 'Forgot your password?',
-      noAccount: "Don't have an account yet?",
-      createAccount: 'Create an account',
       incorrectCredentials: 'Incorrect email or password',
       connectionError: 'Server connection error. Please try again.',
-    },
-    signup: {
-      title: 'Create an account',
-      subtitle: "Join Seren to prepare for your loved ones' future.",
-      emailLabel: 'Email',
-      passwordLabel: 'Password',
-      submit: 'Create my account',
-      submitting: 'Creating account...',
-      emailUsedMessage: 'This email address is already in use.',
-      signIn: 'Sign in',
-      alreadyHaveAccount: 'Already have an account?',
-      connectionError: 'Server connection error. Please try again.',
-      accountCreatedMessage: 'Account created! Check your email to confirm.',
     },
     resetRequest: {
       title: 'Forgot your password?',
@@ -113,14 +98,6 @@ export const STRINGS_EN: Strings = {
       description:
         'Your password has been successfully changed. You can now sign in with your new password.',
       signIn: 'Sign in',
-    },
-    cgu: {
-      acceptPrefix: 'I accept the',
-      termsOfService: 'terms of service',
-      andThe: 'and the',
-      privacyPolicy: 'privacy policy',
-      dataProtected:
-        'Your data is protected and will never be shared without your consent.',
     },
     passwordConfirm: {
       label: 'Confirm password',
@@ -357,22 +334,6 @@ export const STRINGS_EN: Strings = {
     copyFailedDescription: 'Please select the text manually.',
   },
 
-  // Seren plan (chantier 1). No amount is written here: the price comes from Stripe and is
-  // interpolated into `ctaWithPrice` at render time.
-  payments: {
-    paywallTitle: 'Sending is part of the Seren plan',
-    paywallDescription:
-      'You can read and download this letter freely. The plan adds sending by Seren and reply tracking.',
-    cta: 'Unlock sending',
-    ctaWithPrice: 'Unlock sending — {price}',
-    opening: 'Opening payment...',
-    checkoutFailed: 'Unable to open the payment page. You can try again.',
-    confirming: 'Payment received, confirming...',
-    confirmingSlow:
-      'Confirmation may take a minute. Feel free to carry on — your plan will activate on its own.',
-    confirmed: 'Your Seren plan is active.',
-  },
-
   // Partner space (v0 demo, docs/design-pf-dashboard-demo.md) — URL-only access, page outside
   // the shared navigation.
   partner: {
@@ -472,6 +433,18 @@ export const STRINGS_EN: Strings = {
   },
   // v2 contractual anchors (docs/design-v2-demonstrateur.md §8.1): a NEW namespace is inserted
   // RIGHT BEFORE its lot's anchor; existing namespaces are edited in place.
+
+  // Accès v2 (contrat §7.1, §7.2) : écran « accès non activé » rendu par RequireAccess, et
+  // remplacement du lien d'inscription sur /login (il n'y a plus d'inscription publique).
+  access: {
+    loginNoAccount: 'Your access is opened for you by your funeral home.',
+    notActivatedTitle: 'Your access is not activated yet',
+    notActivatedBody:
+      'Seren is offered by partner funeral homes. If you received an invitation, open the link in the email. Otherwise, contact your funeral home or support.',
+    supportLine: 'Support: {email}',
+    signOut: 'Sign out',
+    backToLogin: 'Back to sign in',
+  },
   // v2:ns-l3
 
   // v2:ns-l4

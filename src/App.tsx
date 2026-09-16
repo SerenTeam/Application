@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/hooks/useAuth'
 import { LanguageProvider } from '@/i18n/LanguageContext'
 import { useT } from '@/i18n/useT'
@@ -8,7 +8,6 @@ import { OfflineBanner } from '@/components/layout/OfflineBanner'
 import { CookieBanner } from '@/components/layout/CookieBanner'
 import { Toaster } from '@/components/ui/toaster'
 import { LoginPage } from '@/pages/LoginPage'
-import { SignupPage } from '@/pages/SignupPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 import { ResetPasswordConfirmPage } from '@/pages/ResetPasswordConfirmPage'
 import { ResetPasswordSuccessPage } from '@/pages/ResetPasswordSuccessPage'
@@ -56,7 +55,8 @@ export default function App() {
             <Routes>
               {/* Public routes */}
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/signup" element={<SignupPage />} />
+              {/* Plus d'inscription publique en v2 : l'accès famille s'ouvre par invitation de la PF. */}
+              <Route path="/signup" element={<Navigate to="/login" replace />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/reset-password/confirm" element={<ResetPasswordConfirmPage />} />
               <Route path="/reset-password/success" element={<ResetPasswordSuccessPage />} />
