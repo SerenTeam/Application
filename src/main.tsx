@@ -1,9 +1,12 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { captureActivationFragment } from '@/lib/activation-fragment'
 import App from './App'
 import { initSentry } from '@/lib/sentry'
 import { initPosthog } from '@/lib/posthog'
 import './index.css'
+
+captureActivationFragment()
 
 // Initialiser Sentry (no-op sans VITE_SENTRY_DSN)
 initSentry()
