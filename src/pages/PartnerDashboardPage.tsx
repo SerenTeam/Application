@@ -1,6 +1,6 @@
-import { Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import { usePartnerDashboard } from '@/hooks/usePartnerDashboard'
-import { useAccount } from '@/hooks/useAccount'
+import { useAccount, resetAccountCache } from '@/hooks/useAccount'
 import { useT } from '@/i18n/useT'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { SectionHeading } from '@/components/ui/section-heading'
@@ -18,7 +18,13 @@ export function PartnerDashboardPage() {
   const { loading, error, notPartner, partner, dossiers, counters, refresh, createDossier, resendInvitation, cancelDossier } = usePartnerDashboard()
   const activationsEnabled = me?.flags.partner_activations_enabled !== false
 
-  if (notPartner) return <Navigate to="/" replace />
+  // 403 NOT_A_PARTNER survenu EN COURS de séance (contrat PF résilié pendant la session) : le compte
+  // gardé en cache dit encore « partenaire », donc rediriger vers « / » ferait boucler la garde
+  // d'accès famille (elle renverrait aussitôt vers /partenaire). On purge le cache — le prochain
+  // GET /api/me rendra le rôle réel — et on affiche l'écran d'erreur au lieu de rediriger.
+  useEffect(() => {
+    if (notPartner) resetAccountCache()
+  }, [notPartner])
 
   return (
     <div className="min-h-screen bg-bg">
@@ -29,7 +35,7 @@ export function PartnerDashboardPage() {
             <div className="h-12 w-12 animate-spin rounded-full border-[3px] border-border border-t-primary" />
           </div>
         )}
-        {!loading && error && (
+        {!loading && (error || notPartner) && (
           <div className="flex min-h-[40vh] flex-col items-center justify-center text-center">
             <p className="mb-4 text-text-secondary">{t.partner.loadError}</p>
             <Button onClick={() => void refresh()}>{t.partner.retry}</Button>
