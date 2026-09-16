@@ -471,6 +471,25 @@ describe('kill switch du coffre (PAPER_SENDS_ENABLED)', () => {
     expect(backend.objects.size).toBe(0)
   })
 
+  // Pendant exact du test des courriers papier : verrouille l'ORDRE des gardes, que les seules
+  // assertions « rien stocké » ne prouvent pas (multer bufferise en mémoire, il ne touche jamais
+  // le faux backend — un kill switch monté APRÈS le limiteur laisserait donc le test ci-dessus
+  // vert). Le limiteur du coffre est à 30/h : 35 refus de coupure restent 35 fois 503, jamais un
+  // 429, ce qui n'est vrai que si le kill switch s'exécute AVANT lui (contrat §4.2).
+  it('un 503 de coupure ne consomme pas le quota horaire (35 refus, jamais 429)', async () => {
+    delete process.env.PAPER_SENDS_ENABLED
+    const { app } = makeApp()
+    for (let i = 0; i < 35; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      const res = await request(app)
+        .post('/api/attachments')
+        .set('Authorization', 'Bearer user-1')
+        .field('kind', 'acte_deces')
+        .attach('file', PDF_BYTES, 'acte.pdf')
+      expect(res.status).toBe(503)
+    }
+  })
+
   it('flag absent : lister et supprimer restent possibles (GET 200)', async () => {
     delete process.env.PAPER_SENDS_ENABLED
     const { app } = makeApp()
