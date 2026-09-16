@@ -14,8 +14,12 @@ import { DossierCard } from '@/components/partner/DossierCard'
 // seulement, JAMAIS le contenu. Gardé par RequireAccess area="partner" + RPC côté serveur.
 export function PartnerDashboardPage() {
   const t = useT()
-  const { me } = useAccount()
+  const { me, loading: accountLoading } = useAccount()
   const { loading, error, notPartner, partner, dossiers, counters, refresh, createDossier, resendInvitation, cancelDossier } = usePartnerDashboard()
+  // On attend AUSSI le compte : tant que GET /api/me n'a pas répondu, le drapeau d'activation est
+  // inconnu et le formulaire s'afficherait ouvert une fraction de seconde alors qu'il est peut-être
+  // fermé. Compte en erreur (me null) : on retombe sur « ouvert », et le serveur refuse en 503.
+  const pending = loading || accountLoading
   const activationsEnabled = me?.flags.partner_activations_enabled !== false
 
   // 403 NOT_A_PARTNER survenu EN COURS de séance (contrat PF résilié pendant la session) : le compte
@@ -30,18 +34,18 @@ export function PartnerDashboardPage() {
     <div className="min-h-screen bg-bg">
       <AppHeader />
       <main className="mx-auto max-w-5xl px-4 py-8 sm:py-12">
-        {loading && (
+        {pending && (
           <div className="flex min-h-[40vh] items-center justify-center">
             <div className="h-12 w-12 animate-spin rounded-full border-[3px] border-border border-t-primary" />
           </div>
         )}
-        {!loading && (error || notPartner) && (
+        {!pending && (error || notPartner) && (
           <div className="flex min-h-[40vh] flex-col items-center justify-center text-center">
             <p className="mb-4 text-text-secondary">{t.partner.loadError}</p>
             <Button onClick={() => void refresh()}>{t.partner.retry}</Button>
           </div>
         )}
-        {!loading && !error && partner && counters && (
+        {!pending && !error && partner && counters && (
           <>
             <SectionHeading as="h1" className="mb-3 max-w-none" title={t.partner.title} lead={partner.name} />
             <PillBadge tone="neutral" className="mb-8">
