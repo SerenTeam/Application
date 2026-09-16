@@ -223,6 +223,8 @@ Render → service **préprod** → Environment. Tout poser **en un seul lot**, 
 
 **À laisser absentes / retirer** : `FEATURE_LLM`, `EMAIL_SENDS_ENABLED`, `EXTRA_SENDS_ENABLED`, `PAYMENTS_ENABLED`, `STRIPE_PRICE_ID`, `FORFAIT_INCLUDED_SENDS` (forfait famille abandonné en v2).
 
+> ⚠️ **`FEATURE_LLM` engage les textes publiés.** La politique de confidentialité affichée sur `/security` (bloc 6, « Ce que la pompe funèbre ne reçoit pas — et ce qu'aucune IA ne reçoit ») affirme : « Pendant la bêta, aucune donnée n'est transmise à un modèle de langage ». Ouvrir ce flag rendrait cette phrase **fausse**, sans qu'aucun test ne le signale. Toute ouverture impose donc de corriger d'abord `legalPages.security` dans `src/i18n/strings.fr.ts` **et** `strings.en.ts`, ainsi que `docs/textes-beta-v2.md` §2.6, avant de poser la variable.
+
 Puis, **CI verte (C)** et **étape D terminée** :
 
 ```bash
