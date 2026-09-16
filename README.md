@@ -8,7 +8,7 @@ Application web qui accompagne les proches d'une personne décédée dans leurs 
 - **Roadmap personnalisée** : génération des démarches depuis un catalogue de ~50 étapes sourcées, classées par urgence (48 h / semaine / mois / long terme).
 - **Courriers pré-remplis** : modèles avec variables auto-remplies, export PDF, envoi par email (Resend) avec suivi de statut (webhook signé). Les courriers restent en français (destinés aux organismes français).
 - **i18n FR/EN** : détection de la langue du device + toggle persistant ; catalogues d'étapes jumeaux avec invariant de parité testé.
-- **Forfait payant** : Stripe Checkout one-shot + webhook signé idempotent ; l'accès est vérifié côté serveur contre la table `purchases`, jamais sur un état client. La vente est fermée par défaut (`PAYMENTS_ENABLED`).
+- **Modèle v2 (partenaires)** : la pompe funèbre partenaire ouvre le dossier Seren de la famille ; l'accès famille est actif dès l'activation, sans limite de durée, avec 10 envois postaux inclus. Aucun paiement côté famille en bêta (mini-paiement coupé par `EXTRA_SENDS_ENABLED`). Accès vérifié côté serveur (`requireActiveDossier`, RPC `my_account`).
 - **Auth Supabase** (RLS active sur toutes les tables) · **Monitoring Sentry** (optionnel, inerte sans DSN).
 
 ## Stack

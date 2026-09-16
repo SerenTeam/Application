@@ -67,4 +67,22 @@ describe('questions-catalog', () => {
       expect(textIn(q.fallback_text.question, lang).trim().length).toBeGreaterThan(10)
     }
   })
+
+  // v2 (contrat §7.6) : le catalogue français s'adresse à une personne dont on ignore le genre
+  // (le défunt comme la famille). Les formes « (e) », « il/elle » sont donc proscrites des
+  // questions, des textes d'aide et des libellés d'options. Les VALEURS enum, elles, ne bougent
+  // jamais (contrat de données avec roadmap-generator).
+  it('aucune forme genrée en français (questions, aides, libellés d’options)', () => {
+    const GENDERED = /\(e\)|il\/elle|\/elle/i
+    const offenders: string[] = []
+    for (const q of QUESTIONS_CATALOG) {
+      const texts = [
+        textIn(q.fallback_text.question, 'fr'),
+        q.fallback_text.aide ? textIn(q.fallback_text.aide, 'fr') : '',
+        ...(q.options ?? []).map((o: { label: unknown }) => textIn(o.label, 'fr')),
+      ]
+      for (const text of texts) if (GENDERED.test(text)) offenders.push(`${q.id} → ${text}`)
+    }
+    expect(offenders).toEqual([])
+  })
 })

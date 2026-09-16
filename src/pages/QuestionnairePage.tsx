@@ -33,6 +33,8 @@ export function QuestionnairePage() {
   const [editingFromRecap, setEditingFromRecap] = useState(false)
   const [stepsCount, setStepsCount] = useState(0)
   const [doneCount, setDoneCount] = useState(0)
+  // v2 (contrat §7.6) : nombre d'étapes de la roadmap générée qui portent un modèle de courrier.
+  const [lettersCount, setLettersCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -223,6 +225,7 @@ export function QuestionnairePage() {
       const steps = generateRoadmap(answers, lang)
       setStepsCount(steps.length)
       setDoneCount(steps.filter((s) => s.initial_status === 'done').length)
+      setLettersCount(steps.filter((s) => Boolean(s.letter_template_id)).length)
       await saveRoadmapToDb(user.id, qId, steps, lang)
 
       sessionStorage.removeItem('seren_questionnaire_session')
@@ -322,7 +325,9 @@ export function QuestionnairePage() {
           </div>
         )}
 
-        {!sessionExpired && phase === 'done' && <CompletionScreen stepsCount={stepsCount} doneCount={doneCount} />}
+        {!sessionExpired && phase === 'done' && (
+          <CompletionScreen stepsCount={stepsCount} doneCount={doneCount} lettersCount={lettersCount} />
+        )}
       </main>
     </div>
   )

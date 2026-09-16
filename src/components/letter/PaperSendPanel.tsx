@@ -9,6 +9,7 @@ import { useT } from '@/i18n/useT'
 import { fmt } from '@/i18n'
 import { useLang } from '@/i18n/LanguageContext'
 import { usePayments, formatPrice } from '@/hooks/usePayments'
+import { useAccount } from '@/hooks/useAccount'
 import { SenderProfileForm, type SenderProfile } from './SenderProfileForm'
 import { RecipientAddressForm } from './RecipientAddressForm'
 import { AttachmentPicker } from './AttachmentPicker'
@@ -44,7 +45,11 @@ interface PaperSendPanelProps {
 }
 
 type Banner =
-  | { kind: 'quota_exhausted'; extraSendAvailable: boolean }
+  // `supportEmail` : v2, le 402 ne propose plus d'achat en bêta — il renvoie vers le support.
+  | { kind: 'quota_exhausted'; extraSendAvailable: boolean; supportEmail: string }
+  // v2 : kill switch serveur (PAPER_SENDS_ENABLED / ATTACHMENTS_ENABLED) — le canal est fermé,
+  // le courrier reste téléchargeable en PDF par les actions existantes.
+  | { kind: 'channel_closed' }
   | { kind: 'in_progress' }
   // Correctif C2 (revue finale) : fenêtre d'attente du webhook Stripe post-Checkout, ET le 402
   // qui la suit immédiatement si le webhook est encore en retard — jamais confondu avec
@@ -96,6 +101,9 @@ export function PaperSendPanel({
   const { lang } = useLang()
   const [searchParams, setSearchParams] = useSearchParams()
   const { extraPrice, startExtraSendCheckout, refresh: refreshPayments } = usePayments()
+  // v2 : flags publics et adresse de support (GET /api/me). Au palier plancher `me` est null —
+  // aucun rendu n'est masqué à tort, on teste toujours `=== false`, jamais `!me?.flags.x`.
+  const { me } = useAccount()
 
   const [senderProfile, setSenderProfile] = useState<SenderProfile | null>(null)
   const [senderLoading, setSenderLoading] = useState(true)
@@ -262,7 +270,11 @@ export function PaperSendPanel({
           // d'achat ici : l'utilisateur vient potentiellement de payer à l'instant.
           setBanner({ kind: 'confirming_payment' })
         } else {
-          setBanner({ kind: 'quota_exhausted', extraSendAvailable: Boolean(data?.extra_send_available) })
+          setBanner({
+            kind: 'quota_exhausted',
+            extraSendAvailable: Boolean(data?.extra_send_available),
+            supportEmail: (data?.support_email as string | undefined) ?? me?.support_email ?? 'support@seren-app.fr',
+          })
         }
         return
       }
@@ -301,6 +313,12 @@ export function PaperSendPanel({
           error: null,
         })
         setBanner({ kind: 'error', message: errorMessage })
+        return
+      }
+      if (code === 'PAPER_DISABLED' || code === 'ATTACHMENTS_DISABLED') {
+        // Kill switch serveur (avant toute création de ligne) : rien à figer, le panneau bascule
+        // en « canal fermé ».
+        setBanner({ kind: 'channel_closed' })
         return
       }
       if (code === 'PAPER_NOT_CONFIGURED') {
@@ -425,6 +443,9 @@ export function PaperSendPanel({
   }
 
   const busy = sending || confirmingPayment
+  // v2 (contrat §7.6) : canal papier fermé — par le flag serveur, ou par un 503 déjà reçu.
+  // L'envoi disparaît, les actions PDF existantes (au-dessus de ce panneau) restent.
+  const channelClosed = me?.flags.paper_sends_enabled === false || banner?.kind === 'channel_closed'
   const canSend = isComplete && !!senderProfile && recipientValid(recipient) && !busy
   // I3 (revue finale) : jamais conditionné par le solde local seul — en prod par défaut
   // (PAYMENTS_ENABLED non défini), tout le monde a un solde de 0 et le bouton mènerait à un 503
@@ -436,7 +457,7 @@ export function PaperSendPanel({
 
   return (
     <div className="space-y-4 rounded-lg border border-border-card bg-white p-4">
-      <SenderProfileForm userId={userId} profile={senderProfile} onSaved={setSenderProfile} />
+      {!channelClosed && <SenderProfileForm userId={userId} profile={senderProfile} onSaved={setSenderProfile} />}
 
       {isFinal && existing && (
         <PillBadge tone={existing.status === 'sent' ? 'success' : 'primary'}>
@@ -463,7 +484,9 @@ export function PaperSendPanel({
         </div>
       )}
 
-      {showComposeForm && (
+      {channelClosed ? (
+        <p className="text-sm text-text-secondary">{t.paperSend.channelClosed}</p>
+      ) : showComposeForm ? (
         <>
           <RecipientAddressForm
             network={network}
@@ -495,13 +518,16 @@ export function PaperSendPanel({
 
           {!isComplete && <p className="text-xs text-text-muted">{t.paperSend.missingFieldsHint}</p>}
           {buyError && <p className="text-xs text-text-muted">{t.paperSend.quotaBuyError}</p>}
+          {banner?.kind === 'quota_exhausted' && !banner.extraSendAvailable && (
+            <p className="text-xs text-warning">{fmt(t.paperSend.quotaExhaustedSupport, { email: banner.supportEmail })}</p>
+          )}
           {(banner?.kind === 'in_progress' || banner?.kind === 'confirming_payment') && (
             <p className="text-xs text-text-muted">{t.paperSend.finalizingPayment}</p>
           )}
           {banner?.kind === 'retryable' && <p className="text-xs text-text-muted">{t.paperSend.retryableHint}</p>}
           {banner?.kind === 'error' && <p className="text-xs text-warning">{banner.message}</p>}
         </>
-      )}
+      ) : null}
     </div>
   )
 }

@@ -208,6 +208,7 @@ export const STRINGS_FR = {
     dashboardHint:
       'Retrouvez votre parcours détaillé avec les courriers pré-remplis sur votre tableau de bord.',
     viewRoadmap: 'Voir mon parcours',
+    lettersReady: '{count} courrier{s} prêt{s}',
   },
 
   dashboardPage: {
@@ -248,6 +249,8 @@ export const STRINGS_FR = {
     generateLetter: 'Générer le courrier — {organisme}',
     letterTitle: 'Courrier — {organisme}',
     collapse: 'Replier',
+    legalReviewNotice:
+      'Informations indicatives, en cours de relecture juridique : vérifiez auprès de l’organisme concerné.',
   },
 
   lettersPage: {
@@ -312,7 +315,8 @@ export const STRINGS_FR = {
       alreadySentBadge: 'Déjà envoyé',
       inProgress: 'Un envoi de ce courrier est déjà en cours, patientez un instant.',
       failedBadge: "Échec de l'envoi",
-      notConfigured: "L'envoi d'email n'est pas encore configuré pour le moment.",
+      notConfigured:
+        'L’envoi par Seren n’est pas encore disponible pour ce courrier : téléchargez-le pour l’envoyer vous-même.',
       networkError: 'Une erreur est survenue. Vous pouvez réessayer.',
     },
   },
@@ -449,8 +453,12 @@ export const STRINGS_FR = {
 
     // Quota et facturation à l'acte
     quotaLoading: 'Vérification de votre solde...',
-    quotaRemaining: '{count} envoi{s} inclus restant{s}',
+    quotaRemaining: '{count} envoi{s} inclus restant{s} sur {total}',
     quotaExhausted: 'Vous avez utilisé tous vos envois inclus.',
+    quotaExhaustedSupport:
+      'Vous avez utilisé vos envois inclus. Pour tout envoi supplémentaire, contactez le support : {email}.',
+    channelClosed:
+      'L’envoi par Seren n’est pas encore disponible pour ce courrier : téléchargez-le pour l’envoyer vous-même.',
     quotaBuyCta: 'Acheter un envoi supplémentaire',
     quotaBuyCtaWithPrice: 'Acheter un envoi supplémentaire — {price}',
     quotaBuyOpening: 'Ouverture du paiement...',
@@ -481,6 +489,15 @@ export const STRINGS_FR = {
 
   // v2:ns-l4c
 
+  // Offre v2 côté famille (contrat §7.6) : jamais de prix, jamais de mention LRAR.
+  offer: {
+    unlimitedAccess: 'Accès sans limite de durée',
+    // Deux formes : « postal » ne se pluralise pas avec un simple {s} (postal → postaux).
+    includedSends: '{count} envois postaux inclus',
+    includedSendsOne: '1 envoi postal inclus',
+    providedBy: 'Proposé par {partner}',
+    providedByGeneric: 'Votre accompagnement Seren',
+  },
   // v2:ns-l5
 }
 
