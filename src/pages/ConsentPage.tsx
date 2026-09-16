@@ -47,10 +47,11 @@ export function ConsentPage() {
     navigate('/', { replace: true })
   }
 
-  const labels: Record<ConsentKind, { text: string; link?: { href: string; label: string } }> = {
+  // `notice` : information art. 9.2.a rendue sous la case, hors du <label> cliquable.
+  const labels: Record<ConsentKind, { text: string; link?: { href: string; label: string }; notice?: string }> = {
     terms: { text: t.consent.terms, link: { href: '/legal', label: t.consent.termsLink } },
     privacy: { text: t.consent.privacy, link: { href: '/security', label: t.consent.privacyLink } },
-    sensitive_data: { text: t.consent.sensitiveData },
+    sensitive_data: { text: t.consent.sensitiveData, notice: t.consent.sensitiveDataNotice },
   }
 
   return (
@@ -72,19 +73,27 @@ export function ConsentPage() {
                 checked={checked[kind]}
                 onCheckedChange={(value) => setChecked((prev) => ({ ...prev, [kind]: value === true }))}
                 aria-required="true"
+                aria-describedby={labels[kind].notice ? `consent-${kind}-notice` : undefined}
                 className="mt-0.5"
               />
-              <Label htmlFor={`consent-${kind}`} className="cursor-pointer text-sm font-normal leading-relaxed text-text-secondary">
-                {labels[kind].text}
-                {labels[kind].link && (
-                  <>
-                    {' — '}
-                    <a href={labels[kind].link!.href} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary-hover">
-                      {labels[kind].link!.label}
-                    </a>
-                  </>
+              <div className="min-w-0">
+                <Label htmlFor={`consent-${kind}`} className="cursor-pointer text-sm font-normal leading-relaxed text-text-secondary">
+                  {labels[kind].text}
+                  {labels[kind].link && (
+                    <>
+                      {' — '}
+                      <a href={labels[kind].link!.href} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary-hover">
+                        {labels[kind].link!.label}
+                      </a>
+                    </>
+                  )}
+                </Label>
+                {labels[kind].notice && (
+                  <p id={`consent-${kind}-notice`} className="mt-1.5 text-xs leading-relaxed text-text-muted">
+                    {labels[kind].notice}
+                  </p>
                 )}
-              </Label>
+              </div>
             </div>
           ))}
         </div>

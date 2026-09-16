@@ -1155,7 +1155,8 @@ end $$;
 rollback;
 
 -- ════════════════════════════════════════════════════════════════════════════════════════
--- S10 — admin_partner_overview (migration L4c) : SAUTÉ tant que la fonction n'existe pas
+-- S10 — admin_partner_overview (migration L4c) : TOUJOURS exécuté (revue L4c, défaut m3). Le SKIP
+-- conditionnel a été retiré : une fonction absente doit échouer en ROUGE, jamais passer en silence.
 -- ════════════════════════════════════════════════════════════════════════════════════════
 begin;
 insert into public.dossiers (partner_id, source, status, user_id, family_first_name, family_last_name, family_email,
@@ -1171,12 +1172,6 @@ insert into public.dossiers (partner_id, source, status, family_first_name, fami
   ('00000000-0000-4000-8000-00000000a002', 'partner', 'cancelled', 'Lou', 'Petit', 'lou.s10@scenario.seren-test.fr', 'René', 'Petit',
    current_date - 1, 29000, 7000, now(), now());
 
-do $$ begin
-  if to_regprocedure('public.admin_partner_overview()') is null then
-    raise notice 'SKIP S10 admin_partner_overview absente (migration L4c non appliquée)';
-  end if;
-end $$;
-
 select scenario_v2.claims('00000000-0000-4000-8000-00000000b005', 'admin@scenario.seren-test.fr');
 set local role authenticated;
 do $$
@@ -1186,9 +1181,6 @@ declare
   v_y jsonb;
   v_s jsonb;
 begin
-  if to_regprocedure('public.admin_partner_overview()') is null then
-    return;
-  end if;
   r := public.admin_partner_overview();
   select e into v_x from jsonb_array_elements(r->'partners') as e where e->>'partner_id' = '00000000-0000-4000-8000-00000000a001';
   select e into v_y from jsonb_array_elements(r->'partners') as e where e->>'partner_id' = '00000000-0000-4000-8000-00000000a002';
@@ -1213,7 +1205,6 @@ reset role;
 select scenario_v2.claims('00000000-0000-4000-8000-00000000b001', 'pfx.manager@scenario.seren-test.fr');
 set local role authenticated;
 do $$ begin
-  if to_regprocedure('public.admin_partner_overview()') is null then return; end if;
   perform scenario_v2.ok('S10g gérant PF → null', public.admin_partner_overview() is null);
 end $$;
 
@@ -1221,8 +1212,25 @@ reset role;
 select scenario_v2.claims('00000000-0000-4000-8000-00000000b006', 'fam1@scenario.seren-test.fr');
 set local role authenticated;
 do $$ begin
-  if to_regprocedure('public.admin_partner_overview()') is null then return; end if;
   perform scenario_v2.ok('S10h famille → null', public.admin_partner_overview() is null);
+end $$;
+
+-- S10i — `is_admin` est ORTHOGONAL au rôle (contrat §7.2) : un même compte peut être gérant d'une PF
+-- ET admin Seren. Le rôle reste 'partner' (il a une ligne partner_users), et la vue admin s'ouvre
+-- quand même — c'est bien `seren_admins` seule, et non le rôle, qui commande admin_partner_overview.
+reset role;
+insert into public.seren_admins (user_id) values ('00000000-0000-4000-8000-00000000b001');
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b001', 'pfx.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$
+declare
+  r jsonb := public.admin_partner_overview();
+  a jsonb := public.my_account();
+begin
+  perform scenario_v2.ok('S10i compte à la fois admin Seren ET gérant de PF',
+    r is not null and jsonb_array_length(r->'partners') = 3
+      and a->>'role' = 'partner' and (a->>'is_admin')::boolean,
+    coalesce(r::text, 'null') || ' || ' || coalesce(a::text, 'null'));
 end $$;
 rollback;
 
@@ -1246,7 +1254,9 @@ end $$;
 rollback;
 
 -- ════════════════════════════════════════════════════════════════════════════════════════
--- S13p — droits des RPC PF, admin (si L4c) et F1 (si L1b)
+-- S13p — droits des RPC PF, admin (L4c) et F1 (L1b) : les 7 fonctions sont TOUJOURS contrôlées.
+-- Revue L4c, défaut m4 : le « continue » silencieux est remplacé par une assertion de présence, si
+-- bien qu'une migration manquante devient un échec rouge et non une couverture évaporée.
 -- ════════════════════════════════════════════════════════════════════════════════════════
 do $$
 declare v_fn text;
@@ -1255,10 +1265,7 @@ begin
                               'public.partner_rotate_invitation(text, uuid, text)', 'public.partner_cancel_dossier(uuid)',
                               'public.partner_list_dossiers()', 'public.partner_month_counters()',
                               'public.admin_partner_overview()', 'public.get_transmission_by_code(text)'] loop
-    if to_regprocedure(v_fn) is null then
-      raise notice 'SKIP S13p % absente', v_fn;
-      continue;
-    end if;
+    perform scenario_v2.ok('S13p fonction présente : ' || v_fn, to_regprocedure(v_fn) is not null);
     perform scenario_v2.ok('S13p aucun EXECUTE PUBLIC : ' || v_fn,
       (select p.proacl is not null and not exists (select 1 from aclexplode(p.proacl) a where a.grantee = 0 and a.privilege_type = 'EXECUTE')
          from pg_proc p where p.oid = v_fn::regprocedure));

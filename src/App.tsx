@@ -38,13 +38,19 @@ function LegalContentPage({ page }: { page: 'legal' | 'security' }) {
         <p role="note" className="mb-6 rounded-2xl border border-warning/40 bg-warning-light px-4 py-3 text-sm text-text-secondary">
           {t.legalPages.betaBanner}
         </p>
-        <h1 className="mb-8 font-display text-3xl font-normal text-text">{content.title}</h1>
+        <h1 className="mb-8 font-display text-3xl font-normal text-text max-sm:text-2xl">{content.title}</h1>
         {content.blocks.map((block) => (
           <section key={block.heading} className="mb-8">
             <h2 className="mb-2 font-display text-xl font-normal text-text">{block.heading}</h2>
-            {block.body.split('\n\n').map((paragraph, index) => (
-              <p key={index} className="mb-3 text-text-secondary">{paragraph}</p>
-            ))}
+            {/* Un paragraphe qui commence par « • » est une puce : retrait négatif pour que le
+                point reste dans la marge et que les lignes suivantes s'alignent sur le texte. */}
+            {block.body.split('\n\n').map((paragraph, index) =>
+              paragraph.startsWith('• ') ? (
+                <p key={index} className="mb-2 pl-5 -indent-3 leading-relaxed text-text-secondary">{paragraph}</p>
+              ) : (
+                <p key={index} className="mb-3 leading-relaxed text-text-secondary">{paragraph}</p>
+              ),
+            )}
           </section>
         ))}
       </article>

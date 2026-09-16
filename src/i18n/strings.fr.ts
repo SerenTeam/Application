@@ -569,28 +569,168 @@ export const STRINGS_FR = {
     privacyLink: 'Lire la politique',
     sensitiveData:
       'J’accepte que Seren traite les informations sensibles nécessaires à mes démarches (décès, situation familiale, patrimoine)',
+    // Notice art. 9.2.a affichée SOUS la case « données sensibles » (docs/textes-beta-v2.md §3).
+    // Elle doit être rendue par l’application avant d’être soumise au conseil juridique : on ne
+    // fait pas valider une notice que l’utilisateur ne voit pas.
+    sensitiveDataNotice:
+      'Ces informations sont celles que vous nous donnerez sur le décès, votre situation familiale et le patrimoine de votre proche. Elles servent uniquement à préparer vos démarches et à remplir vos courriers. Vous pouvez retirer votre accord à tout moment en demandant l’effacement de votre compte à support@seren-app.fr.',
     cta: 'Commencer',
     submitting: 'Enregistrement...',
     saveError: 'Impossible d’enregistrer votre accord, réessayez.',
     allRequired: 'Les trois cases sont nécessaires pour utiliser Seren.',
   },
 
-  // Pages publiques /legal et /security (contrat §7.1) — VALEURS PROVISOIRES : L7 (Task 34) pose
-  // les textes définitifs après la relecture juridique ; seule la structure appartient à L3.
+  // Pages publiques /legal et /security (contrat §7.1) — texte porté in extenso depuis
+  // docs/textes-beta-v2.md §1.1→1.10 (CGU) et §2.1→2.10 (confidentialité), lot TEXTES.
+  // STATUT : brouillon bêta, relecture juridique NON FAITE (condition GNG6-4) — le bandeau le dit.
+  // Les identités d’éditeur [A]→[D] du document source restent des marqueurs visibles : elles
+  // seront renseignées par Arnaud avant l’ouverture de la bêta. Ne jamais inventer ces valeurs.
+  // Une ligne de `body` qui commence par « • » est rendue en puce par LegalContentPage.
   legalPages: {
     betaBanner: 'Version bêta — relecture juridique en cours.',
     legal: {
       title: 'Conditions générales d’utilisation (version bêta)',
       blocks: [
-        { heading: 'Un service en version bêta', body: 'Seren est ouvert en version bêta à des familles invitées par une pompe funèbre partenaire. Les informations et modèles de courriers sont fournis à titre indicatif et sont en cours de relecture juridique : vérifiez-les auprès des organismes concernés.' },
-        { heading: 'Contact', body: 'Pour toute question, écrivez au support : support@seren-app.fr.' },
+        {
+          heading: '1. Objet',
+          body:
+            'Seren est un service en ligne qui aide les proches d’une personne décédée à identifier et à réaliser les démarches administratives qui suivent un décès. Le service propose un questionnaire, une liste personnalisée de démarches, des modèles de courriers pré-remplis et, lorsque cette fonction est ouverte, leur envoi postal.\n\n' +
+            'Le service est édité par [dénomination sociale à compléter], SIREN [à compléter], dont le siège est [adresse à compléter]. Directeur de la publication : [à compléter].\n\n' +
+            'Ces conditions s’appliquent à la version bêta du service, ouverte à un nombre limité de familles.',
+        },
+        {
+          heading: '2. Accès sur invitation',
+          body:
+            'L’accès à Seren est ouvert par une pompe funèbre partenaire, à l’occasion de l’organisation des obsèques. La pompe funèbre crée le dossier et Seren envoie à la personne désignée un e-mail contenant un lien d’activation personnel, valable 7 jours.\n\n' +
+            'Le compte est personnel. Le lien d’activation ne doit pas être transféré. Une fois le mot de passe choisi, l’accès n’est plus limité dans le temps.\n\n' +
+            'Si le lien a expiré, la pompe funèbre peut en envoyer un nouveau. Si l’adresse e-mail est déjà utilisée par un compte existant, il faut se connecter à ce compte ou écrire au support (support@seren-app.fr).',
+        },
+        {
+          heading: '3. Version bêta : informations indicatives',
+          body:
+            'Seren est en version bêta. Les informations affichées, la liste des démarches et les modèles de courriers sont indicatifs et en cours de relecture juridique. Ils ne remplacent pas l’avis d’un professionnel (notaire, avocat, conseiller) ni les informations officielles des organismes.\n\n' +
+            'Avant toute démarche engageante, il revient à l’utilisateur de vérifier auprès de l’organisme concerné les pièces attendues, les délais et les conditions. Un bandeau le rappelle sur la liste des démarches.',
+        },
+        {
+          heading: '4. Envois postaux',
+          body:
+            'L’accompagnement comprend 10 envois postaux, réalisés pour le compte de l’utilisateur par un prestataire d’impression et d’affranchissement.\n\n' +
+            '• Le contenu du courrier est produit à partir d’un modèle et des informations saisies par l’utilisateur. L’utilisateur reste responsable de ce qu’il envoie : il lui appartient de relire le courrier avant de demander l’envoi.\n\n' +
+            '• Un courrier envoyé ne peut plus être modifié ni rappelé. La demande d’envoi est définitive.\n\n' +
+            '• Les envois sont décomptés des 10 envois inclus. Une fois ces envois utilisés, le service affiche un message invitant à contacter le support ; aucun paiement n’est proposé dans l’application pendant la bêta.\n\n' +
+            '• Seren n’est pas responsable des délais d’acheminement postal, ni des suites données par les organismes destinataires.\n\n' +
+            '• Lorsque la fonction d’envoi n’est pas ouverte, le courrier reste téléchargeable en PDF pour un envoi par l’utilisateur lui-même.',
+        },
+        {
+          heading: '5. Ce que la pompe funèbre voit, et ne voit pas',
+          body:
+            'La pompe funèbre qui a ouvert le dossier voit :\n\n' +
+            '• l’identité et les coordonnées qu’elle a elle-même saisies (prénom, nom, e-mail, téléphone éventuel de la personne accompagnée) ;\n\n' +
+            '• le prénom, le nom et la date de décès du défunt, qu’elle a également saisis ;\n\n' +
+            '• l’état du dossier : invitation envoyée, invitation expirée, accès activé, dossier annulé, avec les dates correspondantes.\n\n' +
+            'La pompe funèbre ne voit jamais : les réponses au questionnaire, la liste des démarches et leur avancement, le contenu des courriers, les documents déposés, les envois réalisés et leur suivi.\n\n' +
+            'Cette séparation est appliquée par le service lui-même, et non par une simple règle d’affichage.',
+        },
+        {
+          heading: '6. Responsabilité',
+          body:
+            'Seren s’engage à mettre en œuvre les moyens raisonnables pour que le service soit disponible et pour que les informations proposées soient exactes et à jour. Il s’agit d’une obligation de moyens.\n\n' +
+            'Seren ne fournit ni conseil juridique, ni conseil fiscal, ni conseil en investissement. Le service n’effectue aucune démarche à la place de l’utilisateur en dehors des envois postaux qu’il demande expressément.\n\n' +
+            'Le service peut être interrompu pour maintenance ou pour corriger un défaut, en particulier pendant la phase bêta.',
+        },
+        {
+          heading: '7. Données personnelles',
+          body:
+            'Le traitement des données personnelles est décrit dans la politique de confidentialité, accessible depuis la page « Confidentialité », qui fait partie intégrante des présentes conditions.',
+        },
+        {
+          heading: '8. Fin d’utilisation et effacement',
+          body:
+            'L’utilisateur peut cesser d’utiliser le service à tout moment et demander l’effacement de son compte et de ses données en écrivant à support@seren-app.fr. La demande est traitée sous 30 jours.\n\n' +
+            'Sont alors supprimés : le compte, les réponses au questionnaire, les démarches, les courriers, les documents déposés et l’historique des envois. Seren conserve une trace du dossier sans aucune donnée d’identification (pompe funèbre émettrice, dates, montants), nécessaire à sa facturation et à ses obligations comptables.',
+        },
+        {
+          heading: '9. Droit applicable',
+          body:
+            'Les présentes conditions sont soumises au droit français. En cas de différend, une solution amiable sera recherchée avant toute action contentieuse. À défaut, les tribunaux français sont compétents.',
+        },
+        {
+          heading: '10. Contact',
+          body:
+            'Pour toute question sur le service, sur vos données ou pour demander l’effacement de votre compte : support@seren-app.fr. Réponse sous 5 jours ouvrés.',
+        },
       ],
     },
     security: {
       title: 'Politique de confidentialité (version bêta)',
       blocks: [
-        { heading: 'Vos données', body: 'Seren traite les informations nécessaires à vos démarches, transmises par votre pompe funèbre ou saisies par vous. Le contenu de votre dossier (réponses, démarches, courriers, documents) n’est jamais visible par la pompe funèbre.' },
-        { heading: 'Vos droits', body: 'Accès, rectification, effacement, opposition : écrivez à support@seren-app.fr. Vous pouvez aussi adresser une réclamation à la CNIL (cnil.fr).' },
+        {
+          heading: '1. Responsable de traitement',
+          body:
+            '[dénomination sociale à compléter], SIREN [à compléter], [adresse du siège à compléter], est responsable du traitement des données décrites ci-dessous. Contact : support@seren-app.fr.',
+        },
+        {
+          heading: '2. Données reçues de la pompe funèbre',
+          body:
+            'Pour ouvrir votre accompagnement, la pompe funèbre transmet à Seren :\n\n' +
+            '• votre prénom, votre nom, votre adresse e-mail et, le cas échéant, votre numéro de téléphone ;\n\n' +
+            '• le prénom, le nom et la date de décès de votre proche.\n\n' +
+            'Vous en êtes informé dès le premier message que Seren vous adresse.',
+        },
+        {
+          heading: '3. Données que vous saisissez',
+          body:
+            'Dans le service, vous fournissez : vos réponses au questionnaire (situation familiale, logement, ressources, patrimoine du défunt), l’avancement de vos démarches, le contenu des courriers et leurs variables, votre adresse d’expéditeur, et les documents que vous déposez — dont l’acte de décès lorsqu’il doit être joint à un envoi.',
+        },
+        {
+          heading: '4. Finalités et bases légales',
+          body:
+            '• Créer votre accès et vous accompagner dans vos démarches — base légale : exécution du service proposé par votre pompe funèbre.\n\n' +
+            '• Préparer, produire et envoyer vos courriers — base légale : exécution du service.\n\n' +
+            '• Traiter les informations sensibles nécessaires à ces démarches (décès, situation familiale, patrimoine) — base légale : consentement explicite (art. 9.2.a du RGPD), recueilli à l’ouverture de votre accès.\n\n' +
+            '• Assurer la sécurité et le bon fonctionnement technique — base légale : intérêt légitime.',
+        },
+        {
+          heading: '5. Destinataires et sous-traitants',
+          body:
+            '• Supabase — base de données et authentification — Union européenne (eu-west-1, Irlande).\n\n' +
+            '• Render — hébergement de l’application — Union européenne.\n\n' +
+            '• Resend — envoi des e-mails d’invitation et de réinitialisation de mot de passe — localisation en cours de vérification avant l’ouverture de la bêta.\n\n' +
+            '• MySendingBox — impression, mise sous pli et affranchissement des courriers — localisation en cours de vérification avant l’ouverture de la bêta.\n\n' +
+            '• Sentry — remontée des erreurs techniques, sans données personnelles (jetons et contenus retirés avant envoi) — Union européenne.\n\n' +
+            '• PostHog — mesure d’audience, uniquement après acceptation des cookies — Union européenne.\n\n' +
+            'Vos données ne sont ni vendues, ni louées, ni utilisées à des fins publicitaires.',
+        },
+        {
+          heading: '6. Ce que la pompe funèbre ne reçoit pas — et ce qu’aucune IA ne reçoit',
+          body:
+            'La pompe funèbre qui a ouvert votre dossier n’a accès à aucun contenu : ni vos réponses, ni vos démarches, ni vos courriers, ni vos documents, ni vos envois.\n\n' +
+            'Pendant la bêta, aucune donnée n’est transmise à un modèle de langage : la fonction de rédaction assistée est désactivée et les textes affichés sont écrits à l’avance.',
+        },
+        {
+          heading: '7. Durée de conservation',
+          body:
+            'Vos données sont conservées 12 mois après votre dernière connexion (durée proposée, à confirmer avant l’ouverture de la bêta), puis supprimées. Vous pouvez demander leur effacement avant ce terme.\n\n' +
+            'Après effacement, Seren conserve la trace du dossier sans donnée d’identification (pompe funèbre, dates, montants), pour sa facturation et ses obligations comptables.',
+        },
+        {
+          heading: '8. Vos droits',
+          body:
+            'Vous disposez d’un droit d’accès, de rectification, d’effacement, d’opposition, de limitation et de portabilité, ainsi que du droit de retirer votre consentement au traitement des informations sensibles à tout moment (le retrait vaut demande d’effacement, le service ne pouvant plus fonctionner sans ces informations).\n\n' +
+            'Pour exercer ces droits : support@seren-app.fr. Réponse sous 5 jours ouvrés, exécution sous 30 jours.\n\n' +
+            'Vous pouvez également adresser une réclamation à la CNIL (cnil.fr, 3 place de Fontenoy, 75007 Paris).',
+        },
+        {
+          heading: '9. Sécurité',
+          body:
+            'Les échanges avec le service sont chiffrés (HTTPS). Chaque compte est isolé des autres en base de données par des règles appliquées par le serveur de base lui-même. Les documents que vous déposez sont stockés dans un espace privé, accessible uniquement depuis votre compte. Les accès techniques sont limités aux personnes qui en ont besoin, tenues à la confidentialité.',
+        },
+        {
+          heading: '10. Limite connue de la bêta : dépôt de documents',
+          body:
+            'Pendant la bêta, les documents déposés ne sont pas analysés par un antivirus (contrôle du type de fichier, taille limitée à 5 Mo, espace privé). Cette limite est assumée et documentée ; l’analyse antivirus et la politique de rétention sont prévues dans une version ultérieure.\n\n' +
+            'Recommandation : ne déposez que les pièces nécessaires à vos envois (acte de décès notamment), et rien d’autre.',
+        },
       ],
     },
   },

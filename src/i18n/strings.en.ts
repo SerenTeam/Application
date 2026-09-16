@@ -565,28 +565,164 @@ export const STRINGS_EN: Strings = {
     privacyLink: 'Read the policy',
     sensitiveData:
       'I agree that Seren processes the sensitive information needed for my formalities (death, family situation, assets)',
+    sensitiveDataNotice:
+      'This information is what you will tell us about the death, your family situation and your loved one’s assets. It is used only to prepare your formalities and to fill in your letters. You can withdraw your agreement at any time by requesting the erasure of your account at support@seren-app.fr.',
     cta: 'Start',
     submitting: 'Saving...',
     saveError: 'Unable to save your agreement, please try again.',
     allRequired: 'All three boxes are required to use Seren.',
   },
 
-  // Pages publiques /legal et /security (contrat §7.1) — VALEURS PROVISOIRES : L7 (Task 34) pose
-  // les textes définitifs après la relecture juridique ; seule la structure appartient à L3.
+  // Pages publiques /legal et /security (contrat §7.1) — traduction du texte porté in extenso
+  // depuis docs/textes-beta-v2.md §1.1→1.10 (CGU) et §2.1→2.10 (confidentialité), lot TEXTES.
+  // Même nombre de blocs que la version FR (10 + 10) : tsc ne vérifie pas la longueur d'un
+  // tableau, la parité est donc verrouillée par tests/i18n.test.ts (« parité FR/EN des pages
+  // légales »). Marqueurs d'identité d'éditeur conservés tels quels.
   legalPages: {
     betaBanner: 'Beta version — legal review in progress.',
     legal: {
       title: 'Terms of use (beta version)',
       blocks: [
-        { heading: 'A service in beta', body: 'Seren is open in beta to families invited by a partner funeral home. Information and letter templates are provided as guidance and are under legal review: please check them with the organisations concerned.' },
-        { heading: 'Contact', body: 'For any question, write to support: support@seren-app.fr.' },
+        {
+          heading: '1. Purpose',
+          body:
+            'Seren is an online service that helps the relatives of someone who has died identify and complete the administrative formalities that follow a death. The service offers a questionnaire, a personalised list of formalities, pre-filled letter templates and, when that function is open, their postal dispatch.\n\n' +
+            'The service is published by [company name to be completed], SIREN [to be completed], whose registered office is [address to be completed]. Publication director: [to be completed].\n\n' +
+            'These terms apply to the beta version of the service, open to a limited number of families.',
+        },
+        {
+          heading: '2. Access by invitation',
+          body:
+            'Access to Seren is opened by a partner funeral home, when the funeral is being arranged. The funeral home creates the file and Seren sends the designated person an email containing a personal activation link, valid for 7 days.\n\n' +
+            'The account is personal. The activation link must not be forwarded. Once the password has been chosen, access is no longer time-limited.\n\n' +
+            'If the link has expired, the funeral home can send a new one. If the email address is already used by an existing account, you need to sign in to that account or write to support (support@seren-app.fr).',
+        },
+        {
+          heading: '3. Beta version: information is indicative',
+          body:
+            'Seren is in beta. The information displayed, the list of formalities and the letter templates are indicative and under legal review. They do not replace the advice of a professional (notary, lawyer, adviser) or the official information of the organisations concerned.\n\n' +
+            'Before any binding step, it is for the user to check with the organisation concerned which documents are expected, the deadlines and the conditions. A banner is a reminder of this on the list of formalities.',
+        },
+        {
+          heading: '4. Postal dispatches',
+          body:
+            'The support includes 10 postal dispatches, carried out on the user’s behalf by a printing and franking provider.\n\n' +
+            '• The content of the letter is produced from a template and the information entered by the user. The user remains responsible for what they send: it is for them to re-read the letter before requesting dispatch.\n\n' +
+            '• A letter that has been sent can no longer be modified or recalled. The dispatch request is final.\n\n' +
+            '• Dispatches are deducted from the 10 included. Once these have been used, the service displays a message inviting you to contact support; no payment is offered in the application during the beta.\n\n' +
+            '• Seren is not responsible for postal delivery times, nor for the action taken by the recipient organisations.\n\n' +
+            '• When the dispatch function is not open, the letter remains downloadable as a PDF for the user to send themselves.',
+        },
+        {
+          heading: '5. What the funeral home sees, and does not see',
+          body:
+            'The funeral home that opened the file sees:\n\n' +
+            '• the identity and contact details it entered itself (first name, last name, email, any phone number of the person supported);\n\n' +
+            '• the first name, last name and date of death of the deceased, which it also entered;\n\n' +
+            '• the status of the file: invitation sent, invitation expired, access activated, file cancelled, with the corresponding dates.\n\n' +
+            'The funeral home never sees: the questionnaire answers, the list of formalities and their progress, the content of the letters, the documents uploaded, the dispatches made and their tracking.\n\n' +
+            'This separation is enforced by the service itself, and not by a mere display rule.',
+        },
+        {
+          heading: '6. Liability',
+          body:
+            'Seren undertakes to use reasonable means to keep the service available and to ensure the information offered is accurate and up to date. This is an obligation of means.\n\n' +
+            'Seren provides neither legal advice, nor tax advice, nor investment advice. The service carries out no formality on the user’s behalf other than the postal dispatches they expressly request.\n\n' +
+            'The service may be interrupted for maintenance or to correct a defect, particularly during the beta phase.',
+        },
+        {
+          heading: '7. Personal data',
+          body:
+            'The processing of personal data is described in the privacy policy, available from the “Privacy” page, which forms an integral part of these terms.',
+        },
+        {
+          heading: '8. Ending use, and erasure',
+          body:
+            'The user may stop using the service at any time and request the erasure of their account and their data by writing to support@seren-app.fr. The request is handled within 30 days.\n\n' +
+            'The following are then deleted: the account, the questionnaire answers, the formalities, the letters, the documents uploaded and the dispatch history. Seren keeps a record of the file with no identifying data whatsoever (issuing funeral home, dates, amounts), needed for its invoicing and its accounting obligations.',
+        },
+        {
+          heading: '9. Governing law',
+          body:
+            'These terms are governed by French law. In the event of a dispute, an amicable solution will be sought before any legal action. Failing that, the French courts have jurisdiction.',
+        },
+        {
+          heading: '10. Contact',
+          body:
+            'For any question about the service, about your data, or to request the erasure of your account: support@seren-app.fr. Reply within 5 working days.',
+        },
       ],
     },
     security: {
       title: 'Privacy policy (beta version)',
       blocks: [
-        { heading: 'Your data', body: 'Seren processes the information needed for your formalities, provided by your funeral home or entered by you. The content of your file (answers, steps, letters, documents) is never visible to the funeral home.' },
-        { heading: 'Your rights', body: 'Access, rectification, erasure, objection: write to support@seren-app.fr. You can also lodge a complaint with the CNIL (cnil.fr).' },
+        {
+          heading: '1. Data controller',
+          body:
+            '[company name to be completed], SIREN [to be completed], [registered office address to be completed], is the controller of the data described below. Contact: support@seren-app.fr.',
+        },
+        {
+          heading: '2. Data received from the funeral home',
+          body:
+            'To open your support, the funeral home passes on to Seren:\n\n' +
+            '• your first name, your last name, your email address and, where applicable, your phone number;\n\n' +
+            '• the first name, last name and date of death of your loved one.\n\n' +
+            'You are informed of this in the very first message Seren sends you.',
+        },
+        {
+          heading: '3. Data you enter',
+          body:
+            'In the service, you provide: your questionnaire answers (family situation, housing, income, the assets of the deceased), the progress of your formalities, the content of your letters and their variables, your sender address, and the documents you upload — including the death certificate when it has to be attached to a dispatch.',
+        },
+        {
+          heading: '4. Purposes and legal bases',
+          body:
+            '• Create your access and support you through your formalities — legal basis: performance of the service offered by your funeral home.\n\n' +
+            '• Prepare, produce and send your letters — legal basis: performance of the service.\n\n' +
+            '• Process the sensitive information needed for these formalities (death, family situation, assets) — legal basis: explicit consent (art. 9.2.a GDPR), obtained when your access is opened.\n\n' +
+            '• Ensure security and proper technical operation — legal basis: legitimate interest.',
+        },
+        {
+          heading: '5. Recipients and processors',
+          body:
+            '• Supabase — database and authentication — European Union (eu-west-1, Ireland).\n\n' +
+            '• Render — application hosting — European Union.\n\n' +
+            '• Resend — sending the invitation and password reset emails — location being verified before the beta opens.\n\n' +
+            '• MySendingBox — printing, enveloping and franking of the letters — location being verified before the beta opens.\n\n' +
+            '• Sentry — technical error reporting, without personal data (tokens and content stripped before sending) — European Union.\n\n' +
+            '• PostHog — audience measurement, only after cookies have been accepted — European Union.\n\n' +
+            'Your data is neither sold, nor rented, nor used for advertising purposes.',
+        },
+        {
+          heading: '6. What the funeral home does not receive — and what no AI receives',
+          body:
+            'The funeral home that opened your file has access to no content: not your answers, not your formalities, not your letters, not your documents, not your dispatches.\n\n' +
+            'During the beta, no data is sent to a language model: the assisted drafting function is disabled and the texts displayed are written in advance.',
+        },
+        {
+          heading: '7. Retention period',
+          body:
+            'Your data is kept for 12 months after your last sign-in (proposed period, to be confirmed before the beta opens), then deleted. You can request its erasure before that date.\n\n' +
+            'After erasure, Seren keeps the record of the file with no identifying data (funeral home, dates, amounts), for its invoicing and its accounting obligations.',
+        },
+        {
+          heading: '8. Your rights',
+          body:
+            'You have a right of access, rectification, erasure, objection, restriction and portability, as well as the right to withdraw your consent to the processing of sensitive information at any time (withdrawal amounts to a request for erasure, as the service can no longer work without this information).\n\n' +
+            'To exercise these rights: support@seren-app.fr. Reply within 5 working days, execution within 30 days.\n\n' +
+            'You may also lodge a complaint with the CNIL (cnil.fr, 3 place de Fontenoy, 75007 Paris).',
+        },
+        {
+          heading: '9. Security',
+          body:
+            'Exchanges with the service are encrypted (HTTPS). Each account is isolated from the others in the database by rules enforced by the database server itself. The documents you upload are stored in a private space, accessible only from your account. Technical access is limited to the people who need it, who are bound by confidentiality.',
+        },
+        {
+          heading: '10. Known beta limitation: document upload',
+          body:
+            'During the beta, uploaded documents are not scanned by an antivirus (file type check, size limited to 5 MB, private space). This limitation is accepted and documented; antivirus scanning and the retention policy are planned for a later version.\n\n' +
+            'Recommendation: upload only the documents needed for your dispatches (the death certificate in particular), and nothing else.',
+        },
       ],
     },
   },
