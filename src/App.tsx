@@ -9,6 +9,7 @@ import { OfflineBanner } from '@/components/layout/OfflineBanner'
 import { CookieBanner } from '@/components/layout/CookieBanner'
 import { Toaster } from '@/components/ui/toaster'
 import { LoginPage } from '@/pages/LoginPage'
+import { ActivationPage } from '@/pages/ActivationPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 import { ResetPasswordConfirmPage } from '@/pages/ResetPasswordConfirmPage'
 import { ResetPasswordSuccessPage } from '@/pages/ResetPasswordSuccessPage'
@@ -58,6 +59,8 @@ export default function App() {
               <Route path="/login" element={<LoginPage />} />
               {/* Plus d'inscription publique en v2 : l'accès famille s'ouvre par invitation de la PF. */}
               <Route path="/signup" element={<Navigate to="/login" replace />} />
+              {/* Activation famille : PUBLIQUE (le compte n'existe pas encore) — le jeton vient du fragment #t=. */}
+              <Route path="/activation" element={<ActivationPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/reset-password/confirm" element={<ResetPasswordConfirmPage />} />
               <Route path="/reset-password/success" element={<ResetPasswordSuccessPage />} />
