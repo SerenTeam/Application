@@ -687,7 +687,538 @@ begin
 end $$;
 rollback;
 
--- ═══ SCÉNARIOS PARTENAIRE ET ADMIN (Task 3 : S1, S2, S3, S9, S10, S11, S13p) — insérés ici ═══
+-- ════════════════════════════════════════════════════════════════════════════════════════
+-- S1 — partner_create_dossier : création, doublon de défunt signalé puis confirmé
+-- ════════════════════════════════════════════════════════════════════════════════════════
+begin;
+-- Secret partagé (revue 16/09, must-fix 1) : partner_create_dossier et partner_rotate_invitation
+-- l'exigent en 1er argument, comme consume_send. Même insertion qu'en S6.
+insert into public.webhook_config (id, rpc_secret) values (1, 'scenario-local-secret')
+  on conflict (id) do update set rpc_secret = excluded.rpc_secret;
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b001', 'pfx.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$
+declare r jsonb;
+begin
+  -- Sans secret valide, AUCUNE création : même un gérant légitime est refusé avant toute lecture.
+  perform scenario_v2.expect_error('S1z secret faux → invalid_secret (avant toute validation)',
+    format('select public.partner_create_dossier(%L, %L, %L, %L, %L, %L, %L, %L::date, %L)',
+           'mauvais-secret', 'Claire', 'Martin', 'secret.s1@scenario.seren-test.fr', null, 'Jean', 'Martin', current_date - 3, scenario_v2.h('s1-z')),
+    'invalid_secret');
+  perform scenario_v2.expect_error('S1z2 secret null → invalid_secret',
+    format('select public.partner_create_dossier(null, %L, %L, %L, %L, %L, %L, %L::date, %L)',
+           'Claire', 'Martin', 'secret2.s1@scenario.seren-test.fr', null, 'Jean', 'Martin', current_date - 3, scenario_v2.h('s1-z2')),
+    'invalid_secret');
+  perform scenario_v2.ok('S1z3 aucune insertion par les appels sans secret',
+    (select count(*) = 0 from public.dossiers where family_email like 'secret%.s1@scenario.seren-test.fr'));
+  r := public.partner_create_dossier('scenario-local-secret', 'Claire', 'Martin', '  Claire.S1@Scenario.Seren-Test.fr ', '06 12 34 56 78',
+                                     'Jean', 'Martin', current_date - 3, scenario_v2.h('s1-a'));
+  perform scenario_v2.ok('S1a création', (r->>'created')::boolean and not (r->>'duplicate_warning')::boolean
+    and r->>'partner_name' = 'PF Scénario X' and r->'dossier'->>'status' = 'invited'
+    and r->'dossier'->>'family_email' = 'claire.s1@scenario.seren-test.fr'
+    and r->'dossier'->>'deceased_death_date' = to_char(current_date - 3, 'YYYY-MM-DD'), r::text);
+  perform scenario_v2.ok('S1b clés exactes du dossier',
+    (select array_agg(k order by k) from jsonb_object_keys(r->'dossier') as k)
+      = array['created_at', 'deceased_death_date', 'deceased_first_name', 'deceased_last_name', 'family_email',
+              'family_first_name', 'family_last_name', 'id', 'invite_expires_at', 'status'], r::text);
+  r := public.partner_create_dossier('scenario-local-secret', 'Paul', 'Martin', 'paul.s1@scenario.seren-test.fr', null,
+                                     'Jean', 'MARTIN', current_date - 3, scenario_v2.h('s1-b'));
+  perform scenario_v2.ok('S1c même défunt (casse différente) → avertissement, pas d''insertion',
+    not (r->>'created')::boolean and (r->>'duplicate_warning')::boolean and (r->>'duplicate_count')::int = 1
+    and (select array_agg(k order by k) from jsonb_object_keys(r) as k) = array['created', 'duplicate_count', 'duplicate_warning'], r::text);
+  r := public.partner_create_dossier('scenario-local-secret', 'Paul', 'Martin', 'paul.s1@scenario.seren-test.fr', null,
+                                     'Jean', 'MARTIN', current_date - 3, scenario_v2.h('s1-b'), true);
+  perform scenario_v2.ok('S1d doublon confirmé → créé', (r->>'created')::boolean, r::text);
+end $$;
+reset role;
+do $$ begin
+  perform scenario_v2.ok('S1e exactement 2 dossiers en base',
+    (select count(*) = 2 from public.dossiers where partner_id = '00000000-0000-4000-8000-00000000a001'));
+  perform scenario_v2.ok('S1f snapshots, 10 envois, expiration à +7 j, créateur, source partner',
+    (select bool_and(source = 'partner' and price_ttc_cents = 29000 and commission_ttc_cents = 7000 and included_sends = 10
+                     and invite_expires_at between now() + interval '6 days 23 hours' and now() + interval '7 days 1 minute'
+                     and invite_issued_at is not null and invite_rotation_count = 0
+                     and created_by = '00000000-0000-4000-8000-00000000b001' and user_id is null)
+       from public.dossiers where partner_id = '00000000-0000-4000-8000-00000000a001'));
+end $$;
+rollback;
+
+-- ════════════════════════════════════════════════════════════════════════════════════════
+-- S2 — partner_create_dossier : validations, e-mail indisponible, plafond, rôles refusés
+-- ════════════════════════════════════════════════════════════════════════════════════════
+begin;
+insert into public.webhook_config (id, rpc_secret) values (1, 'scenario-local-secret')
+  on conflict (id) do update set rpc_secret = excluded.rpc_secret;
+-- l'admin n'est connu QUE par seren_admins (teste la branche « compte interne » sans enrôlement)
+delete from public.account_enrollments where email = 'admin@scenario.seren-test.fr';
+insert into public.dossiers (partner_id, source, status, family_first_name, family_last_name, family_email,
+                             deceased_first_name, deceased_last_name, deceased_death_date,
+                             price_ttc_cents, commission_ttc_cents, invite_token_hash, invite_expires_at, invite_issued_at) values
+  ('00000000-0000-4000-8000-00000000a002', 'partner', 'invited', 'Pierre', 'Pris', 'pris.s2@scenario.seren-test.fr',
+   'Défunt', 'Pris', current_date - 4, 29000, 7000, scenario_v2.h('s2-pris'), now() + interval '7 days', now());
+-- 50 dossiers PF-Y dans les dernières 24 h → plafond atteint
+insert into public.dossiers (partner_id, source, status, family_first_name, family_last_name, family_email,
+                             deceased_first_name, deceased_last_name, deceased_death_date,
+                             price_ttc_cents, commission_ttc_cents, invite_token_hash, invite_expires_at, invite_issued_at, created_at)
+select '00000000-0000-4000-8000-00000000a002', 'partner', 'invited', 'Lim', 'Ite', 'limit' || g || '.s2@scenario.seren-test.fr',
+       'Def', 'Unt' || g, current_date - 1, 29000, 7000, scenario_v2.h('s2-limit-' || g), now() + interval '7 days', now(), now() - interval '1 hour'
+  from generate_series(1, 50) as g;
+
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b001', 'pfx.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$
+declare
+  -- Le secret est INLINÉ dans le gabarit : tous les appels format(v_sql, …) restent inchangés.
+  v_sql constant text := 'select public.partner_create_dossier(''scenario-local-secret'', %L, %L, %L, %L, %L, %L, %L::date, %L)';
+  v_ok_hash text := scenario_v2.h('s2-valide');
+  r jsonb;
+begin
+  perform scenario_v2.expect_error('S2a prénom famille blanc',
+    format(v_sql, '  ', 'Martin', 'ok.s2@scenario.seren-test.fr', null, 'Jean', 'Martin', current_date - 3, v_ok_hash), 'invalid_family_name');
+  perform scenario_v2.expect_error('S2b nom famille > 100',
+    format(v_sql, 'Claire', repeat('x', 101), 'ok.s2@scenario.seren-test.fr', null, 'Jean', 'Martin', current_date - 3, v_ok_hash), 'invalid_family_name');
+  perform scenario_v2.expect_error('S2c e-mail invalide',
+    format(v_sql, 'Claire', 'Martin', 'pas-un-email', null, 'Jean', 'Martin', current_date - 3, v_ok_hash), 'invalid_email');
+  perform scenario_v2.expect_error('S2d e-mail > 254',
+    format(v_sql, 'Claire', 'Martin', repeat('a', 250) || '@x.fr', null, 'Jean', 'Martin', current_date - 3, v_ok_hash), 'invalid_email');
+  perform scenario_v2.expect_error('S2e téléphone invalide',
+    format(v_sql, 'Claire', 'Martin', 'ok.s2@scenario.seren-test.fr', 'abc', 'Jean', 'Martin', current_date - 3, v_ok_hash), 'invalid_phone');
+  perform scenario_v2.expect_error('S2f prénom défunt blanc',
+    format(v_sql, 'Claire', 'Martin', 'ok.s2@scenario.seren-test.fr', null, ' ', 'Martin', current_date - 3, v_ok_hash), 'invalid_deceased_name');
+  perform scenario_v2.expect_error('S2g date de décès future',
+    format(v_sql, 'Claire', 'Martin', 'ok.s2@scenario.seren-test.fr', null, 'Jean', 'Martin', current_date + 1, v_ok_hash), 'invalid_death_date');
+  perform scenario_v2.expect_error('S2h date de décès > 2 ans',
+    format(v_sql, 'Claire', 'Martin', 'ok.s2@scenario.seren-test.fr', null, 'Jean', 'Martin', current_date - 800, v_ok_hash), 'invalid_death_date');
+  perform scenario_v2.expect_error('S2i date de décès absente',
+    format(v_sql, 'Claire', 'Martin', 'ok.s2@scenario.seren-test.fr', null, 'Jean', 'Martin', null, v_ok_hash), 'invalid_death_date');
+  perform scenario_v2.expect_error('S2j hash hors motif',
+    format(v_sql, 'Claire', 'Martin', 'ok.s2@scenario.seren-test.fr', null, 'Jean', 'Martin', current_date - 3, 'xyz'), 'invalid_token_hash');
+  perform scenario_v2.expect_error('S2k e-mail d''un dossier ouvert (autre PF, casse et espaces)',
+    format(v_sql, 'Claire', 'Martin', '  PRIS.S2@Scenario.Seren-Test.fr ', null, 'Jean', 'Martin', current_date - 3, v_ok_hash), 'email_unavailable');
+  perform scenario_v2.expect_error('S2l e-mail enrôlé sans compte',
+    format(v_sql, 'Claire', 'Martin', 'pending.manager@scenario.seren-test.fr', null, 'Jean', 'Martin', current_date - 3, v_ok_hash), 'email_unavailable');
+  perform scenario_v2.expect_error('S2m e-mail d''un conseiller PF (compte interne non enrôlé)',
+    format(v_sql, 'Claire', 'Martin', 'pfx.advisor@scenario.seren-test.fr', null, 'Jean', 'Martin', current_date - 3, v_ok_hash), 'email_unavailable');
+  perform scenario_v2.expect_error('S2n e-mail d''un admin Seren (seren_admins seul)',
+    format(v_sql, 'Claire', 'Martin', 'admin@scenario.seren-test.fr', null, 'Jean', 'Martin', current_date - 3, v_ok_hash), 'email_unavailable');
+  r := public.partner_create_dossier('scenario-local-secret', 'Claire', 'Martin', 'tel.s2@scenario.seren-test.fr', '   ', 'Jean', 'Martin', current_date - 3, v_ok_hash);
+  perform scenario_v2.ok('S2o téléphone blanc accepté', (r->>'created')::boolean, r::text);
+  perform scenario_v2.expect_error('S2p hash déjà porté par un dossier (course) → email_unavailable',
+    format(v_sql, 'Luc', 'Autre', 'autre.s2@scenario.seren-test.fr', null, 'Marc', 'Autre', current_date - 3, v_ok_hash), 'email_unavailable');
+end $$;
+
+reset role;
+do $$ begin
+  perform scenario_v2.ok('S2q téléphone blanc stocké null',
+    (select family_phone is null from public.dossiers where family_email = 'tel.s2@scenario.seren-test.fr'));
+end $$;
+
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b003', 'pfy.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$ begin
+  perform scenario_v2.expect_error('S2r plafond de 50 dossiers / 24 h',
+    format('select public.partner_create_dossier(''scenario-local-secret'', %L, %L, %L, %L, %L, %L, %L::date, %L)',
+           'Claire', 'Martin', 'plafond.s2@scenario.seren-test.fr', null, 'Jean', 'Martin', current_date - 3, scenario_v2.h('s2-plafond')), 'partner_daily_limit');
+end $$;
+
+reset role;
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b006', 'fam1@scenario.seren-test.fr');
+set local role authenticated;
+do $$ begin
+  perform scenario_v2.expect_error('S2s compte famille',
+    format('select public.partner_create_dossier(''scenario-local-secret'', %L, %L, %L, %L, %L, %L, %L::date, %L)',
+           'Claire', 'Martin', 'x.s2@scenario.seren-test.fr', null, 'Jean', 'Martin', current_date - 3, scenario_v2.h('s2-x')), 'not_a_partner');
+end $$;
+
+reset role;
+select scenario_v2.claims(null, null);
+set local role authenticated;
+do $$ begin
+  perform scenario_v2.expect_error('S2t sans identité',
+    format('select public.partner_create_dossier(''scenario-local-secret'', %L, %L, %L, %L, %L, %L, %L::date, %L)',
+           'Claire', 'Martin', 'x.s2@scenario.seren-test.fr', null, 'Jean', 'Martin', current_date - 3, scenario_v2.h('s2-x')), 'not_a_partner');
+end $$;
+
+reset role;
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b004', 'pfs.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$ begin
+  perform scenario_v2.expect_error('S2u PF suspendue',
+    format('select public.partner_create_dossier(''scenario-local-secret'', %L, %L, %L, %L, %L, %L, %L::date, %L)',
+           'Claire', 'Martin', 'x.s2@scenario.seren-test.fr', null, 'Jean', 'Martin', current_date - 3, scenario_v2.h('s2-x')), 'partner_inactive');
+end $$;
+
+-- PF résiliée : création refusée comme pour une PF suspendue (décision 16/09)
+reset role;
+update public.partners set status = 'terminated' where id = '00000000-0000-4000-8000-00000000a003';
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b004', 'pfs.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$ begin
+  perform scenario_v2.expect_error('S2v PF résiliée → création refusée',
+    format('select public.partner_create_dossier(''scenario-local-secret'', %L, %L, %L, %L, %L, %L, %L::date, %L)',
+           'Claire', 'Martin', 'x.s2@scenario.seren-test.fr', null, 'Jean', 'Martin', current_date - 3, scenario_v2.h('s2-x')), 'partner_inactive');
+end $$;
+rollback;
+
+-- ════════════════════════════════════════════════════════════════════════════════════════
+-- S3 — renvoi, annulation, isolation PF-X / PF-Y, liste sans contenu
+-- ════════════════════════════════════════════════════════════════════════════════════════
+begin;
+insert into public.webhook_config (id, rpc_secret) values (1, 'scenario-local-secret')
+  on conflict (id) do update set rpc_secret = excluded.rpc_secret;
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b001', 'pfx.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$
+declare r jsonb;
+begin
+  r := public.partner_create_dossier('scenario-local-secret', 'Claire', 'Martin', 'claire.s3@scenario.seren-test.fr', null, 'Jean', 'Martin', current_date - 3, scenario_v2.h('s3-v1'));
+  perform set_config('scenario.s3_id', r->'dossier'->>'id', true);
+  -- Le contrôle du secret précède la lecture du dossier : pas d'oracle d'existence pour qui n'a pas le secret.
+  perform scenario_v2.expect_error('S3z renvoi sans secret → invalid_secret (avant tout le reste)',
+    format('select public.partner_rotate_invitation(%L, %L::uuid, %L)', 'mauvais-secret', r->'dossier'->>'id', scenario_v2.h('s3-z')), 'invalid_secret');
+  perform scenario_v2.ok('S3z2 le lien d''origine est intact après un renvoi sans secret',
+    (public.invitation_preview(scenario_v2.h('s3-v1'))->>'valid')::boolean);
+  perform scenario_v2.expect_error('S3a hash hors motif (avant toute lecture)',
+    format('select public.partner_rotate_invitation(''scenario-local-secret'', %L::uuid, %L)', r->'dossier'->>'id', 'xyz'), 'invalid_token_hash');
+  perform scenario_v2.expect_error('S3b renvoi immédiat',
+    format('select public.partner_rotate_invitation(''scenario-local-secret'', %L::uuid, %L)', r->'dossier'->>'id', scenario_v2.h('s3-v2')), 'rotation_too_soon');
+end $$;
+
+reset role;
+update public.dossiers set invite_issued_at = now() - interval '11 minutes' where id = current_setting('scenario.s3_id')::uuid;
+
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b003', 'pfy.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$
+declare
+  v_id uuid := current_setting('scenario.s3_id')::uuid;
+  r    jsonb;
+begin
+  perform scenario_v2.expect_error('S3c PF-Y renvoie un dossier de PF-X',
+    format('select public.partner_rotate_invitation(''scenario-local-secret'', %L::uuid, %L)', v_id, scenario_v2.h('s3-y')), 'dossier_not_found');
+  perform scenario_v2.expect_error('S3d PF-Y annule un dossier de PF-X',
+    format('select public.partner_cancel_dossier(%L::uuid)', v_id), 'dossier_not_found');
+  perform scenario_v2.expect_error('S3e dossier inexistant : même réponse',
+    format('select public.partner_cancel_dossier(%L::uuid)', gen_random_uuid()), 'dossier_not_found');
+  r := public.partner_list_dossiers();
+  perform scenario_v2.ok('S3f PF-Y ne liste aucun dossier de PF-X',
+    r->'partner'->>'id' = '00000000-0000-4000-8000-00000000a002' and jsonb_array_length(r->'dossiers') = 0, r::text);
+end $$;
+
+reset role;
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b001', 'pfx.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$
+declare
+  v_id uuid := current_setting('scenario.s3_id')::uuid;
+  r    jsonb;
+  v_d  jsonb;
+begin
+  r := public.partner_rotate_invitation('scenario-local-secret', v_id, scenario_v2.h('s3-v2'));
+  perform scenario_v2.ok('S3g renvoi', (r->>'rotated')::boolean and r->>'partner_name' = 'PF Scénario X'
+    and r->'dossier'->>'id' = v_id::text and r->'dossier'->>'status' = 'invited'
+    and (select array_agg(k order by k) from jsonb_object_keys(r->'dossier') as k)
+      = array['created_at', 'deceased_death_date', 'deceased_first_name', 'deceased_last_name', 'family_email',
+              'family_first_name', 'family_last_name', 'id', 'invite_expires_at', 'status'], r::text);
+  perform scenario_v2.ok('S3h l''ancien lien est mort', public.invitation_preview(scenario_v2.h('s3-v1'))->>'reason' = 'invalid');
+  perform scenario_v2.ok('S3i le nouveau lien est valide', (public.invitation_preview(scenario_v2.h('s3-v2'))->>'valid')::boolean);
+  r := public.partner_list_dossiers();
+  v_d := r->'dossiers'->0;
+  perform scenario_v2.ok('S3j liste PF-X : partenaire et 1 dossier',
+    r->'partner' = jsonb_build_object('id', '00000000-0000-4000-8000-00000000a001', 'name', 'PF Scénario X', 'status', 'active', 'user_role', 'manager')
+    and jsonb_array_length(r->'dossiers') = 1, r::text);
+  perform scenario_v2.ok('S3k clés exactes d''un dossier listé',
+    (select array_agg(k order by k) from jsonb_object_keys(v_d) as k)
+      = array['activated_at', 'can_cancel', 'can_resend', 'cancel_deadline', 'cancelled_at', 'created_at', 'deceased_death_date',
+              'deceased_first_name', 'deceased_last_name', 'family_email', 'family_first_name', 'family_last_name', 'family_phone',
+              'id', 'invite_expired', 'invite_expires_at', 'source', 'status'], v_d::text);
+  perform scenario_v2.ok('S3l drapeaux calculés', (v_d->>'can_resend')::boolean and (v_d->>'can_cancel')::boolean
+    and not (v_d->>'invite_expired')::boolean
+    and (v_d->>'cancel_deadline')::timestamptz = (v_d->>'created_at')::timestamptz + interval '48 hours', v_d::text);
+  perform scenario_v2.ok('S3m aucune donnée de contenu ni secret',
+    r::text !~ '(invite_token_hash|price_ttc|commission_ttc|user_id|answers|content|roadmap|letter|attachment|purchase|consent|balance)', r::text);
+end $$;
+
+reset role;
+update public.dossiers set invite_issued_at = now() - interval '11 minutes', invite_rotation_count = 10 where id = current_setting('scenario.s3_id')::uuid;
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b001', 'pfx.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$ begin
+  perform scenario_v2.expect_error('S3n 11ᵉ renvoi',
+    format('select public.partner_rotate_invitation(''scenario-local-secret'', %L::uuid, %L)', current_setting('scenario.s3_id'), scenario_v2.h('s3-v3')), 'rotation_limit');
+end $$;
+
+reset role;
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b002', 'pfx.advisor@scenario.seren-test.fr');
+set local role authenticated;
+do $$
+declare
+  v_id uuid := current_setting('scenario.s3_id')::uuid;
+  r    jsonb;
+begin
+  r := public.partner_cancel_dossier(v_id);
+  perform scenario_v2.ok('S3o le conseiller annule sous 48 h', (r->>'cancelled')::boolean and not (r->>'already_cancelled')::boolean
+    and r->'dossier'->>'status' = 'cancelled' and r->'dossier'->>'cancelled_at' is not null
+    and (select array_agg(k order by k) from jsonb_object_keys(r->'dossier') as k) = array['cancelled_at', 'id', 'status'], r::text);
+  r := public.partner_cancel_dossier(v_id);
+  perform scenario_v2.ok('S3p rejeu → already_cancelled', not (r->>'cancelled')::boolean and (r->>'already_cancelled')::boolean, r::text);
+  perform scenario_v2.expect_error('S3q renvoi d''un dossier annulé',
+    format('select public.partner_rotate_invitation(''scenario-local-secret'', %L::uuid, %L)', v_id, scenario_v2.h('s3-v4')), 'dossier_not_invitable');
+  perform scenario_v2.ok('S3r le lien annulé est mort', public.invitation_preview(scenario_v2.h('s3-v2'))->>'reason' = 'invalid');
+end $$;
+
+reset role;
+do $$ begin
+  perform scenario_v2.ok('S3s annulation tracée, hash effacé',
+    (select status = 'cancelled' and invite_token_hash is null and invite_expires_at is null
+            and cancelled_by = '00000000-0000-4000-8000-00000000b002' from public.dossiers where id = current_setting('scenario.s3_id')::uuid));
+end $$;
+insert into public.dossiers (partner_id, source, status, user_id, family_first_name, family_last_name, family_email,
+                             deceased_first_name, deceased_last_name, deceased_death_date,
+                             price_ttc_cents, commission_ttc_cents, created_at, activated_at) values
+  ('00000000-0000-4000-8000-00000000a001', 'partner', 'active', '00000000-0000-4000-8000-00000000b006', 'Claire', 'Martin',
+   'fam1@scenario.seren-test.fr', 'Jean', 'Martin', current_date - 3, 29000, 7000, now() - interval '1 day', now());
+insert into public.dossiers (partner_id, source, status, family_first_name, family_last_name, family_email,
+                             deceased_first_name, deceased_last_name, deceased_death_date,
+                             price_ttc_cents, commission_ttc_cents, invite_token_hash, invite_expires_at, invite_issued_at, created_at) values
+  ('00000000-0000-4000-8000-00000000a001', 'partner', 'invited', 'Vieux', 'Lien', 'vieux.s3@scenario.seren-test.fr',
+   'Marc', 'Lien', current_date - 10, 29000, 7000, scenario_v2.h('s3-old'), now() + interval '5 days', now() - interval '49 hours', now() - interval '49 hours');
+select set_config('scenario.s3_active', (select id::text from public.dossiers where user_id = '00000000-0000-4000-8000-00000000b006'), true);
+select set_config('scenario.s3_old', (select id::text from public.dossiers where family_email = 'vieux.s3@scenario.seren-test.fr'), true);
+
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b001', 'pfx.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$
+declare r jsonb;
+begin
+  perform scenario_v2.expect_error('S3t annuler un dossier activé (aucune PF ne coupe une famille)',
+    format('select public.partner_cancel_dossier(%L::uuid)', current_setting('scenario.s3_active')), 'dossier_already_active');
+  perform scenario_v2.expect_error('S3u renvoyer un dossier activé',
+    format('select public.partner_rotate_invitation(''scenario-local-secret'', %L::uuid, %L)', current_setting('scenario.s3_active'), scenario_v2.h('s3-act')), 'dossier_not_invitable');
+  perform scenario_v2.expect_error('S3v annuler après 48 h',
+    format('select public.partner_cancel_dossier(%L::uuid)', current_setting('scenario.s3_old')), 'cancel_window_elapsed');
+  r := public.partner_rotate_invitation('scenario-local-secret', current_setting('scenario.s3_old')::uuid, scenario_v2.h('s3-old2'));
+  perform scenario_v2.ok('S3w une vieille invitation reste renvoyable', (r->>'rotated')::boolean, r::text);
+end $$;
+rollback;
+
+-- ════════════════════════════════════════════════════════════════════════════════════════
+-- S9 — partner_month_counters : jeu daté de 6 dossiers (mois précédent, annulé, expiré, démo)
+-- ════════════════════════════════════════════════════════════════════════════════════════
+begin;
+insert into public.webhook_config (id, rpc_secret) values (1, 'scenario-local-secret')
+  on conflict (id) do update set rpc_secret = excluded.rpc_secret;
+do $$
+declare
+  v_start timestamptz := date_trunc('month', now() at time zone 'Europe/Paris') at time zone 'Europe/Paris';
+begin
+  -- d1 : partner, activé ce mois → facturable
+  insert into public.dossiers (partner_id, source, status, user_id, family_first_name, family_last_name, family_email,
+                               deceased_first_name, deceased_last_name, deceased_death_date, price_ttc_cents, commission_ttc_cents, created_at, activated_at)
+  values ('00000000-0000-4000-8000-00000000a001', 'partner', 'active', '00000000-0000-4000-8000-00000000b006', 'A', 'Un', 'd1.s9@scenario.seren-test.fr',
+          'X', 'Un', current_date - 3, 29000, 7000, now(), now());
+  -- d2 : partner, créé et activé le mois précédent
+  insert into public.dossiers (partner_id, source, status, user_id, family_first_name, family_last_name, family_email,
+                               deceased_first_name, deceased_last_name, deceased_death_date, price_ttc_cents, commission_ttc_cents, created_at, activated_at)
+  values ('00000000-0000-4000-8000-00000000a001', 'partner', 'active', '00000000-0000-4000-8000-00000000b007', 'B', 'Deux', 'd2.s9@scenario.seren-test.fr',
+          'X', 'Deux', current_date - 40, 29000, 7000, v_start - interval '5 days', v_start - interval '4 days');
+  -- d3 : invité en attente, créé ce mois
+  insert into public.dossiers (partner_id, source, status, family_first_name, family_last_name, family_email, deceased_first_name, deceased_last_name,
+                               deceased_death_date, price_ttc_cents, commission_ttc_cents, invite_token_hash, invite_expires_at, invite_issued_at, created_at)
+  values ('00000000-0000-4000-8000-00000000a001', 'partner', 'invited', 'C', 'Trois', 'd3.s9@scenario.seren-test.fr', 'X', 'Trois',
+          current_date - 2, 29000, 7000, scenario_v2.h('s9-d3'), now() + interval '7 days', now(), now());
+  -- d4 : invité expiré, créé le mois précédent
+  insert into public.dossiers (partner_id, source, status, family_first_name, family_last_name, family_email, deceased_first_name, deceased_last_name,
+                               deceased_death_date, price_ttc_cents, commission_ttc_cents, invite_token_hash, invite_expires_at, invite_issued_at, created_at)
+  values ('00000000-0000-4000-8000-00000000a001', 'partner', 'invited', 'D', 'Quatre', 'd4.s9@scenario.seren-test.fr', 'X', 'Quatre',
+          current_date - 45, 29000, 7000, scenario_v2.h('s9-d4'), now() - interval '1 hour', v_start - interval '10 days', v_start - interval '10 days');
+  -- d5 : annulé ce mois
+  insert into public.dossiers (partner_id, source, status, family_first_name, family_last_name, family_email, deceased_first_name, deceased_last_name,
+                               deceased_death_date, price_ttc_cents, commission_ttc_cents, cancelled_at, created_at)
+  values ('00000000-0000-4000-8000-00000000a001', 'partner', 'cancelled', 'E', 'Cinq', 'd5.s9@scenario.seren-test.fr', 'X', 'Cinq',
+          current_date - 1, 29000, 7000, now(), now());
+  -- d6 : démo, activé ce mois → jamais facturable
+  insert into public.dossiers (partner_id, source, status, user_id, family_email, price_ttc_cents, commission_ttc_cents, created_at, activated_at)
+  values ('00000000-0000-4000-8000-00000000a001', 'demo', 'active', '00000000-0000-4000-8000-00000000b009', 'd6.s9@scenario.seren-test.fr',
+          29000, 7000, now(), now());
+end $$;
+
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b001', 'pfx.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$
+declare r jsonb := public.partner_month_counters();
+begin
+  perform scenario_v2.ok('S9a mois courant Europe/Paris', r->>'month' = to_char(now() at time zone 'Europe/Paris', 'YYYY-MM'), r::text);
+  perform scenario_v2.ok('S9b compteurs', (r->>'created_this_month')::int = 4 and (r->>'created_total')::int = 6
+    and (r->>'activated_total')::int = 3 and (r->>'pending_activation')::int = 1 and (r->>'expired_invitations')::int = 1
+    and (r->>'cancelled_total')::int = 1 and (r->>'activated_this_month')::int = 2, r::text);
+  perform scenario_v2.ok('S9c estimation gérant (source partner, activé ce mois)',
+    r->'billing_preview' = '{"billable_count":1,"seren_due_ttc_cents":22000,"unit_due_ttc_cents":22000,"currency":"EUR"}'::jsonb, r::text);
+  perform scenario_v2.ok('S9d clés exactes',
+    (select array_agg(k order by k) from jsonb_object_keys(r) as k)
+      = array['activated_this_month', 'activated_total', 'billing_preview', 'cancelled_total', 'created_this_month',
+              'created_total', 'expired_invitations', 'month', 'pending_activation'], r::text);
+end $$;
+
+reset role;
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b002', 'pfx.advisor@scenario.seren-test.fr');
+set local role authenticated;
+do $$ begin
+  perform scenario_v2.ok('S9e conseiller → billing_preview null', public.partner_month_counters()->'billing_preview' = 'null'::jsonb);
+end $$;
+
+reset role;
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b006', 'fam1@scenario.seren-test.fr');
+set local role authenticated;
+do $$ begin
+  perform scenario_v2.ok('S9f famille → compteurs null', public.partner_month_counters() is null);
+  perform scenario_v2.ok('S9g famille → liste null', public.partner_list_dossiers() is null);
+end $$;
+
+-- PF résiliée (décision 16/09) : plus aucune lecture, donc plus aucune PII famille. 'suspended' garde
+-- la lecture (prouvé par S2u/S2v : seule la création est refusée pour une PF non 'active').
+reset role;
+update public.partners set status = 'terminated' where id = '00000000-0000-4000-8000-00000000a001';
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b001', 'pfx.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$
+declare a jsonb;
+begin
+  perform scenario_v2.ok('S9h PF résiliée → compteurs null', public.partner_month_counters() is null);
+  perform scenario_v2.ok('S9i PF résiliée → liste null', public.partner_list_dossiers() is null);
+  a := public.my_account();
+  perform scenario_v2.ok('S9j PF résiliée → my_account sans rôle partenaire',
+    a->>'role' = 'none' and a->'partner' = 'null'::jsonb, a::text);
+end $$;
+
+reset role;
+update public.partners set status = 'suspended' where id = '00000000-0000-4000-8000-00000000a001';
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b001', 'pfx.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$
+declare r jsonb := public.partner_list_dossiers();
+begin
+  perform scenario_v2.ok('S9k PF suspendue → lecture conservée',
+    r is not null and r->'partner'->>'status' = 'suspended' and jsonb_array_length(r->'dossiers') = 6, r::text);
+  perform scenario_v2.ok('S9l PF suspendue → compteurs conservés', public.partner_month_counters() is not null);
+end $$;
+rollback;
+
+-- ════════════════════════════════════════════════════════════════════════════════════════
+-- S10 — admin_partner_overview (migration L4c) : SAUTÉ tant que la fonction n'existe pas
+-- ════════════════════════════════════════════════════════════════════════════════════════
+begin;
+insert into public.dossiers (partner_id, source, status, user_id, family_first_name, family_last_name, family_email,
+                             deceased_first_name, deceased_last_name, deceased_death_date, price_ttc_cents, commission_ttc_cents, created_at, activated_at) values
+  ('00000000-0000-4000-8000-00000000a001', 'partner', 'active', '00000000-0000-4000-8000-00000000b006', 'Claire', 'Martin',
+   'fam1@scenario.seren-test.fr', 'Jean', 'Martin', current_date - 3, 29000, 7000, now(), now());
+insert into public.dossiers (partner_id, source, status, family_first_name, family_last_name, family_email, deceased_first_name, deceased_last_name,
+                             deceased_death_date, price_ttc_cents, commission_ttc_cents, invite_token_hash, invite_expires_at, invite_issued_at, created_at) values
+  ('00000000-0000-4000-8000-00000000a001', 'partner', 'invited', 'Paul', 'Roy', 'paul.s10@scenario.seren-test.fr', 'Luc', 'Roy',
+   current_date - 2, 29000, 7000, scenario_v2.h('s10-inv'), now() + interval '7 days', now(), now());
+insert into public.dossiers (partner_id, source, status, family_first_name, family_last_name, family_email, deceased_first_name, deceased_last_name,
+                             deceased_death_date, price_ttc_cents, commission_ttc_cents, cancelled_at, created_at) values
+  ('00000000-0000-4000-8000-00000000a002', 'partner', 'cancelled', 'Lou', 'Petit', 'lou.s10@scenario.seren-test.fr', 'René', 'Petit',
+   current_date - 1, 29000, 7000, now(), now());
+
+do $$ begin
+  if to_regprocedure('public.admin_partner_overview()') is null then
+    raise notice 'SKIP S10 admin_partner_overview absente (migration L4c non appliquée)';
+  end if;
+end $$;
+
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b005', 'admin@scenario.seren-test.fr');
+set local role authenticated;
+do $$
+declare
+  r   jsonb;
+  v_x jsonb;
+  v_y jsonb;
+  v_s jsonb;
+begin
+  if to_regprocedure('public.admin_partner_overview()') is null then
+    return;
+  end if;
+  r := public.admin_partner_overview();
+  select e into v_x from jsonb_array_elements(r->'partners') as e where e->>'partner_id' = '00000000-0000-4000-8000-00000000a001';
+  select e into v_y from jsonb_array_elements(r->'partners') as e where e->>'partner_id' = '00000000-0000-4000-8000-00000000a002';
+  select e into v_s from jsonb_array_elements(r->'partners') as e where e->>'partner_id' = '00000000-0000-4000-8000-00000000a003';
+  perform scenario_v2.ok('S10a admin → vue du mois', r->>'month' = to_char(now() at time zone 'Europe/Paris', 'YYYY-MM')
+    and r->>'generated_at' is not null, r::text);
+  perform scenario_v2.ok('S10b PF-X', v_x->>'name' = 'PF Scénario X' and v_x->>'status' = 'active'
+    and (v_x->>'dossiers_total')::int = 2 and (v_x->>'dossiers_this_month')::int = 2 and (v_x->>'invited_pending')::int = 1
+    and (v_x->>'activated')::int = 1 and (v_x->>'cancelled')::int = 0 and v_x->>'last_dossier_at' is not null, v_x::text);
+  perform scenario_v2.ok('S10c PF-Y annulé, PF-S vide et suspendue', (v_y->>'cancelled')::int = 1 and (v_y->>'dossiers_total')::int = 1
+    and (v_s->>'dossiers_total')::int = 0 and v_s->'last_dossier_at' = 'null'::jsonb and v_s->>'status' = 'suspended', r::text);
+  perform scenario_v2.ok('S10d clés exactes par partenaire',
+    (select array_agg(k order by k) from jsonb_object_keys(v_x) as k)
+      = array['activated', 'cancelled', 'dossiers_this_month', 'dossiers_total', 'invited_pending', 'last_dossier_at', 'name', 'partner_id', 'status'], v_x::text);
+  perform scenario_v2.ok('S10e aucune PII famille ni donnée de facturation', r::text !~ '(@|family|deceased|email|siret|billing)', r::text);
+  perform scenario_v2.ok('S10f tri par raison sociale',
+    (select array_agg(e->>'name' order by ord) from jsonb_array_elements(r->'partners') with ordinality as t(e, ord))
+      = (select array_agg(e->>'name' order by e->>'name') from jsonb_array_elements(r->'partners') as e), r::text);
+end $$;
+
+reset role;
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b001', 'pfx.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$ begin
+  if to_regprocedure('public.admin_partner_overview()') is null then return; end if;
+  perform scenario_v2.ok('S10g gérant PF → null', public.admin_partner_overview() is null);
+end $$;
+
+reset role;
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b006', 'fam1@scenario.seren-test.fr');
+set local role authenticated;
+do $$ begin
+  if to_regprocedure('public.admin_partner_overview()') is null then return; end if;
+  perform scenario_v2.ok('S10h famille → null', public.admin_partner_overview() is null);
+end $$;
+rollback;
+
+-- ════════════════════════════════════════════════════════════════════════════════════════
+-- S11 — partner_dashboard() v0 intacte (rollback Render vers le deploy de U1 toujours sûr)
+-- ════════════════════════════════════════════════════════════════════════════════════════
+begin;
+do $$ begin
+  perform scenario_v2.ok('S11a corps identique à 20260913200000 (md5 de prosrc)',
+    (select md5(prosrc) = '8277ca3955cc35a54f42223295052c28' from pg_proc where oid = 'public.partner_dashboard()'::regprocedure));
+  perform scenario_v2.ok('S11b grant authenticated conservé', has_function_privilege('authenticated', 'public.partner_dashboard()', 'execute'));
+end $$;
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b001', 'pfx.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$
+declare r json := public.partner_dashboard();
+begin
+  perform scenario_v2.ok('S11c exécutable par le gérant PF-X', r is not null and r->>'partner_name' = 'PF Scénario X'
+    and r->>'attributed_count' = '0', r::text);
+end $$;
+rollback;
+
+-- ════════════════════════════════════════════════════════════════════════════════════════
+-- S13p — droits des RPC PF, admin (si L4c) et F1 (si L1b)
+-- ════════════════════════════════════════════════════════════════════════════════════════
+do $$
+declare v_fn text;
+begin
+  foreach v_fn in array array['public.partner_create_dossier(text, text, text, text, text, text, text, date, text, boolean)',
+                              'public.partner_rotate_invitation(text, uuid, text)', 'public.partner_cancel_dossier(uuid)',
+                              'public.partner_list_dossiers()', 'public.partner_month_counters()',
+                              'public.admin_partner_overview()', 'public.get_transmission_by_code(text)'] loop
+    if to_regprocedure(v_fn) is null then
+      raise notice 'SKIP S13p % absente', v_fn;
+      continue;
+    end if;
+    perform scenario_v2.ok('S13p aucun EXECUTE PUBLIC : ' || v_fn,
+      (select p.proacl is not null and not exists (select 1 from aclexplode(p.proacl) a where a.grantee = 0 and a.privilege_type = 'EXECUTE')
+         from pg_proc p where p.oid = v_fn::regprocedure));
+    perform scenario_v2.ok('S13p search_path vide et security definer : ' || v_fn,
+      (select p.prosecdef and coalesce(array_to_string(p.proconfig, ',') like '%search_path=""%', false)
+         from pg_proc p where p.oid = v_fn::regprocedure));
+    perform scenario_v2.ok('S13p anon refusé, authenticated autorisé : ' || v_fn,
+      not has_function_privilege('anon', v_fn, 'execute') and has_function_privilege('authenticated', v_fn, 'execute'));
+  end loop;
+end $$;
 
 -- ── Nettoyage des fixtures (committé) ──────────────────────────────────────────────────────
 delete from public.dossiers
