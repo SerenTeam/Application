@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type SetStateAction } from 'react'
 import { apiFetch } from '@/lib/api'
 import { useLang } from '@/i18n/LanguageContext'
 import type { DossierFormValues, PartnerCountersData, PartnerDossier, PartnerInfo } from '@/lib/partner-dossier'
@@ -37,8 +37,18 @@ function failure(res: Response, data: Record<string, unknown> | null): PartnerAc
 export function usePartnerDashboard() {
   const { lang } = useLang()
   const [state, setState] = useState<PartnerDashboardState>(INITIAL)
+  // Numéro du dernier refresh lancé (voir la garde de séquence ci-dessous).
+  const sequence = useRef(0)
 
   const refresh = useCallback(async () => {
+    // Garde de séquence : créer, renvoyer et annuler déclenchent chacun un refresh, et un changement
+    // de langue en relance un aussi. Sans ticket, deux rafraîchissements concurrents peuvent revenir
+    // dans le désordre et la réponse la plus ANCIENNE écraserait la plus récente — la PF verrait
+    // réapparaître la liste d'avant son action. Seule la réponse du dernier refresh lancé écrit.
+    const ticket = ++sequence.current
+    const commit = (next: SetStateAction<PartnerDashboardState>) => {
+      if (ticket === sequence.current) setState(next)
+    }
     try {
       const [listRes, countersRes] = await Promise.all([
         apiFetch(`/api/partner/dossiers?lang=${lang}`),
@@ -46,16 +56,16 @@ export function usePartnerDashboard() {
       ])
       const [list, counters] = await Promise.all([readJson(listRes), readJson(countersRes)])
       if (listRes.status === 403 || countersRes.status === 403) {
-        setState({ ...INITIAL, loading: false, notPartner: true })
+        commit({ ...INITIAL, loading: false, notPartner: true })
         return
       }
       if (!listRes.ok || !countersRes.ok || !list?.success || !counters?.success) {
-        setState((prev) => ({ ...prev, loading: false, error: true }))
+        commit((prev) => ({ ...prev, loading: false, error: true }))
         return
       }
-      setState({ loading: false, error: false, notPartner: false, partner: list.partner, dossiers: list.dossiers ?? [], counters: counters.counters })
+      commit({ loading: false, error: false, notPartner: false, partner: list.partner, dossiers: list.dossiers ?? [], counters: counters.counters })
     } catch {
-      setState((prev) => ({ ...prev, loading: false, error: true }))
+      commit((prev) => ({ ...prev, loading: false, error: true }))
     }
   }, [lang])
 
