@@ -9,6 +9,7 @@ import * as supabaseStore from '../lib/sessions-store.js'
 import { writeQuestionText } from '../lib/question-writer.js'
 import { createUserRateLimiter } from '../lib/rate-limit.js'
 import { msg } from '../lib/messages.js'
+import { FAIL_CLOSED_GATE } from '../lib/require-active-dossier.js'
 
 const SORTED = [...QUESTIONS_CATALOG].sort((a, b) => a.order - b.order)
 const TRISTATE_LABELS = {
@@ -89,6 +90,8 @@ function buildRecap(answers, lang) {
 
 export function createQuestionnaireRouter({
   requireAuth,
+  // Gate v2 (contrat §4.2) : défaut FAIL-CLOSED (A5) — les tests injectent un passe-plat explicite.
+  requireActiveDossier = FAIL_CLOSED_GATE,
   store = supabaseStore,
   mistral = null,
   model = 'mistral-small-latest',
@@ -117,7 +120,7 @@ export function createQuestionnaireRouter({
     return toRendered(spec, session.answers, text, session.lang)
   }
 
-  router.post('/start', requireAuth, startLimiter, async (req, res) => {
+  router.post('/start', requireAuth, requireActiveDossier, startLimiter, async (req, res) => {
     const rawLang = req.body?.lang
     const lang = rawLang === undefined ? 'fr' : rawLang
     if (lang !== 'fr' && lang !== 'en') {
@@ -135,7 +138,7 @@ export function createQuestionnaireRouter({
     }
   })
 
-  router.post('/answer', requireAuth, async (req, res) => {
+  router.post('/answer', requireAuth, requireActiveDossier, async (req, res) => {
     try {
       const { session_id, question_id, value } = req.body
       if (!session_id || !question_id) {
@@ -168,7 +171,7 @@ export function createQuestionnaireRouter({
     }
   })
 
-  router.post('/reask', requireAuth, async (req, res) => {
+  router.post('/reask', requireAuth, requireActiveDossier, async (req, res) => {
     try {
       const { session_id, question_id } = req.body
       if (!session_id || !question_id) {
@@ -194,7 +197,7 @@ export function createQuestionnaireRouter({
     }
   })
 
-  router.post('/resume', requireAuth, resumeLimiter, async (req, res) => {
+  router.post('/resume', requireAuth, requireActiveDossier, resumeLimiter, async (req, res) => {
     try {
       const { session_id } = req.body
       if (!session_id) return res.status(400).json({ success: false, error: msg(bodyLang(req), 'session_required') })
@@ -211,7 +214,7 @@ export function createQuestionnaireRouter({
     }
   })
 
-  router.post('/complete', requireAuth, async (req, res) => {
+  router.post('/complete', requireAuth, requireActiveDossier, async (req, res) => {
     try {
       const { session_id } = req.body
       if (!session_id) return res.status(400).json({ success: false, error: msg(bodyLang(req), 'session_required') })

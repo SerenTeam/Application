@@ -52,7 +52,7 @@ function makeApp() {
   })
   const app = express()
   app.use(express.json())
-  app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, store, writeText }))
+  app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, requireActiveDossier: PASS, store, writeText }))
   return { app, sessions }
 }
 
@@ -167,6 +167,7 @@ describe('POST /api/questionnaire/answer', () => {
     app2.use(express.json())
     app2.use('/api/questionnaire', createQuestionnaireRouter({
       requireAuth: (req: express.Request & { user?: unknown; supabaseClient?: unknown }, _res: express.Response, next: express.NextFunction) => { req.user = { id: 'u' }; req.supabaseClient = {}; next() },
+      requireActiveDossier: PASS,
       store: {
         async createSession() { throw new Error('n/a') },
         async loadSession() { return { id: 's', user_id: 'u', answers: {} } },
@@ -304,7 +305,7 @@ describe('PII : rédacteur Mistral (chantier 2a)', () => {
     }
     const app = express()
     app.use(express.json())
-    app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, store, writeText }))
+    app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, requireActiveDossier: PASS, store, writeText }))
 
     const start = await request(app).post('/api/questionnaire/start')
     const sessionId = start.body.session_id

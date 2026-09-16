@@ -1,9 +1,12 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import express from 'express'
 import request from 'supertest'
 import crypto from 'crypto'
 // @ts-expect-error — module JS serveur
 import { createAttachmentsRouter } from '../server/routes/attachments.js'
+
+// Gate passe-plat EXPLICITE (A5 : le défaut des factories est fail-closed).
+const PASS = (_req: express.Request, _res: express.Response, next: express.NextFunction) => next()
 
 // ── Fakes ────────────────────────────────────────────────────────────────
 // Reproduit le contrat réel : req.supabaseClient est un client Supabase authentifié au token de
@@ -179,7 +182,7 @@ function makeApp(opts: { backend?: Backend; storageOpts?: { uploadError?: unknow
   }
   const app = express()
   app.use(express.json())
-  app.use('/api/attachments', createAttachmentsRouter({ requireAuth }))
+  app.use('/api/attachments', createAttachmentsRouter({ requireAuth, requireActiveDossier: PASS }))
   return { app, backend }
 }
 
@@ -188,6 +191,15 @@ const PDF_BYTES = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(20, 0)]
 const JPEG_BYTES = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(20, 0)])
 const PNG_BYTES = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(20, 0)])
 const EXE_BYTES = Buffer.concat([Buffer.from([0x4d, 0x5a, 0x90, 0x00]), Buffer.alloc(20, 0)]) // "MZ..." — exécutable Windows
+
+// Le coffre n'ouvre qu'avec le canal papier (contrat §5, D3) : les tests de flux nominal arment
+// le flag, son test dédié le retire.
+beforeEach(() => {
+  process.env.PAPER_SENDS_ENABLED = 'true'
+})
+afterEach(() => {
+  delete process.env.PAPER_SENDS_ENABLED
+})
 
 describe('POST /api/attachments', () => {
   it('PDF valide (magic bytes) → 201, {id, kind, filename, size}, aucune URL renvoyée', async () => {
@@ -441,5 +453,27 @@ describe('DELETE /api/attachments/:id', () => {
     const { app } = makeApp()
     const res = await request(app).delete('/api/attachments/whatever')
     expect(res.status).toBe(401)
+  })
+})
+
+describe('kill switch du coffre (PAPER_SENDS_ENABLED)', () => {
+  it('flag absent : POST 503 ATTACHMENTS_DISABLED, rien stocké (avant multer : aucun fichier bufferisé)', async () => {
+    delete process.env.PAPER_SENDS_ENABLED
+    const { app, backend } = makeApp()
+    const res = await request(app)
+      .post('/api/attachments')
+      .set('Authorization', 'Bearer user-1')
+      .field('kind', 'acte_deces')
+      .attach('file', PDF_BYTES, 'acte.pdf')
+    expect(res.status).toBe(503)
+    expect(res.body.code).toBe('ATTACHMENTS_DISABLED')
+    expect(backend.rows).toHaveLength(0)
+    expect(backend.objects.size).toBe(0)
+  })
+
+  it('flag absent : lister et supprimer restent possibles (GET 200)', async () => {
+    delete process.env.PAPER_SENDS_ENABLED
+    const { app } = makeApp()
+    expect((await request(app).get('/api/attachments').set('Authorization', 'Bearer user-1')).status).toBe(200)
   })
 })
