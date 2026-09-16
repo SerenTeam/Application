@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { Lang } from '@/i18n'
 
 // Agrégats renvoyés par la RPC `partner_dashboard()` (migration
 // supabase/migrations/20260913200000_pf_dashboard_demo.sql). AUCUN détail par dossier,
@@ -51,13 +50,4 @@ export function usePartnerDashboard(): PartnerDashboardState {
   }, [])
 
   return state
-}
-
-/** Formate un montant en centimes (revenue_cents/commission_cents) en euros, langue active —
- * seule façon d'afficher ces montants, jamais de conversion écrite en dur dans la page. */
-export function formatEuroCents(cents: number, lang: Lang): string {
-  return new Intl.NumberFormat(lang === 'en' ? 'en-GB' : 'fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(cents / 100)
 }

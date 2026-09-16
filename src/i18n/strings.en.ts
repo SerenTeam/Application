@@ -374,15 +374,12 @@ export const STRINGS_EN: Strings = {
   },
 
   // Partner space (v0 demo, docs/design-pf-dashboard-demo.md) — URL-only access, page outside
-  // the shared navigation.
+  // the shared navigation. v2 FLOOR tier: no amounts left (revenue and commission were computed
+  // on family purchases, which the v2 model removes).
   partner: {
     title: 'Partner space',
-    rateLabel: 'Commission rate: {rate}',
     tiles: {
       attributed: 'Cases supported',
-      paid: 'Cases paid',
-      revenue: 'Revenue generated',
-      commission: 'Your commission',
     },
     previewNotice: 'Preview — full partner program coming soon',
   },

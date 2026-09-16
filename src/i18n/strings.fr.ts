@@ -374,15 +374,12 @@ export const STRINGS_FR = {
   },
 
   // Espace partenaire PF (v0-démo, docs/design-pf-dashboard-demo.md) — accès par URL uniquement,
-  // page hors navigation partagée.
+  // page hors navigation partagée. Palier PLANCHER v2 : plus aucun montant (le CA et la commission
+  // étaient calculés sur des achats famille, que le modèle v2 supprime).
   partner: {
     title: 'Espace partenaire',
-    rateLabel: 'Taux de commission : {rate}',
     tiles: {
       attributed: 'Dossiers accompagnés',
-      paid: 'Dossiers ayant payé',
-      revenue: 'CA généré',
-      commission: 'Votre commission',
     },
     previewNotice: 'Préversion — dispositif partenaire complet à venir',
   },

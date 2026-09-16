@@ -1,11 +1,8 @@
 import { Navigate } from 'react-router-dom'
-import { usePartnerDashboard, formatEuroCents } from '@/hooks/usePartnerDashboard'
+import { usePartnerDashboard } from '@/hooks/usePartnerDashboard'
 import { useT } from '@/i18n/useT'
-import { useLang } from '@/i18n/LanguageContext'
-import { fmt } from '@/i18n'
 import { AppHeader, HeaderNavLink } from '@/components/layout/AppHeader'
 import { SectionHeading } from '@/components/ui/section-heading'
-import { PillBadge } from '@/components/ui/pill-badge'
 
 // Espace partenaire (v0-démo, docs/design-pf-dashboard-demo.md). Accès par URL uniquement —
 // AUCUN lien n'existe vers /partenaire dans la navigation partagée (Sidebar/AppHeader) : c'est
@@ -13,7 +10,6 @@ import { PillBadge } from '@/components/ui/pill-badge'
 export function PartnerDashboardPage() {
   const { loading, data, error } = usePartnerDashboard()
   const t = useT()
-  const { lang } = useLang()
 
   if (loading) {
     return (
@@ -50,16 +46,11 @@ export function PartnerDashboardPage() {
     return <Navigate to="/dashboard" replace />
   }
 
-  const formattedRate = new Intl.NumberFormat(lang === 'en' ? 'en-GB' : 'fr-FR', {
-    style: 'percent',
-    maximumFractionDigits: 1,
-  }).format(data.commission_rate)
-
+  // Palier PLANCHER (contrat §1.2) : plus AUCUN montant côté PF. Le CA, la commission et le taux
+  // étaient calculés sur des achats famille — le modèle v2 les supprime (Seren ne vend plus rien
+  // à la famille), ils seraient donc faux autant qu'indiscrets.
   const tiles: { key: string; label: string; value: string }[] = [
     { key: 'attributed', label: t.partner.tiles.attributed, value: String(data.attributed_count) },
-    { key: 'paid', label: t.partner.tiles.paid, value: String(data.paid_count) },
-    { key: 'revenue', label: t.partner.tiles.revenue, value: formatEuroCents(data.revenue_cents, lang) },
-    { key: 'commission', label: t.partner.tiles.commission, value: formatEuroCents(data.commission_cents, lang) },
   ]
 
   return (
@@ -69,12 +60,9 @@ export function PartnerDashboardPage() {
       </AppHeader>
 
       <main className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
-        <SectionHeading as="h1" className="mb-3 max-w-none" title={t.partner.title} lead={data.partner_name} />
-        <PillBadge tone="primary" className="mb-10">
-          {fmt(t.partner.rateLabel, { rate: formattedRate })}
-        </PillBadge>
+        <SectionHeading as="h1" className="mb-10 max-w-none" title={t.partner.title} lead={data.partner_name} />
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {tiles.map((tile) => (
             <div
               key={tile.key}
