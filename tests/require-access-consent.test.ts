@@ -44,6 +44,7 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 20))
 let pathname = ''
 let questionnaireRendered = false
 let submitConsents: (() => Promise<void>) | null = null
+let skipConsents: (() => void) | null = null
 
 function LocationProbe() {
   pathname = useLocation().pathname
@@ -60,6 +61,8 @@ function ConsentStub() {
       await refresh()
       navigate('/', { replace: true })
     }
+    // Contournement : aller sur / SANS consentir (lien direct, bouton précédent…).
+    skipConsents = () => navigate('/', { replace: true })
   })
   return null
 }
@@ -86,7 +89,12 @@ describe('garde d’accès — sortie de /bienvenue après consentement', () => 
     delete globals.window
   })
 
-  it('entre dans le questionnaire (/) au lieu de revenir sur /bienvenue', async () => {
+  async function mountOnWelcome() {
+    root?.unmount()
+    server.consentRequired = true
+    questionnaireRendered = false
+    submitConsents = null
+    skipConsents = null
     resetAccountCache()
     root = createRoot(container as unknown as Element)
     // Préchauffage : GET /api/me initial (consentement requis) mis en cache de module.
@@ -103,6 +111,10 @@ describe('garde d’accès — sortie de /bienvenue après consentement', () => 
       ),
     )
     await flush()
+  }
+
+  it('entre dans le questionnaire (/) au lieu de revenir sur /bienvenue', async () => {
+    await mountOnWelcome()
     expect(pathname).toBe('/bienvenue')
     expect(submitConsents).not.toBeNull()
 
@@ -111,5 +123,19 @@ describe('garde d’accès — sortie de /bienvenue après consentement', () => 
 
     expect(pathname).toBe('/')
     expect(questionnaireRendered).toBe(true)
+  })
+
+  // Non-régression sécurité du correctif : la garde remontée n'ouvre rien sans consentement.
+  it('sans consentement, navigation directe vers / → renvoyée sur /bienvenue, questionnaire jamais rendu', async () => {
+    await mountOnWelcome()
+    expect(pathname).toBe('/bienvenue')
+    expect(skipConsents).not.toBeNull()
+
+    skipConsents!()
+    await flush()
+    await flush()
+
+    expect(pathname).toBe('/bienvenue')
+    expect(questionnaireRendered).toBe(false)
   })
 })
