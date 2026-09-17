@@ -10,7 +10,14 @@ const DEFAULT_SUPPORT_EMAIL = 'support@seren-app.fr'
 
 // Garde d'accès (contrat §7.2), à placer DANS ProtectedRoute. Erreur de lecture de /api/me :
 // écran d'erreur générique, JAMAIS les routes protégées.
+// Clé = zone : React Router ne pose aucune clé sur les routes, donc sans elle /bienvenue → /
+// réutiliserait l'instance de la garde et son état useAccount lu au montage (consentement encore
+// requis) → renvoi en boucle sur /bienvenue. Remontée, la garde relit le cache de module à jour.
 export function RequireAccess({ area, children }: { area: AccessArea; children: ReactNode }) {
+  return <AccessGuard key={area} area={area}>{children}</AccessGuard>
+}
+
+function AccessGuard({ area, children }: { area: AccessArea; children: ReactNode }) {
   const t = useT()
   const { loading, error, me, refresh } = useAccount()
 
