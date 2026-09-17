@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
-import { getLetterTemplate, type LetterTemplate } from '@/data/letter-templates'
+import { formatLetterValue, getLetterTemplate, type LetterTemplate } from '@/data/letter-templates'
 
 export interface LetterGeneratorOptions {
   templateId: string
@@ -90,7 +90,7 @@ export function useLetterGenerator(options: LetterGeneratorOptions) {
     if (!template) return ''
     let subject = template.subject
     for (const v of template.variables) {
-      const val = values[v.key] || `[${v.label.toUpperCase()}]`
+      const val = formatLetterValue(values[v.key]) || `[${v.label.toUpperCase()}]`
       subject = subject.replaceAll(`{{${v.key}}}`, val)
     }
     return subject
@@ -104,7 +104,7 @@ export function useLetterGenerator(options: LetterGeneratorOptions) {
     // Resolve recipient_label first
     let resolvedRecipient = template.recipient_label
     for (const v of template.variables) {
-      const val = values[v.key] || `[${v.label.toUpperCase()}]`
+      const val = formatLetterValue(values[v.key]) || `[${v.label.toUpperCase()}]`
       resolvedRecipient = resolvedRecipient.replaceAll(`{{${v.key}}}`, val)
     }
 
@@ -113,7 +113,7 @@ export function useLetterGenerator(options: LetterGeneratorOptions) {
     result = result.replaceAll('{{subject}}', resolvedSubject)
 
     for (const v of template.variables) {
-      const val = values[v.key] || `[${v.label.toUpperCase()}]`
+      const val = formatLetterValue(values[v.key]) || `[${v.label.toUpperCase()}]`
       result = result.replaceAll(`{{${v.key}}}`, val)
     }
 

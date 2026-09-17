@@ -450,6 +450,16 @@ export function editableVariableKeys(
   )
 }
 
+// Valeur telle qu'écrite dans le courrier : un <input type="date"> renvoie l'ISO AAAA-MM-JJ, rendu
+// JJ/MM/AAAA. Appliqué AU RENDU seulement (valeurs stockées intactes) ; toute autre valeur passe
+// telle quelle. Miroir exact : `formatLetterValue` de server/lib/letter-render.js (parité testée).
+const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
+
+export function formatLetterValue(value: string | undefined): string | undefined {
+  const match = value ? ISO_DATE_RE.exec(value) : null
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : value
+}
+
 export function getLetterTemplate(templateId: string): LetterTemplate | undefined {
   return LETTER_TEMPLATES.find((t) => t.id === templateId)
 }
