@@ -28,7 +28,16 @@ export class LetterRenderError extends Error {
 // test de vérité JS classique — une valeur vide ou blanche tombe dans le repli, pas de `.trim()`
 // ici volontairement, pour rester bit-à-bit fidèle à `useLetterGenerator`).
 function resolveValue(key, values) {
-  return values[key] || `[${key.toUpperCase()}]`
+  return formatLetterValue(values[key]) || `[${key.toUpperCase()}]`
+}
+
+// Miroir exact de `formatLetterValue` (src/data/letter-templates.ts, parité testée) : un
+// <input type="date"> renvoie l'ISO AAAA-MM-JJ, rendu JJ/MM/AAAA au rendu seulement.
+const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
+
+function formatLetterValue(value) {
+  const match = value ? ISO_DATE_RE.exec(value) : null
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : value
 }
 
 function substitute(text, keys, values) {
