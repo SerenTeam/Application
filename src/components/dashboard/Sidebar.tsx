@@ -12,9 +12,9 @@ export function Sidebar({ activeView, onNavigate }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'border-border bg-white',
+        'bg-page-bg',
         // Desktop: vertical sidebar
-        'hidden md:block md:w-[260px] md:border-r md:py-8',
+        'hidden md:block md:w-[260px] md:py-8',
       )}
     >
       <nav className="flex flex-col gap-1 px-3">
@@ -27,9 +27,9 @@ export function Sidebar({ activeView, onNavigate }: SidebarProps) {
               onClick={() => onNavigate(item.id)}
               className={cn(
                 'flex items-center gap-3 rounded-lg px-4 py-3 text-left font-body text-[15px] font-medium',
-                'text-text-secondary transition-colors duration-200 cursor-pointer',
-                'hover:bg-primary-light/60 hover:text-primary',
-                isActive && 'bg-primary-light text-primary',
+                'text-text-secondary transition-all duration-200 cursor-pointer',
+                'hover:bg-white/60 hover:text-primary',
+                isActive && 'bg-white text-primary shadow-sm hover:bg-white',
               )}
             >
               <Icon className="h-5 w-5 shrink-0" />
