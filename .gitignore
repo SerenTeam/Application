@@ -5,3 +5,6 @@ dist
 
 # Visual companion brainstorming sessions
 .superpowers/
+
+# Export vidéo du teaser (régénérable via motion/teaser/render.mjs — binaire, pas versionné)
+motion/teaser/export/
