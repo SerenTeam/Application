@@ -111,7 +111,7 @@ tl.to("#v3-card", { scale: 1.025, duration: 0.28, ease: "power2.in" }, V3_START 
 c = cut(tl, V3_START + V3_DUR);
 tl.set("#v3", { visibility: "hidden" }, c.cover);
 
-// ================= T4 : "Des courriers déjà rédigés." =================
+// ================= T4 : "Rédigés. Envoyés partout." =================
 const T4_START = c.next, T4_DUR = 1.1;
 tl.set("#t4", { visibility: "visible" }, c.cover);
 tl.set("#t4 .w", { opacity: 0, y: 30, skewY: 4 }, c.cover);
@@ -121,27 +121,41 @@ tl.to("#t4 .tt", { scale: 1.035, duration: 0.18, ease: "power2.in" }, T4_START +
 c = cut(tl, T4_START + T4_DUR);
 tl.set("#t4", { visibility: "hidden" }, c.cover);
 
-// ================= V4 : courrier → envoi (générique, aucun nom de prestataire) =================
-const V4_START = c.next, V4_DUR = 3.3;
+// ================= V4 : le courrier part vers CHAQUE organisme — la plus-value Seren =================
+// (aucun nom de prestataire : "Banque", "Caisse de retraite", "Mutuelle santé", "Énergie" sont des
+// catégories d'organismes, pas des marques — cohérent avec la décision produit "envoi générique")
+const V4_START = c.next, V4_DUR = 4.2;
 tl.set("#v4", { visibility: "visible" }, c.cover);
 tl.set("#v4-card", { opacity: 0, y: 40, scale: 0.92 }, c.cover);
 tl.set($$("#v4 .wline"), { width: 0 }, c.cover);
 tl.set("#v4-sent", { opacity: 0, x: -14 }, c.cover);
-tl.set("#v4-envelope", { opacity: 0, scale: 0.3, x: 0, y: 210, rotation: -6 }, c.cover);
+tl.set(".org-pill", { opacity: 0, y: 20, scale: 0.9 }, c.cover);
+tl.set(".org-check", { opacity: 0, scale: 0.4 }, c.cover);
+tl.set(".v4-env", { opacity: 0, scale: 0.3, xPercent: -50, yPercent: -50, x: 0, y: 0, rotation: -6 }, c.cover);
 
-tl.to("#v4-card", { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: "back.out(1.4)" }, V4_START);
-const widths = ["96%", "88%", "92%", "58%"];
+tl.to("#v4-card", { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.4)" }, V4_START);
+const widths = ["96%", "88%", "70%"];
 $$("#v4 .wline").forEach((l, i) => {
-  tl.to(l, { width: widths[i], duration: 0.42, ease: "power1.inOut" }, V4_START + 0.34 + i * 0.28);
+  tl.to(l, { width: widths[i], duration: 0.36, ease: "power1.inOut" }, V4_START + 0.3 + i * 0.24);
 });
-tl.to("#v4-sent", { opacity: 1, x: 0, duration: 0.4, ease: "power2.out" }, V4_START + 1.75);
-// l'enveloppe apparaît à l'endroit du badge « Envoyé » puis s'envole — geste générique d'envoi, sans marque
-tl.to("#v4-envelope", { opacity: 1, scale: 1, duration: 0.28, ease: "back.out(2)" }, V4_START + 1.95);
-tl.to("#v4-envelope", {
-  x: 640, y: -260, rotation: 10, scale: 0.55, opacity: 0,
-  duration: 0.62, ease: "power2.in",
-}, V4_START + 2.28);
-tl.to("#v4-card", { scale: 1.02, duration: 0.3, ease: "power2.in" }, V4_START + V4_DUR - 0.3);
+tl.to("#v4-sent", { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" }, V4_START + 1.15);
+// les 4 organismes apparaissent autour du courrier
+tl.to(".org-pill", { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: "back.out(1.6)", stagger: 0.09 }, V4_START + 1.35);
+// une enveloppe part du courrier vers chaque organisme, en cascade — le geste central du teaser
+const ORG_TARGETS = [
+  { env: "#env1", pill: "#org1", x: -660, y: -340, rot: -14 },
+  { env: "#env2", pill: "#org2", x: 660, y: -340, rot: 12 },
+  { env: "#env3", pill: "#org3", x: -660, y: 360, rot: 10 },
+  { env: "#env4", pill: "#org4", x: 660, y: 360, rot: -10 },
+];
+ORG_TARGETS.forEach((o, i) => {
+  const t0 = V4_START + 1.85 + i * 0.18;
+  tl.to(o.env, { opacity: 1, scale: 1, duration: 0.16, ease: "power1.out" }, t0);
+  tl.to(o.env, { x: o.x, y: o.y, rotation: o.rot, scale: 0.5, opacity: 0, duration: 0.5, ease: "power2.in" }, t0 + 0.05);
+  tl.to(o.pill, { scale: 1.06, duration: 0.16, ease: "power2.out", yoyo: true, repeat: 1 }, t0 + 0.46);
+  tl.to(o.pill + " .org-check", { opacity: 1, scale: 1, duration: 0.34, ease: "back.out(2.2)" }, t0 + 0.5);
+});
+tl.to("#v4-card", { scale: 1.015, duration: 0.3, ease: "power2.in" }, V4_START + V4_DUR - 0.3);
 
 c = cut(tl, V4_START + V4_DUR);
 tl.set("#v4", { visibility: "hidden" }, c.cover);
