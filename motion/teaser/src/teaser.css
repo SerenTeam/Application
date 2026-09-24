@@ -1,0 +1,81 @@
+/* Composition fixe 1920×1080, letterbox blanc (jamais de rognage) */
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; overflow: hidden; background: #fff; }
+#stage {
+  position: absolute; left: 50%; top: 50%;
+  width: 1920px; height: 1080px;
+  transform-origin: 0 0; /* le scale est posé par fit() dans teaser.js */
+  background: #fff; overflow: hidden;
+  font-family: "Inter Tight", system-ui, sans-serif;
+}
+#stage, #stage * { font-kerning: normal; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
+
+/* fond doux + respiration en arrière-plan (dépasse l'ambient loop : profondeur cinématique légère) */
+#bg { position: absolute; inset: 0; background: linear-gradient(180deg, #FBFCFF 0%, #F8F8F8 100%); z-index: 0; }
+#blob-a, #blob-b { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .35; z-index: 0; }
+#blob-a { width: 900px; height: 900px; left: -220px; top: -260px; background: radial-gradient(circle, #EAF3FE 0%, rgba(234,243,254,0) 70%); }
+#blob-b { width: 760px; height: 760px; right: -200px; bottom: -220px; background: radial-gradient(circle, #F2F0FF 0%, rgba(242,240,255,0) 70%); }
+
+/* ---------- cut transversal (wipe) ---------- */
+#wipe { position: absolute; inset: 0; background: #1D1D1D; transform: scaleX(0); transform-origin: 0% 50%; z-index: 95; pointer-events: none; }
+
+/* ---------- titres d'impact ---------- */
+.title-card { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 220px; visibility: hidden; z-index: 3; }
+.tt {
+  font-family: "Inter", system-ui, sans-serif; font-weight: 400; text-align: center;
+  font-size: 150px; line-height: 1.08; letter-spacing: -3.5px; color: #1D1D1D;
+}
+.tt .w { display: inline-block; will-change: transform, opacity; }
+.tt .hl { color: #006BFA; }
+
+/* ---------- scènes produit (partagent la grammaire de l'ambient loop) ---------- */
+.scene { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; visibility: hidden; z-index: 2; }
+.ucard { background: #fff; border: 2px solid #F2F0FF; border-radius: 52px; box-shadow: 0 24px 70px rgba(79,79,79,.16), 0 2px 8px rgba(79,79,79,.08); }
+
+/* V1 : papiers */
+.paper { position: absolute; width: 190px; height: 240px; background: #fff; border: 2px solid #EFEFF3; border-radius: 24px; box-shadow: 0 14px 40px rgba(79,79,79,.14); }
+.paper i { display: block; height: 14px; border-radius: 99px; background: #E4E6EA; margin: 32px 30px 0; }
+.paper i:nth-child(2) { width: 55%; }
+.paper.sm { width: 152px; height: 192px; } .paper.sm i { height: 12px; margin: 25px 25px 0; }
+.paper.xs { width: 120px; height: 152px; } .paper.xs i { height: 10px; margin: 20px 20px 0; }
+.p1 { left: 16%; top: 20%; } .p2 { right: 17%; top: 16%; } .p3 { left: 21%; bottom: 15%; }
+.p4 { left: 8%; top: 46%; } .p5 { right: 8%; top: 42%; } .p6 { left: 46%; top: 8%; }
+.p7 { right: 33%; top: 15%; } .p8 { left: 10%; bottom: 10%; } .p9 { right: 20%; bottom: 18%; }
+.p10 { left: 45%; bottom: 8%; }
+
+/* V2 : questionnaire */
+#v2-card { width: 980px; padding: 64px 70px; }
+#v2-card h3 { font-family: "Inter Tight"; font-size: 42px; font-weight: 500; color: #1D1D1D; margin-bottom: 40px; line-height: 1.28; }
+.opt { display: flex; align-items: center; gap: 24px; height: 108px; border: 2px solid #D9DBE0; border-radius: 99px; padding: 0 40px; font-size: 36px; font-weight: 500; color: #42424A; margin-top: 22px; background: #fff; }
+.opt .ring { width: 42px; height: 42px; border-radius: 50%; border: 3px solid #D9DBE0; flex: none; position: relative; }
+.opt .ring::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: #006BFA; transform: scale(var(--sel, 0)); }
+
+/* V3 : roadmap */
+#v3-card { width: 1080px; padding: 60px 70px; }
+.rhead { display: flex; justify-content: space-between; align-items: center; font-size: 37px; font-weight: 600; color: #1D1D1D; margin-bottom: 20px; }
+.rhead small { color: #666676; font-size: 30px; font-weight: 500; }
+.track { height: 18px; border-radius: 99px; background: #EAF3FE; overflow: hidden; margin-bottom: 44px; }
+#v3-bar { display: block; height: 100%; border-radius: 99px; background: #006BFA; width: 25%; }
+.row { display: flex; align-items: center; gap: 29px; padding: 22px 0; font-size: 35px; font-weight: 500; color: #42424A; }
+.dot { width: 54px; height: 54px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; border: 3px solid #D9DBE0; background: #fff; }
+.dot svg { width: 26px; height: 26px; }
+.dot.ok { background: #16A34A; border-color: #16A34A; }
+.tag { margin-left: auto; font-size: 26px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; border-radius: 99px; padding: 7px 24px; }
+.tag.done { background: #E9F7EF; color: #16A34A; }
+.tag.prog { background: #F2F0FF; color: #6B5CE7; }
+
+/* V4 : courrier + envoi */
+#v4-card { width: 1000px; padding: 60px 70px; }
+#v4-card h3 { font-family: "Inter Tight"; font-size: 35px; font-weight: 600; color: #1D1D1D; margin-bottom: 34px; }
+.wline { height: 17px; border-radius: 99px; background: #E4E6EA; margin-top: 24px; width: 0; }
+.lfoot { display: flex; align-items: center; gap: 24px; margin-top: 48px; }
+.btn-pdf { height: 92px; border-radius: 99px; background: #006BFA; color: #fff; font-size: 32px; font-weight: 500; display: inline-flex; align-items: center; padding: 0 43px; gap: 17px; font-family: "Inter Tight"; }
+.btn-pdf svg { width: 34px; height: 34px; }
+.sent { display: inline-flex; align-items: center; gap: 14px; font-size: 29px; font-weight: 600; color: #16A34A; font-family: "Inter Tight"; }
+.sent svg { width: 31px; height: 31px; }
+#v4-envelope { position: absolute; width: 240px; z-index: 4; filter: drop-shadow(0 18px 34px rgba(0,107,250,.28)); }
+
+/* signature */
+#sig-bg { position: absolute; left: 50%; top: 50%; width: 2600px; height: 2600px; margin: -1300px 0 0 -1300px; border-radius: 50%; background: #297FF3; }
+#sig-logo { width: 520px; z-index: 2; }
+#sig-tag { font-family: "Inter"; font-size: 66px; font-weight: 400; letter-spacing: -1px; color: #fff; margin-top: 55px; z-index: 2; }
