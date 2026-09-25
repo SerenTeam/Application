@@ -95,4 +95,4 @@ html, body { height: 100%; overflow: hidden; background: #fff; }
 /* signature */
 #sig-bg { position: absolute; left: 50%; top: 50%; width: 2600px; height: 2600px; margin: -1300px 0 0 -1300px; border-radius: 50%; background: #297FF3; }
 #sig-logo { width: 520px; z-index: 2; }
-#sig-tag { font-family: "Inter"; font-size: 66px; font-weight: 400; letter-spacing: -1px; color: #fff; margin-top: 55px; z-index: 2; }
+#sig-tag { font-family: "Inter"; font-size: 52px; font-weight: 400; letter-spacing: -0.8px; line-height: 1.3; color: #fff; margin-top: 50px; z-index: 2; max-width: 1240px; text-align: center; }

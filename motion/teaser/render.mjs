@@ -24,8 +24,12 @@ let chromium;
 try {
   ({ chromium } = await import("playwright"));
 } catch {
-  const { createRequire } = await import("node:module");
-  ({ chromium } = await import(createRequire(import.meta.url).resolve("playwright/index.mjs").replace(/^/, "file://")));
+  // Playwright n'est pas une dépendance npm du repo (outillage ponctuel) : on retombe sur
+  // une install globale connue (ex. environnement Claude Code) si le paquet local est absent.
+  const globalCandidates = ["/opt/node22/lib/node_modules/playwright/index.mjs"];
+  const found = globalCandidates.find(existsSync);
+  if (!found) throw new Error("Playwright introuvable — `npm install playwright` (local ou global)");
+  ({ chromium } = await import(`file://${found}`));
 }
 
 rmSync(FRAMES_DIR, { recursive: true, force: true });

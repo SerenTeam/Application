@@ -23,7 +23,8 @@ check(!providerNames.test(html), "aucun nom de prestataire d'envoi cité (scène
 
 // 4. Vocabulaire éditorial : jamais « décès » dans un titre d'accroche (règle CLAUDE.md)
 const titleCards = [...html.matchAll(/<h1 class="tt">([\s\S]*?)<\/h1>/g)].map(m => m[1]);
-check(titleCards.every(t => !/décès/i.test(t)), "aucun titre d'accroche ne contient « décès »");
+const sigTag = html.match(/<div id="sig-tag">([\s\S]*?)<\/div>/)?.[1] ?? "";
+check([...titleCards, sigTag].every(t => !/décès/i.test(t)), "aucun titre d'accroche ni la signature ne contient « décès »");
 
 // 5. Les 9 scènes attendues sont présentes
 const scenes = ["t1", "v1", "t2", "v2", "t3", "v3", "t4", "v4", "sig"];

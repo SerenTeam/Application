@@ -36,7 +36,7 @@ function cut(tl, at, outSel, inSel) {
 const tl = gsap.timeline({ paused: true });
 
 // ================= T1 : "Après la perte d'un proche." =================
-const T1_START = 0, T1_DUR = 1.35;
+const T1_START = 0, T1_DUR = 1.75; // 3 lignes désormais ("tout s'accumule.") : un peu plus de tenue pour la lecture
 tl.set("#t1", { visibility: "visible" }, T1_START);
 tl.set("#t1 .w", { opacity: 0, y: 30, skewY: 4 }, T1_START);
 tl.to("#t1 .w", { opacity: 1, y: 0, skewY: 0, duration: 0.55, ease: "power3.out", stagger: 0.055 }, T1_START + 0.05);
