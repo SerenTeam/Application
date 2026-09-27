@@ -3,5 +3,8 @@ node_modules
 dist
 .DS_Store
 
+# Exports vidéo régénérables (node motion/*/build.mjs && node motion/*/render.mjs) — jamais commités
+motion/*/export/
+
 # Visual companion brainstorming sessions
 .superpowers/

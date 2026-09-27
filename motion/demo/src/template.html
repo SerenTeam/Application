@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seren — Démonstration du parcours</title>
+<style>{{FONTS_CSS}}</style>
+<style>{{INLINE:demo.css}}</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- ============ INTRO ============ -->
+  <section id="intro" class="scene center">
+    <div class="bg-fade"></div>
+    <div class="tcard">
+      <div class="tlogo">{{LOGO_FULL}}</div>
+      <h1 class="ttitle">Seren — le copilote administratif<br>de l’après-décès</h1>
+      <div class="tpill">Démonstration du parcours · personnes et pompe funèbre fictives</div>
+    </div>
+  </section>
+
+  <!-- ============ PF LOGIN ============ -->
+  <section id="pf-login" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="auth-card" style="margin-top:150px;">
+          <h1>Bienvenue</h1>
+          <p class="sub">Connectez-vous pour accéder à votre espace.</p>
+          <div class="field-block">
+            <label>Email</label>
+            <div class="input" id="pf-email-in"><span class="txt"></span></div>
+          </div>
+          <div class="field-block">
+            <label>Mot de passe</label>
+            <div class="input" id="pf-pwd-in"><span class="txt"></span></div>
+          </div>
+          <button class="btn btn-primary btn-block" id="pf-login-btn">Se connecter →</button>
+          <p class="link" style="display:block;margin-top:26px;">Mot de passe oublié ?</p>
+          <p class="muted-note">Votre accès vous est ouvert par votre pompe funèbre.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PF DOSSIERS (1) ============ -->
+  <section id="pf-dossiers-1" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="email">gerant@pf-delmas.example</span><span class="navlink">Déconnexion</span><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="wide-col">
+          <h1 class="font-display" style="font-size:38px;font-weight:400;margin-bottom:6px;">Dossiers</h1>
+          <div class="dossier-card">
+            <div class="dossier-left">
+              <div class="kicker">Famille</div>
+              <h3>Sophie Carré</h3>
+              <div class="em">sophie.carre@famille.example</div>
+              <div class="defunt">Défunt : Gérard Carré — décès le 13 septembre 2026</div>
+            </div>
+            <div class="dossier-right"><span class="status-pill invite">INVITATION ENVOYÉE</span><div>Créé le 15 septembre 2026</div></div>
+          </div>
+          <div class="dossier-card">
+            <div class="dossier-left">
+              <div class="kicker">Famille</div>
+              <h3>Thomas Perrin</h3>
+              <div class="em">thomas.perrin@famille.example</div>
+              <div class="defunt">Défunt : Monique Perrin — décès le 6 septembre 2026</div>
+            </div>
+            <div class="dossier-right"><span class="status-pill active">ACTIVÉ</span><div>Activé le 9 septembre 2026</div></div>
+          </div>
+          <div class="dossier-card">
+            <div class="dossier-left">
+              <div class="kicker">Famille</div>
+              <h3>Lucie Garnier</h3>
+              <div class="em">lucie.garnier@famille.example</div>
+              <div class="defunt">Défunt : André Garnier — décès le 2 septembre 2026</div>
+            </div>
+            <div class="dossier-right"><span class="status-pill active">ACTIVÉ</span><div>Activé le 5 septembre 2026</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PF OUVRIR DOSSIER (formulaire) ============ -->
+  <section id="pf-open-form" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="email">gerant@pf-delmas.example</span><span class="navlink">Déconnexion</span><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="wide-col">
+          <h1 class="font-display" style="font-size:34px;font-weight:400;margin-bottom:28px;">Ouvrir un dossier famille</h1>
+          <div class="letter-box">
+            <h5 style="font-size:14px;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);">La famille</h5>
+            <div class="q-two-col" style="margin-top:18px;">
+              <div class="field-block" style="margin-top:0;"><label>Prénom</label><div class="input" id="f-prenom"><span class="txt"></span></div></div>
+              <div class="field-block" style="margin-top:0;"><label>Nom</label><div class="input" id="f-nom"><span class="txt"></span></div></div>
+            </div>
+            <div class="field-block"><label>E-mail</label><div class="input" id="f-email"><span class="txt"></span></div>
+              <div class="hint">L’invitation part à cette adresse : elle doit être personnelle à la famille.</div>
+            </div>
+          </div>
+          <div class="letter-box">
+            <h5 style="font-size:14px;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);">Le défunt</h5>
+            <div class="q-two-col" style="margin-top:18px;">
+              <div class="field-block" style="margin-top:0;"><label>Prénom</label><div class="input" id="f-dprenom"><span class="txt"></span></div></div>
+              <div class="field-block" style="margin-top:0;"><label>Nom</label><div class="input" id="f-dnom"><span class="txt"></span></div></div>
+            </div>
+          </div>
+          <button class="btn btn-primary" style="margin-top:28px;" id="f-submit">Créer et envoyer l’invitation</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PF INVITATION ENVOYÉE ============ -->
+  <section id="pf-invite-sent" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="email">gerant@pf-delmas.example</span><span class="navlink">Déconnexion</span><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="wide-col">
+          <h1 class="font-display" style="font-size:34px;font-weight:400;margin-bottom:28px;">Ouvrir un dossier famille</h1>
+          <button class="btn btn-primary">Créer et envoyer l’invitation</button>
+          <div style="margin-top:18px;background:var(--success-light);color:var(--success);border-radius:16px;padding:16px 22px;font-size:16px;font-weight:500;display:inline-block;">
+            Dossier créé, mais l’e-mail n’a pas pu partir : utilisez « Renvoyer l’invitation ».
+          </div>
+          <div><button class="btn btn-outline" style="margin-top:16px;">Copier le lien d’activation (préproduction)</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PF DOSSIERS (2) — Roussel invitation envoyée ============ -->
+  <section id="pf-dossiers-2" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="email">gerant@pf-delmas.example</span><span class="navlink">Déconnexion</span><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="wide-col">
+          <h1 class="font-display" style="font-size:38px;font-weight:400;margin-bottom:6px;">Dossiers</h1>
+          <div class="dossier-card" style="border-color:var(--primary-border);box-shadow:0 0 0 4px var(--primary-light);">
+            <div class="dossier-left">
+              <div class="kicker">Famille</div>
+              <h3>Camille Roussel</h3>
+              <div class="em">camille.roussel@famille.example</div>
+              <div class="defunt">Défunt : Bernard Roussel — décès le 12 septembre 2026</div>
+            </div>
+            <div class="dossier-right"><span class="status-pill invite">INVITATION ENVOYÉE</span><div>Créé le 17 septembre 2026</div></div>
+          </div>
+          <div class="dossier-card">
+            <div class="dossier-left">
+              <div class="kicker">Famille</div>
+              <h3>Sophie Carré</h3>
+              <div class="em">sophie.carre@famille.example</div>
+              <div class="defunt">Défunt : Gérard Carré — décès le 13 septembre 2026</div>
+            </div>
+            <div class="dossier-right"><span class="status-pill invite">INVITATION ENVOYÉE</span><div>Créé le 15 septembre 2026</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAMILLE : ACTIVATION ============ -->
+  <section id="fam-activate" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="auth-card" style="margin-top:96px;">
+          <h1 style="font-size:38px;">Activer votre accès Seren</h1>
+          <p class="sub">Pompes Funèbres Delmas vous ouvre un accompagnement Seren.</p>
+          <p class="sub" style="margin-top:14px;">Bonjour Camille,</p>
+          <div class="field-block"><label>Votre adresse e-mail</label><div class="input" style="color:var(--text-muted);">camille.roussel@famille.example</div>
+            <div class="hint">C’est l’adresse à laquelle vous avez reçu l’invitation.</div>
+          </div>
+          <div class="field-block"><label>Choisissez un mot de passe</label><div class="input" id="pwd1"><span class="txt"></span></div></div>
+          <div class="field-block"><label>Confirmer le mot de passe</label><div class="input" id="pwd2"><span class="txt"></span></div></div>
+          <button class="btn btn-primary btn-block" id="activate-btn">Activer mon accès</button>
+        </div>
+        <p style="text-align:center;color:var(--text-muted);font-size:15px;margin-top:20px;">Besoin d’aide ? Écrivez à support@seren-app.fr</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAMILLE : CONSENTEMENT ============ -->
+  <section id="fam-consent" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="auth-card" style="margin-top:70px;text-align:left;">
+          <h1 style="text-align:center;">Bienvenue</h1>
+          <p class="sub" style="text-align:center;">Votre accompagnement Seren vous est proposé par Pompes Funèbres Delmas.</p>
+          <p class="sub" style="text-align:center;">Nous sommes à vos côtés pour les démarches liées au décès de Bernard.</p>
+          <p style="font-size:16px;color:var(--text-muted);margin-top:24px;">Avant de commencer, merci de prendre connaissance de ces trois points.</p>
+          <div class="consent-row">
+            <span class="checkbox" id="c1"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <p>J’accepte les conditions générales d’utilisation (version bêta) — <span class="link">Lire les conditions</span></p>
+          </div>
+          <div class="consent-row">
+            <span class="checkbox" id="c2"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <p>J’ai pris connaissance de la politique de confidentialité — <span class="link">Lire la politique</span></p>
+          </div>
+          <div class="consent-row">
+            <span class="checkbox" id="c3"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <div>
+              <p>J’accepte que Seren traite les informations sensibles nécessaires à mes démarches (décès, situation familiale, patrimoine)</p>
+              <p class="sub-note">Ces informations servent uniquement à préparer vos démarches et à remplir vos courriers. Vous pouvez retirer votre accord à tout moment.</p>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-block" id="consent-btn">Commencer</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ QUESTIONNAIRE Q1 : lien ============ -->
+  <section id="q1" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="email">camille.roussel@famille.example</span><span class="navlink">Tableau de bord</span><span class="navlink">Déconnexion</span><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="center-col">
+          <div class="q-progress"><span>Votre situation</span><span>0 %</span></div>
+          <div class="q-track"><div class="q-bar" style="width:2%;"></div></div>
+          <div class="q-card">
+            <h2>Pour commencer, quel était votre lien avec la personne qui vous a quitté ?</h2>
+            <div class="helper">Votre lien de parenté détermine plusieurs de vos droits, comme la pension de réversion pour les époux.</div>
+            <div class="q-opt"><span class="q-radio"></span>Mon époux / mon épouse</div>
+            <div class="q-opt"><span class="q-radio"></span>Mon père ou ma mère</div>
+            <div class="q-opt" id="q1-sel"><span class="q-radio"></span>Mon fils ou ma fille</div>
+            <div class="q-opt"><span class="q-radio"></span>Mon frère ou ma sœur</div>
+            <div class="q-opt"><span class="q-radio"></span>Un autre lien</div>
+            <div class="q-actions"><button class="btn btn-primary" id="q1-btn">Continuer →</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ QUESTIONNAIRE Q2 : département ============ -->
+  <section id="q2" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="email">camille.roussel@famille.example</span><span class="navlink">Tableau de bord</span><span class="navlink">Déconnexion</span><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="center-col">
+          <div class="q-progress"><span>Localisation</span><span>44 %</span></div>
+          <div class="q-track"><div class="q-bar" style="width:44%;"></div></div>
+          <div class="q-card">
+            <h2 style="margin-bottom:22px;">Dans quel département viviez-vous avec Bernard ?</h2>
+            <div class="helper" style="margin-bottom:6px;">Les dates servent à calculer les délais légaux de chaque démarche.</div>
+            <div class="q-opt">30 — Gard</div>
+            <div class="q-opt" id="q2-sel">33 — Gironde</div>
+            <div class="q-opt">34 — Hérault</div>
+            <div class="q-opt">35 — Ille-et-Vilaine</div>
+            <div class="q-actions"><button class="btn btn-primary" id="q2-btn">Continuer →</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ QUESTIONNAIRE Q3 : patrimoine ============ -->
+  <section id="q3" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="email">camille.roussel@famille.example</span><span class="navlink">Tableau de bord</span><span class="navlink">Déconnexion</span><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="center-col">
+          <div class="q-progress"><span>Patrimoine</span><span>69 %</span></div>
+          <div class="q-track"><div class="q-bar" style="width:69%;"></div></div>
+          <div class="q-card">
+            <h2>Est-ce que Bernard possédait un véhicule ?</h2>
+            <div class="helper">La carte grise devra être mise à jour avant toute vente ou utilisation du véhicule.</div>
+            <div style="display:flex;gap:20px;margin-top:22px;">
+              <div class="q-opt sel" id="q3-yes" style="flex:1;justify-content:center;">Oui</div>
+              <div class="q-opt" style="flex:1;justify-content:center;">Non</div>
+            </div>
+            <div class="q-actions"><button class="btn btn-primary" id="q3-btn">Continuer →</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RÉCAP ============ -->
+  <section id="recap" class="scene center">
+    <div class="bg-fade"></div>
+    <div class="recap-card" style="position:relative;z-index:2;">
+      <div class="recap-check"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <h1>Votre parcours est prêt</h1>
+      <p>Nous avons identifié <b>33 démarches</b> à effectuer en fonction de votre situation, dont <b>1 déjà faite</b>.</p>
+      <p>Retrouvez votre parcours détaillé avec les courriers pré-remplis sur votre tableau de bord.</p>
+      <div class="recap-count">10 courriers prêts</div>
+      <div class="recap-tags"><span>PROPOSÉ PAR POMPES FUNÈBRES DELMAS</span><span>ACCÈS SANS LIMITE DE DURÉE</span><span>10 ENVOIS POSTAUX INCLUS</span></div>
+      <button class="btn btn-primary" style="margin-top:34px;">Voir mon parcours →</button>
+    </div>
+  </section>
+
+  <!-- ============ DASHBOARD ============ -->
+  <section id="dashboard" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="email">camille.roussel@famille.example</span><span class="navlink">Courriers</span><span class="navlink">Déconnexion</span><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="dash-layout">
+          <div class="dash-sidebar">
+            <div class="dash-nav-item active">{{ICO_GRID}}Dashboard</div>
+            <div class="dash-nav-item">{{ICO_MAP}}Roadmap</div>
+            <div class="dash-nav-item">{{ICO_DOC}}Documents</div>
+            <div class="dash-nav-item">{{ICO_PHONE}}Contacts</div>
+          </div>
+          <div class="dash-main">
+            <div class="hero-dark">
+              <h2>Votre progression</h2>
+              <div class="hero-track"><div class="hero-bar" style="width:3%;"></div></div>
+              <div class="hero-stats"><div><b>1</b><span>Terminées</span></div><div><b>33</b><span>Étapes totales</span></div><div><b>3%</b><span>Complété</span></div></div>
+            </div>
+            <div class="section-title">Prochaines actions prioritaires</div>
+            <div class="action-row">
+              <div class="action-card"><span class="tag-urgent">URGENT</span><h4>Obtenir le constat de décès médical</h4><p>Le certificat de décès doit être établi par un médecin.</p></div>
+              <div class="action-card"><span class="tag-urgent">URGENT</span><h4>Déclarer le décès en mairie</h4><p>Obligation légale à effectuer dans les 24 heures.</p></div>
+              <div class="action-card"><span class="tag-urgent">URGENT</span><h4>Prévenir les proches et l’entourage</h4><p>Informer la famille, les amis et les collègues du décès.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ROADMAP LIST ============ -->
+  <section id="roadmap-list" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="email">camille.roussel@famille.example</span><span class="navlink">Courriers</span><span class="navlink">Déconnexion</span><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="dash-layout">
+          <div class="dash-sidebar">
+            <div class="dash-nav-item">{{ICO_GRID}}Dashboard</div>
+            <div class="dash-nav-item active">{{ICO_MAP}}Roadmap</div>
+            <div class="dash-nav-item">{{ICO_DOC}}Documents</div>
+            <div class="dash-nav-item">{{ICO_PHONE}}Contacts</div>
+          </div>
+          <div class="dash-main" style="padding-top:20px;">
+            <div class="rm-group-label">Dans le mois</div>
+            <div class="rm-row"><div class="rm-left"><span class="rm-radio"></span><div><div class="rm-title">Prévenir la CAF <span class="rm-mail">✉</span></div><div class="rm-sub">Dans le mois suivant le décès.</div></div></div></div>
+            <div class="rm-row" style="border-color:var(--primary-border);box-shadow:0 0 0 4px var(--primary-light);"><div class="rm-left"><span class="rm-radio"></span><div><div class="rm-title">Prévenir la caisse de retraite (CARSAT) <span class="rm-mail">✉</span></div><div class="rm-sub">Dans le mois suivant le décès.</div></div></div></div>
+            <div class="rm-row"><div class="rm-left"><span class="rm-radio"></span><div><div class="rm-title">Résilier ou transférer la mutuelle <span class="rm-mail">✉</span></div><div class="rm-sub">Dans le mois suivant le décès.</div></div></div></div>
+            <div class="rm-row"><div class="rm-left"><span class="rm-radio"></span><div><div class="rm-title">Prévenir les impôts (DGFiP) <span class="rm-mail">✉</span></div><div class="rm-sub">Dans le mois suivant le décès.</div></div></div></div>
+            <div class="rm-row"><div class="rm-left"><span class="rm-radio"></span><div><div class="rm-title">Prévenir la Sécurité Sociale (CPAM) <span class="rm-mail">✉</span></div><div class="rm-sub">Dans le mois suivant le décès.</div></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ROADMAP EXPAND : courrier CARSAT ============ -->
+  <section id="roadmap-expand" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="email">camille.roussel@famille.example</span><span class="navlink">Courriers</span><span class="navlink">Déconnexion</span><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="dash-layout">
+          <div class="dash-sidebar">
+            <div class="dash-nav-item">{{ICO_GRID}}Dashboard</div>
+            <div class="dash-nav-item active">{{ICO_MAP}}Roadmap</div>
+            <div class="dash-nav-item">{{ICO_DOC}}Documents</div>
+            <div class="dash-nav-item">{{ICO_PHONE}}Contacts</div>
+          </div>
+          <div class="dash-main" style="padding-top:20px;">
+            <div class="rm-row"><div class="rm-left"><span class="rm-radio"></span><div><div class="rm-title">Prévenir la caisse de retraite (CARSAT) <span class="rm-mail">✉</span></div><div class="rm-sub">Dans le mois suivant le décès.</div></div></div></div>
+            <div class="rm-expand">
+              <p style="margin-top:0;">Signalez le décès à la caisse de retraite pour arrêter le versement de la pension et vérifier vos droits à la pension de réversion.</p>
+              <h4>Courrier — CARSAT</h4>
+              <div class="q-two-col" style="margin-top:20px;">
+                <div class="field-block" style="margin-top:0;"><label>Nom de l’organisme</label><div class="input" id="carsat-org"><span class="txt"></span></div></div>
+                <div class="field-block" style="margin-top:0;"><label>Votre prénom</label><div class="input" style="color:var(--text-muted);">Camille</div></div>
+                <div class="field-block" style="margin-top:0;"><label>Votre nom</label><div class="input" style="color:var(--text-muted);">Roussel</div></div>
+                <div class="field-block" style="margin-top:0;"><label>Votre lien de parenté</label><div class="input" id="carsat-lien"><span class="txt"></span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LETTER FILL (aperçu qui se remplit) ============ -->
+  <section id="letter-fill" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="email">camille.roussel@famille.example</span><span class="navlink">Courriers</span><span class="navlink">Déconnexion</span><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="dash-layout">
+          <div class="dash-sidebar">
+            <div class="dash-nav-item">{{ICO_GRID}}Dashboard</div>
+            <div class="dash-nav-item active">{{ICO_MAP}}Roadmap</div>
+            <div class="dash-nav-item">{{ICO_DOC}}Documents</div>
+            <div class="dash-nav-item">{{ICO_PHONE}}Contacts</div>
+          </div>
+          <div class="dash-main" style="padding-top:20px;">
+            <div class="rm-expand" style="margin-top:0;">
+              <h4>Courrier — CARSAT</h4>
+              <div class="letter-text" style="margin-top:22px;font-size:17px;padding:34px 40px;">
+                À la CARSAT de Bordeaux<br><br>
+                Objet : Déclaration de décès — Bernard Roussel<br><br>
+                Madame, Monsieur,<br><br>
+                Je soussigné(e) Camille Roussel, fille de Bernard Roussel, informe de son décès survenu le 12 septembre 2026.<br><br>
+                Je vous prie de bien vouloir interrompre le versement de sa pension de retraite et de m’indiquer les démarches à suivre pour le remboursement éventuel de trop-perçus.<br><br>
+                Camille Roussel<br>8 allée des Mimosas, 33200 Bordeaux
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LETTER FINAL : envoyer par la poste ============ -->
+  <section id="letter-final" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="email">camille.roussel@famille.example</span><span class="navlink">Courriers</span><span class="navlink">Déconnexion</span><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="dash-layout">
+          <div class="dash-sidebar">
+            <div class="dash-nav-item">{{ICO_GRID}}Dashboard</div>
+            <div class="dash-nav-item active">{{ICO_MAP}}Roadmap</div>
+            <div class="dash-nav-item">{{ICO_DOC}}Documents</div>
+            <div class="dash-nav-item">{{ICO_PHONE}}Contacts</div>
+          </div>
+          <div class="dash-main" style="padding-top:20px;">
+            <div class="letter-text" style="font-size:16px;padding:30px 36px;">
+              À la CARSAT de Bordeaux — Objet : Déclaration de décès — Bernard Roussel<br><br>
+              Madame, Monsieur, Je soussigné(e) Camille Roussel, fille de Bernard Roussel, vous informe de son décès survenu le 12 septembre 2026…
+            </div>
+            <p style="font-size:14px;color:var(--text-muted);margin-top:14px;font-style:italic;">Seren l’envoie pour vous par courrier ; joindre l’acte de décès.</p>
+            <div class="letter-actions" style="margin-top:22px;">
+              <span class="mini-btn" style="height:56px;border-radius:16px;padding:0 22px;display:inline-flex;align-items:center;gap:10px;border:2px solid var(--border);font-size:15px;">⧉ Copier le texte</span>
+              <span class="mini-btn" style="height:56px;border-radius:16px;padding:0 22px;display:inline-flex;align-items:center;gap:10px;border:2px solid var(--border);font-size:15px;">⬇ Télécharger en PDF</span>
+              <span class="mini-btn" style="height:56px;border-radius:16px;padding:0 22px;display:inline-flex;align-items:center;gap:10px;border:2px solid var(--border);font-size:15px;">➤ Marquer comme envoyé</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ADRESSE EXPÉDITEUR ============ -->
+  <section id="sender-address" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="email">camille.roussel@famille.example</span><span class="navlink">Courriers</span><span class="navlink">Déconnexion</span><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="dash-layout">
+          <div class="dash-sidebar">
+            <div class="dash-nav-item">{{ICO_GRID}}Dashboard</div>
+            <div class="dash-nav-item active">{{ICO_MAP}}Roadmap</div>
+            <div class="dash-nav-item">{{ICO_DOC}}Documents</div>
+            <div class="dash-nav-item">{{ICO_PHONE}}Contacts</div>
+          </div>
+          <div class="dash-main" style="padding-top:20px;">
+            <div class="rm-expand" style="margin-top:0;">
+              <h4>Votre adresse d’expéditeur</h4>
+              <p style="margin-bottom:0;">Elle figure en tête du courrier et sert d’adresse de retour.</p>
+              <div class="q-two-col" style="margin-top:20px;">
+                <div class="field-block" style="margin-top:0;"><label>Nom complet</label><div class="input" id="sa-nom"><span class="txt"></span></div></div>
+                <div class="field-block" style="margin-top:0;"><label>Adresse</label><div class="input" id="sa-adr"><span class="txt"></span></div></div>
+                <div class="field-block" style="margin-top:0;"><label>Code postal</label><div class="input" id="sa-cp"><span class="txt"></span></div></div>
+                <div class="field-block" style="margin-top:0;"><label>Ville</label><div class="input" id="sa-ville"><span class="txt"></span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ADRESSE DESTINATAIRE + ENVOI ============ -->
+  <section id="recipient-address" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="email">camille.roussel@famille.example</span><span class="navlink">Courriers</span><span class="navlink">Déconnexion</span><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="dash-layout">
+          <div class="dash-sidebar">
+            <div class="dash-nav-item">{{ICO_GRID}}Dashboard</div>
+            <div class="dash-nav-item active">{{ICO_MAP}}Roadmap</div>
+            <div class="dash-nav-item">{{ICO_DOC}}Documents</div>
+            <div class="dash-nav-item">{{ICO_PHONE}}Contacts</div>
+          </div>
+          <div class="dash-main" style="padding-top:16px;">
+            <div class="rm-expand" style="margin-top:0;">
+              <h4>Adresse du destinataire</h4>
+              <div class="q-two-col" style="margin-top:20px;">
+                <div class="field-block" style="margin-top:0;"><label>Nom du destinataire</label><div class="input" id="ra-nom"><span class="txt"></span></div></div>
+                <div class="field-block" style="margin-top:0;"><label>Adresse</label><div class="input" id="ra-adr"><span class="txt"></span></div></div>
+                <div class="field-block" style="margin-top:0;"><label>Code postal</label><div class="input" id="ra-cp"><span class="txt"></span></div></div>
+                <div class="field-block" style="margin-top:0;"><label>Ville</label><div class="input" id="ra-ville"><span class="txt"></span></div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:20px;margin-top:26px;">
+                <span class="pill-quota">10 ENVOIS INCLUS RESTANTS SUR 10</span>
+                <button class="btn btn-primary" id="send-btn" style="gap:10px;">➤ Envoyer ce courrier par la poste</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ NOUVEAU : MES COURRIERS (historique) ============ -->
+  <section id="mes-courriers" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="email">camille.roussel@famille.example</span><span class="navlink">Tableau de bord</span><span class="navlink">Déconnexion</span><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="center-col" style="max-width:1020px;padding-top:56px;">
+          <h1 class="font-display" style="font-size:32px;font-weight:400;color:var(--primary);">Mes courriers</h1>
+          <p style="color:var(--text-muted);font-size:16px;margin-top:4px;">3 courriers générés</p>
+
+          <div class="doc-toolbar" style="margin-top:26px;">
+            <div class="doc-select">Tous</div>
+            <div class="doc-select">Tous les statuts</div>
+            <div class="doc-select">Plus récent</div>
+          </div>
+
+          <div class="doc-card highlight" id="doc-carsat">
+            <div class="doc-card-top">
+              <div style="display:flex;gap:16px;">
+                <div class="doc-icon">{{ICO_CLIPBOARD}}</div>
+                <div><div class="doc-title">Courrier — CARSAT</div><div class="doc-step">Prévenir la caisse de retraite (CARSAT)</div><div class="doc-date">Généré le 17 septembre 2026</div></div>
+              </div>
+              <span class="sent-pill" id="carsat-sent-pill"><svg viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Envoyé</span>
+            </div>
+            <div class="doc-actions">
+              <span class="mini-btn">👁 Voir</span><span class="mini-btn">⧉ Copier</span><span class="mini-btn">⬇ PDF</span>
+            </div>
+          </div>
+
+          <div class="doc-card">
+            <div class="doc-card-top">
+              <div style="display:flex;gap:16px;">
+                <div class="doc-icon">{{ICO_SHIELD}}</div>
+                <div><div class="doc-title">Courrier — Mutuelle santé</div><div class="doc-step">Résilier ou transférer la mutuelle</div><div class="doc-date">Généré le 17 septembre 2026</div></div>
+              </div>
+            </div>
+            <div class="doc-actions">
+              <span class="mini-btn">👁 Voir</span><span class="mini-btn">⧉ Copier</span><span class="mini-btn">⬇ PDF</span>
+            </div>
+          </div>
+
+          <div class="doc-card">
+            <div class="doc-card-top">
+              <div style="display:flex;gap:16px;">
+                <div class="doc-icon">{{ICO_RECEIPT}}</div>
+                <div><div class="doc-title">Courrier — Impôts (DGFiP)</div><div class="doc-step">Prévenir les impôts (DGFiP)</div><div class="doc-date">Généré le 17 septembre 2026</div></div>
+              </div>
+            </div>
+            <div class="doc-actions">
+              <span class="mini-btn">👁 Voir</span><span class="mini-btn">⧉ Copier</span><span class="mini-btn">⬇ PDF</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PF DOSSIERS (3) — Roussel activé, confidentialité ============ -->
+  <section id="pf-dossiers-3" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="email">gerant@pf-delmas.example</span><span class="navlink">Déconnexion</span><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="wide-col">
+          <h1 class="font-display" style="font-size:38px;font-weight:400;margin-bottom:6px;">Dossiers</h1>
+          <div class="dossier-card" style="border-color:var(--primary-border);box-shadow:0 0 0 4px var(--primary-light);">
+            <div class="dossier-left">
+              <div class="kicker">Famille</div>
+              <h3>Camille Roussel</h3>
+              <div class="em">camille.roussel@famille.example</div>
+              <div class="defunt">Défunt : Bernard Roussel — décès le 12 septembre 2026</div>
+            </div>
+            <div class="dossier-right"><span class="status-pill active">ACTIVÉ</span><div>Activé le 17 septembre 2026</div></div>
+          </div>
+          <p style="margin-top:30px;font-size:18px;color:var(--text-secondary);max-width:820px;">
+            Réponses, démarches, courriers : <b style="color:var(--ink);">rien n’est visible côté pompe funèbre.</b>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ADMIN SEREN ============ -->
+  <section id="admin" class="scene">
+    <div class="win">
+      <div class="topbar">
+        <div class="brand">{{LOGO_FULL}}</div>
+        <div class="topnav"><span class="email">equipe@seren.example</span><span class="navlink">Déconnexion</span><span class="langs"><span class="fr">FR</span><span class="en">EN</span></span></div>
+      </div>
+      <div class="page-body">
+        <div class="wide-col">
+          <h1 class="font-display" style="font-size:34px;font-weight:400;">Administration Seren</h1>
+          <p style="color:var(--text-secondary);font-size:17px;margin-top:8px;">Compteurs par partenaire — aucune donnée des familles.</p>
+          <table class="admin-table">
+            <thead><tr><th>Partenaire</th><th>Statut</th><th>Dossiers créés</th><th>Créés ce mois</th><th>Activés</th></tr></thead>
+            <tbody>
+              <tr><td>Pompes Funèbres Delmas</td><td><span class="admin-badge">ACTIF</span></td><td>5</td><td>4</td><td>4</td></tr>
+              <tr><td>Total</td><td></td><td>5</td><td>4</td><td>4</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SUMMARY (business model) ============ -->
+  <section id="summary" class="scene center">
+    <div class="bg-fade"></div>
+    <div class="tcard" style="position:relative;z-index:2;">
+      <div class="tlogo">{{LOGO_FULL}}</div>
+      <p class="summary-line" id="sum1">La famille paie <b>sa pompe funèbre</b>.</p>
+      <p class="summary-line" id="sum2">La PF <b>ouvre le dossier</b>.</p>
+      <p class="summary-line" id="sum3">Seren <b>prépare les courriers</b>, prêts à partir.</p>
+    </div>
+  </section>
+
+  <!-- fake cursor + click ring, shared across scenes -->
+  <div class="cursor" id="cursor">
+    <svg width="34" height="34" viewBox="0 0 24 24"><path d="M4 2 L4 20 L9 16 L12 22 L15 20.5 L12 14.5 L18 14.5 Z" fill="#1D1D1D" stroke="#fff" stroke-width="1.2"/></svg>
+  </div>
+  <div class="click-ring" id="click-ring"></div>
+
+  <div id="white-overlay"></div>
+</div>
+<script>{{INLINE:vendor/gsap.min.js}}</script>
+<script>{{INLINE:demo.js}}</script>
+</body>
+</html>
