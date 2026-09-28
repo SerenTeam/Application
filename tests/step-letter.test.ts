@@ -16,7 +16,10 @@ describe('stepLetterTemplateId — courrier affiché pour une étape d’une roa
     expect(stepLetterTemplateId(step('logement-prevenir-syndic'), 'bailleur-notification')).toBeUndefined()
   })
 
+  // Tests « reste affiché » : la garde sur le catalogue est indispensable, car une étape disparue du
+  // catalogue garde la valeur en base (dernier test) — sans elle, ils passeraient à vide.
   it('le courrier bailleur reste affiché sur « Résilier le bail »', () => {
+    expect(step('logement-resilier-bail')?.letter_template_id).toBe('bailleur-notification')
     expect(stepLetterTemplateId(step('logement-resilier-bail'), 'bailleur-notification')).toBe('bailleur-notification')
   })
 
@@ -28,6 +31,8 @@ describe('stepLetterTemplateId — courrier affiché pour une étape d’une roa
   })
 
   it('le courrier de blocage reste affiché sur les deux étapes qui déclarent le décès à une banque', () => {
+    expect(step('banque-declaration-principale')?.letter_template_id).toBe('banque-declaration-deces')
+    expect(step('banque-autres-banques')?.letter_template_id).toBe('banque-declaration-deces')
     expect(stepLetterTemplateId(step('banque-declaration-principale'), 'banque-declaration-deces')).toBe('banque-declaration-deces')
     expect(stepLetterTemplateId(step('banque-autres-banques'), 'banque-declaration-deces')).toBe('banque-declaration-deces')
   })
