@@ -92,8 +92,14 @@ describe('invariant : pas de question morte, pas d’étape orpheline', () => {
     ]
     for (const { kind, id, when } of allSpecs) {
       for (const [key, cond] of Object.entries(when ?? {})) {
-        if (!Array.isArray(cond)) continue
         const question = byId[key]
+        if (!Array.isArray(cond)) {
+          expect(
+            typeof cond === 'boolean' && question?.type === 'boolean',
+            `${kind} ${id} : condition scalaire "${key}" non booléenne ou sur une question non booléenne`
+          ).toBe(true)
+          continue
+        }
         const validValues = question?.options
           ? question.options.map((o) => o.value)
           : question?.type === 'tristate'
@@ -179,4 +185,18 @@ describe('matchers : condition en tableau sur une réponse à cocher (multiselec
       ).toBe(expected)
     })
   }
+  it('ET entre clés : un hit sur la condition en tableau ne suffit pas si une autre clé ne matche pas', () => {
+    const w = { abonnements: ['presse'], has_vehicle: true }
+    const CASES2: Array<[Record<string, unknown>, boolean]> = [
+      [{ abonnements: ['presse'], has_vehicle: true }, true],
+      [{ abonnements: ['presse'], has_vehicle: false }, false],
+      [{ abonnements: ['email'], has_vehicle: true }, false],
+    ]
+    for (const [answers, expected] of CASES2) {
+      expect(matchesWhen(w, answers)).toBe(expected)
+      expect(
+        isApplicable({ applicable_when: w } as unknown as StepTemplate, answers as unknown as QuestionnaireAnswersV2)
+      ).toBe(expected)
+    }
+  })
 })

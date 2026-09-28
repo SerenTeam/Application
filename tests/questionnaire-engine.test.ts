@@ -151,6 +151,32 @@ describe('setAnswer — conservation des réponses (catalogue 100 % universel) e
       vi.resetModules()
     }
   })
+  it('multiselect : au moins une valeur commune ouvre la branche, la referme à la purge, et progress reflète le catalogue synthétique', async () => {
+    vi.resetModules()
+    vi.doMock('../server/lib/questions-catalog.js', () => ({
+      QUESTIONS_CATALOG: [
+        { id: 'q1', type: 'multiselect', options: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }], applicable_when: {}, order: 1 },
+        { id: 'q2', type: 'boolean', applicable_when: { q1: ['a'] }, order: 2 },
+      ],
+    }))
+    try {
+      // @ts-expect-error — module JS serveur
+      const engine = await import('../server/lib/questionnaire-engine.js')
+      const q1 = { id: 'q1', type: 'multiselect', applicable_when: {} }
+      const q2 = { id: 'q2', type: 'boolean', applicable_when: { q1: ['a'] } }
+      let synthetic: Answers = engine.setAnswer({}, q1, ['b', 'a'])
+      expect(engine.nextQuestion(synthetic)?.id).toBe('q2') // 'a' commun à la réponse et à la condition
+      synthetic = engine.setAnswer(synthetic, q2, true)
+      synthetic = engine.setAnswer(synthetic, q1, ['b']) // plus de 'a' en commun : q2 redevient inapplicable
+      expect(synthetic.q2).toBeUndefined() // purgé par la boucle de setAnswer
+      expect(engine.progress(synthetic)).toEqual({ current: 1, total: 1 })
+      synthetic = engine.setAnswer(synthetic, q1, [])
+      expect(engine.nextQuestion(synthetic)).toBeNull()
+    } finally {
+      vi.doUnmock('../server/lib/questions-catalog.js')
+      vi.resetModules()
+    }
+  })
 })
 
 describe('progress', () => {

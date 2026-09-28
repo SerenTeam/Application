@@ -41,7 +41,7 @@ export interface QuestionnaireAnswersV2 {
 }
 
 // Conditions d'applicabilité (questions ET étapes) : clés = champs du contrat.
-// Tableau = appartenance ; booléen = égalité stricte.
+// Tableau = appartenance si la réponse est scalaire, au moins une valeur commune si elle est un tableau (question à cocher) ; booléen = égalité stricte.
 export interface ApplicableWhenV2 {
   relation?: RelationV2[]
   statut_professionnel?: StatutProfessionnel[]
