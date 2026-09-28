@@ -30,3 +30,16 @@ export function initSentry() {
     },
   })
 }
+
+/**
+ * Lecture non bloquante (personnalisation v2) : un échec est remplacé par null — l'écran continue sans
+ * la donnée — mais signalé à Sentry (inerte sans DSN), pour qu'un front déployé avant sa migration ne
+ * passe pas inaperçu. Les fonctions de lecture ne remontent que `error.message`, jamais les `details`
+ * PostgreSQL (qui peuvent contenir la ligne, donc des données personnelles).
+ */
+export function nullOnError<T>(promise: Promise<T>): Promise<T | null> {
+  return promise.catch((err: unknown) => {
+    Sentry.captureException(err)
+    return null
+  })
+}

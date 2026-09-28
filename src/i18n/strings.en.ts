@@ -419,22 +419,6 @@ export const STRINGS_EN: Strings = {
   // MySendingBox). The letters themselves stay in French ; this UI is bilingual like the rest
   // of the app.
   paperSend: {
-    // Sender address (sender_profiles)
-    senderTitle: 'Your sender address',
-    senderHint: 'It appears at the top of the letter and serves as the return address.',
-    senderFullNameLabel: 'Full name',
-    senderAddressLine1Label: 'Address',
-    senderAddressLine2Label: 'Address line 2 (optional)',
-    senderPostalCodeLabel: 'Postal code',
-    senderCityLabel: 'City',
-    senderRelationshipLabel: 'Your relationship with the deceased (optional)',
-    senderSaveCta: 'Save my address',
-    senderSaving: 'Saving...',
-    senderSavedHint: 'Address saved.',
-    senderSaveError: 'Unable to save your address, please try again.',
-    senderEditCta: 'Edit',
-    senderMissingFields: 'Fill in all required fields.',
-
     // Recipient address
     recipientTitle: 'Recipient address',
     recipientNameLabel: 'Recipient name',
@@ -454,7 +438,8 @@ export const STRINGS_EN: Strings = {
     recipientDepartmentConfirmCta: 'Confirm',
     recipientFrozenNote: 'The address cannot be changed on this resume: it is part of this letter’s identification.',
 
-    // Shared (sender + recipient forms)
+    // Shared (recipient form, panel loading) — the sender profile has its own keys in
+    // `letterProfile`
     lineCounter: '{count}/45 characters',
     invalidPostalCode: '5-digit postal code',
     panelLoading: 'Loading...',
@@ -767,6 +752,52 @@ export const STRINGS_EN: Strings = {
     includedSendsOne: '1 postal send included',
     providedBy: 'Provided by {partner}',
     providedByGeneric: 'Your Seren support',
+  },
+
+  // v2 personalization: letter profile entered once (end of questionnaire, send panel, Profile)
+  // and reused in every letter. Letters themselves stay in French.
+  letterProfile: {
+    title: 'Your details for letters',
+    hint: 'They appear in each of your letters and serve as the return address. You can change them at any time in your profile.',
+    firstNameLabel: 'First name',
+    lastNameLabel: 'Last name',
+    relationshipLabel: 'You sign as',
+    relationshipFreeLabel: 'Your relationship with the deceased (in French)',
+    relationshipFreePlaceholder: 'For example: neveu, petite-fille, ami',
+    relationshipPreview: 'Your letters will read: “{relationship} de {name}”.',
+    addressLine1Label: 'Address',
+    addressLine2Label: 'Address line 2 (optional)',
+    postalCodeLabel: 'Postal code',
+    cityLabel: 'City',
+    lineCounter: '{count}/45 characters',
+    dobLabel: 'Date of birth of {name} (optional)',
+    dobHint: 'It appears in some letters (bank, insurers, pension funds).',
+    saveCta: 'Save',
+    saving: 'Saving...',
+    savedHint: 'Details saved.',
+    saveError: 'Unable to save your details, please try again.',
+    editCta: 'Edit',
+    errors: {
+      firstNameRequired: 'Enter your first name.',
+      lastNameRequired: 'Enter your last name.',
+      fullNameTooLong: 'First and last name together: 45 characters maximum (envelope constraint).',
+      addressRequired: 'Enter your address.',
+      lineTooLong: '45 characters maximum.',
+      postalCodeInvalid: '5-digit postal code.',
+      cityRequired: 'Enter your city.',
+      relationshipRequired: 'Enter your relationship with the deceased.',
+      dobInvalid: 'Invalid date.',
+      dobTooEarly: 'The date of birth cannot be before 1 January 1900.',
+      dobAfterDeath: 'The date of birth must be before the date of death.',
+    },
+    screenTitle: 'Last step: your details for letters',
+    screenLead: 'Entered once, they pre-fill all your letters.',
+    screenSubmit: 'Save and see my journey',
+    screenSkip: 'Later',
+    screenLoading: 'Preparing your details...',
+    reminderTitle: 'Pre-fill your letters',
+    reminderBody: 'Enter your details once: they will be reused in each of your letters.',
+    reminderCta: 'Complete my details',
   },
   // v2:ns-l5
 }

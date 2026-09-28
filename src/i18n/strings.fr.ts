@@ -420,22 +420,6 @@ export const STRINGS_FR = {
   // (courrier simple, MySendingBox). Les courriers eux-mêmes restent toujours en français ;
   // cette UI, elle, est bilingue comme le reste de l'app.
   paperSend: {
-    // Profil expéditeur (sender_profiles)
-    senderTitle: 'Votre adresse d’expéditeur',
-    senderHint: 'Elle figure en tête du courrier et sert d’adresse de retour.',
-    senderFullNameLabel: 'Nom complet',
-    senderAddressLine1Label: 'Adresse',
-    senderAddressLine2Label: 'Complément d’adresse (optionnel)',
-    senderPostalCodeLabel: 'Code postal',
-    senderCityLabel: 'Ville',
-    senderRelationshipLabel: 'Votre lien avec le défunt (optionnel)',
-    senderSaveCta: 'Enregistrer mon adresse',
-    senderSaving: 'Enregistrement...',
-    senderSavedHint: 'Adresse enregistrée.',
-    senderSaveError: 'Impossible d’enregistrer votre adresse, réessayez.',
-    senderEditCta: 'Modifier',
-    senderMissingFields: 'Complétez tous les champs obligatoires.',
-
     // Adresse du destinataire
     recipientTitle: 'Adresse du destinataire',
     recipientNameLabel: 'Nom du destinataire',
@@ -456,7 +440,8 @@ export const STRINGS_FR = {
     recipientFrozenNote:
       'L’adresse ne peut pas être modifiée lors de cette reprise : elle fait partie de l’identification de ce courrier.',
 
-    // Partagés (profil expéditeur + destinataire)
+    // Communs (formulaire du destinataire, chargement du panneau) — le profil expéditeur a ses
+    // propres clés dans `letterProfile`
     lineCounter: '{count}/45 caractères',
     invalidPostalCode: 'Code postal à 5 chiffres',
     panelLoading: 'Chargement...',
@@ -776,6 +761,52 @@ export const STRINGS_FR = {
     includedSendsOne: '1 envoi postal inclus',
     providedBy: 'Proposé par {partner}',
     providedByGeneric: 'Votre accompagnement Seren',
+  },
+
+  // Personnalisation v2 : profil courrier saisi une fois (fin du questionnaire, panneau d’envoi,
+  // Profil) et repris dans tous les courriers — spec docs/design-personnalisation-v2.md §4.
+  letterProfile: {
+    title: 'Vos coordonnées pour les courriers',
+    hint: 'Elles figurent dans chacun de vos courriers et servent d’adresse de retour. Vous pouvez les modifier à tout moment dans votre profil.',
+    firstNameLabel: 'Prénom',
+    lastNameLabel: 'Nom',
+    relationshipLabel: 'Vous signez en tant que',
+    relationshipFreeLabel: 'Votre lien avec la personne décédée',
+    relationshipFreePlaceholder: 'Par exemple : neveu, petite-fille, ami',
+    relationshipPreview: 'Vos courriers indiqueront : « {relationship} de {name} ».',
+    addressLine1Label: 'Adresse',
+    addressLine2Label: 'Complément d’adresse (facultatif)',
+    postalCodeLabel: 'Code postal',
+    cityLabel: 'Ville',
+    lineCounter: '{count}/45 caractères',
+    dobLabel: 'Date de naissance de {name} (facultatif)',
+    dobHint: 'Elle figure dans certains courriers (banque, assurances, caisses de retraite).',
+    saveCta: 'Enregistrer',
+    saving: 'Enregistrement...',
+    savedHint: 'Coordonnées enregistrées.',
+    saveError: 'Impossible d’enregistrer vos coordonnées, réessayez.',
+    editCta: 'Modifier',
+    errors: {
+      firstNameRequired: 'Indiquez votre prénom.',
+      lastNameRequired: 'Indiquez votre nom.',
+      fullNameTooLong: 'Prénom et nom ensemble : 45 caractères au maximum (contrainte de l’enveloppe).',
+      addressRequired: 'Indiquez votre adresse.',
+      lineTooLong: '45 caractères au maximum.',
+      postalCodeInvalid: 'Code postal à 5 chiffres.',
+      cityRequired: 'Indiquez votre ville.',
+      relationshipRequired: 'Indiquez votre lien avec la personne décédée.',
+      dobInvalid: 'Date invalide.',
+      dobTooEarly: 'La date de naissance ne peut pas précéder le 1er janvier 1900.',
+      dobAfterDeath: 'La date de naissance doit précéder la date du décès.',
+    },
+    screenTitle: 'Dernière étape : vos coordonnées pour les courriers',
+    screenLead: 'Remplies une seule fois, elles pré-remplissent tous vos courriers.',
+    screenSubmit: 'Enregistrer et voir mon parcours',
+    screenSkip: 'Plus tard',
+    screenLoading: 'Préparation de vos coordonnées...',
+    reminderTitle: 'Pré-remplissez vos courriers',
+    reminderBody: 'Indiquez vos coordonnées une seule fois : elles seront reprises dans chacun de vos courriers.',
+    reminderCta: 'Compléter mes coordonnées',
   },
   // v2:ns-l5
 }

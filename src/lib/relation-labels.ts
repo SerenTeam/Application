@@ -36,3 +36,26 @@ export function defaultRelationLabel(relation: RelationV2 | undefined): string {
   const options = relationLabelOptions(relation)
   return options && options.length === 1 ? options[0].value : ''
 }
+
+/**
+ * Lien enregistré ramené à la forme proposée équivalente, casse et accents ignorés (saisie libre du
+ * chantier 2a, ex. « Fille » → « fille ») ; sinon renvoyé tel quel, sans espaces autour.
+ */
+export function normalizeRelationLabel(relation: RelationV2 | undefined, saved: string): string {
+  const value = saved.trim()
+  if (!value) return ''
+  const match = relationLabelOptions(relation)?.find(
+    (option) => option.value.localeCompare(value, 'fr', { sensitivity: 'base' }) === 0
+  )
+  return match?.value ?? value
+}
+
+/**
+ * Vrai quand le lien se saisit librement : relation « autre » ou inconnue, ou lien enregistré hors des
+ * formes proposées (relation modifiée par un nouveau questionnaire…) — il reste alors visible et
+ * modifiable, au lieu d'un groupe de boutons dont aucun n'est sélectionné.
+ */
+export function isFreeRelationLabel(relation: RelationV2 | undefined, value: string): boolean {
+  const options = relationLabelOptions(relation)
+  return !options || (value !== '' && !options.some((option) => option.value === value))
+}

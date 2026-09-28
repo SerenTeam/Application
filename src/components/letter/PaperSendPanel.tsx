@@ -11,7 +11,10 @@ import { fmt } from '@/i18n'
 import { useLang } from '@/i18n/LanguageContext'
 import { usePayments, formatPrice } from '@/hooks/usePayments'
 import { useAccount } from '@/hooks/useAccount'
-import { SenderProfileForm, type SenderProfile } from './SenderProfileForm'
+import { LetterProfileForm } from './LetterProfileForm'
+import { fetchLetterProfile, type LetterProfileRow } from '@/lib/letter-profile'
+import { nullOnError } from '@/lib/sentry'
+import { useLetterProfileContext } from '@/hooks/useLetterProfileContext'
 import { RecipientAddressForm } from './RecipientAddressForm'
 import { AttachmentPicker } from './AttachmentPicker'
 import { QuotaBadge } from './QuotaBadge'
@@ -106,8 +109,17 @@ export function PaperSendPanel({
   // aucun rendu n'est masqué à tort, on teste toujours `=== false`, jamais `!me?.flags.x`.
   const { me } = useAccount()
 
-  const [senderProfile, setSenderProfile] = useState<SenderProfile | null>(null)
-  const [senderLoading, setSenderLoading] = useState(true)
+  // Personnalisation v2 : dans le tableau de bord, le profil courrier vient du contexte (une seule
+  // source pour les courriers et l'enveloppe) ; hors contexte, lecture directe RLS owner (2a).
+  const letterProfileCtx = useLetterProfileContext()
+  const [ownProfile, setOwnProfile] = useState<LetterProfileRow | null>(null)
+  const [ownProfileLoading, setOwnProfileLoading] = useState(!letterProfileCtx)
+  const senderProfile = letterProfileCtx ? letterProfileCtx.profile : ownProfile
+  const senderLoading = letterProfileCtx ? false : ownProfileLoading
+  const handleSenderSaved = (row: LetterProfileRow) => {
+    if (letterProfileCtx) letterProfileCtx.onProfileSaved(row)
+    else setOwnProfile(row)
+  }
 
   const [recipient, setRecipient] = useState<RecipientAddress>(EMPTY_RECIPIENT)
   const [attachmentIds, setAttachmentIds] = useState<string[]>([])
@@ -139,23 +151,21 @@ export function PaperSendPanel({
     async () => {}
   )
 
-  // Profil expéditeur (chantier 2a, spec §3.1) : lecture directe RLS owner.
+  // Profil expéditeur hors tableau de bord : lecture directe RLS owner (chantier 2a, spec §3.1).
+  // Un échec laisse le formulaire vide (non bloquant) mais est signalé à Sentry.
   useEffect(() => {
+    if (letterProfileCtx) return
     let cancelled = false
     void (async () => {
-      const { data } = await supabase
-        .from('sender_profiles')
-        .select('full_name, address_line1, address_line2, postal_code, city, relationship')
-        .eq('user_id', userId)
-        .maybeSingle()
+      const data = await nullOnError(fetchLetterProfile(supabase, userId))
       if (cancelled) return
-      if (data) setSenderProfile(data as SenderProfile)
-      setSenderLoading(false)
+      setOwnProfile(data)
+      setOwnProfileLoading(false)
     })()
     return () => {
       cancelled = true
     }
-  }, [userId])
+  }, [userId, letterProfileCtx])
 
   // Snapshot du dernier envoi papier existant pour CE courrier — même patron que le canal email
   // (pas de polling, simple lecture au montage, cf. LetterSendPanel).
@@ -465,7 +475,19 @@ export function PaperSendPanel({
 
   return (
     <div className="space-y-4 rounded-lg border border-border-card bg-white p-4">
-      {!channelClosed && <SenderProfileForm userId={userId} profile={senderProfile} onSaved={setSenderProfile} />}
+      {!channelClosed && (
+        <LetterProfileForm
+          userId={userId}
+          profile={senderProfile}
+          defaults={{
+            firstName: letterProfileCtx?.autofill.userProfile.firstname,
+            lastName: letterProfileCtx?.autofill.userProfile.lastname,
+          }}
+          relation={letterProfileCtx?.relation}
+          deceasedFirstName={letterProfileCtx?.deceasedFirstName}
+          onSaved={handleSenderSaved}
+        />
+      )}
 
       {isFinal && existing && (
         <PillBadge tone={existing.status === 'sent' ? 'success' : 'primary'}>
