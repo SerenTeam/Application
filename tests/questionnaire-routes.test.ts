@@ -18,21 +18,24 @@ const PASS = (_req: express.Request, _res: express.Response, next: express.NextF
 // ── Fakes ────────────────────────────────────────────────────────────────
 type Session = { id: string; user_id: string; answers: Record<string, unknown>; lang: 'fr' | 'en' }
 
-function makeApp(opts: { identity?: unknown; rpcError?: boolean } = {}) {
+function makeApp(opts: { identity?: unknown; rpcError?: boolean; saveAnswersError?: boolean } = {}) {
   const contexts: Array<Record<string, unknown>> = []
   const sessions = new Map<string, Session>()
+  const saveAnswersCalls: string[] = []
   let seq = 0
   const store = {
     async createSession(_c: unknown, userId: string, lang: 'fr' | 'en' = 'fr') {
       const s: Session = { id: `sess-${++seq}`, user_id: userId, answers: {}, lang }
       sessions.set(s.id, s)
-      return s
+      return structuredClone(s) // clone : force les routes à passer par saveAnswers pour persister
     },
     async loadSession(_c: unknown, id: string) {
       const s = sessions.get(id)
       return s ? structuredClone(s) : null // clone : force les routes à passer par saveAnswers
     },
     async saveAnswers(_c: unknown, id: string, answers: Record<string, unknown>) {
+      saveAnswersCalls.push(id)
+      if (opts.saveAnswersError) throw new Error('saveAnswers boom')
       const s = sessions.get(id)
       if (s) s.answers = answers
     },
@@ -66,7 +69,7 @@ function makeApp(opts: { identity?: unknown; rpcError?: boolean } = {}) {
   const app = express()
   app.use(express.json())
   app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, requireActiveDossier: PASS, store, writeText }))
-  return { app, sessions, contexts, rpcCalls }
+  return { app, sessions, contexts, rpcCalls, saveAnswersCalls }
 }
 
 const CANNED: Record<string, unknown> = {
@@ -308,7 +311,7 @@ describe('PII : rédacteur Mistral (chantier 2a)', () => {
       async createSession(_c: unknown, userId: string, lang: 'fr' | 'en' = 'fr') {
         const s: Session = { id: `sess-${++seq}`, user_id: userId, answers: {}, lang }
         sessions.set(s.id, s)
-        return s
+        return structuredClone(s) // clone : force les routes à passer par saveAnswers pour persister
       },
       async loadSession(_c: unknown, id: string) {
         const s = sessions.get(id)
@@ -388,6 +391,19 @@ describe('displayValue — valeur scalaire sur une question à cocher (sessions 
   })
 })
 
+// Personnalisation v2 : le récap affiche les dates AAAA-MM-JJ en clair — JJ/MM/AAAA en FR (comme
+// les courriers), en toutes lettres en EN (JJ/MM et MM/JJ sont tous deux ambigus pour un lecteur
+// anglophone). displayValue testé directement : pas besoin de dérouler un parcours HTTP complet
+// pour vérifier un formatage pur.
+describe('displayValue — dates (JJ/MM/AAAA en FR, mois en toutes lettres en EN)', () => {
+  it('formate la date de décès selon la langue, jour sans zéro initial en EN', () => {
+    const spec = QUESTIONS_CATALOG.find((q: { id: string }) => q.id === 'deceased_dod')
+    expect(displayValue(spec, '2026-09-12', 'fr')).toBe('12/09/2026')
+    expect(displayValue(spec, '2026-09-12', 'en')).toBe('12 September 2026')
+    expect(displayValue(spec, '2026-03-05', 'en')).toBe('5 March 2026')
+  })
+})
+
 describe('FEATURE_LLM fermé → mistral null : textes relus du catalogue', () => {
   it('/start renvoie exactement le texte de repli interpolé du catalogue', async () => {
     const sessions = new Map<string, { id: string; user_id: string; answers: Record<string, unknown>; lang: 'fr' | 'en' }>()
@@ -395,9 +411,12 @@ describe('FEATURE_LLM fermé → mistral null : textes relus du catalogue', () =
       async createSession(_c: unknown, userId: string, lang: 'fr' | 'en' = 'fr') {
         const s = { id: 'sess-llm', user_id: userId, answers: {}, lang }
         sessions.set(s.id, s)
-        return s
+        return structuredClone(s) // clone : force les routes à passer par saveAnswers pour persister
       },
-      async loadSession(_c: unknown, id: string) { return sessions.get(id) ?? null },
+      async loadSession(_c: unknown, id: string) {
+        const s = sessions.get(id)
+        return s ? structuredClone(s) : null
+      },
       async saveAnswers() {},
       async deleteSession() {},
     }
@@ -462,7 +481,7 @@ describe('POST /api/questionnaire/start — pré-remplissage depuis le dossier P
   })
 
   it('RPC en échec : le questionnaire démarre et pose les questions d’identité', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { app } = makeApp({ rpcError: true })
     const start = await request(app).post('/api/questionnaire/start')
     expect(start.status).toBe(200)
@@ -470,6 +489,7 @@ describe('POST /api/questionnaire/start — pré-remplissage depuis le dossier P
       .post('/api/questionnaire/answer')
       .send({ session_id: start.body.session_id, question_id: 'relation', value: 'parent' })
     expect(next.body.data.question_id).toBe('deceased_firstname')
+    errorSpy.mockRestore()
   })
 
   it('aucun dossier : session vide, comportement historique', async () => {
@@ -477,5 +497,31 @@ describe('POST /api/questionnaire/start — pré-remplissage depuis le dossier P
     const start = await request(app).post('/api/questionnaire/start')
     expect(sessions.get(start.body.session_id)!.answers).toEqual({})
     expect(start.body.data.progress.current).toBe(0)
+  })
+
+  it('aucun dossier : saveAnswers jamais appelé (rien à persister)', async () => {
+    const { app, saveAnswersCalls } = makeApp({ identity: null })
+    await request(app).post('/api/questionnaire/start')
+    expect(saveAnswersCalls).toEqual([])
+  })
+
+  it('échec de saveAnswers après un pré-remplissage trouvé → 500', async () => {
+    const { app } = makeApp({ identity: IDENTITY, saveAnswersError: true })
+    const start = await request(app).post('/api/questionnaire/start')
+    expect(start.status).toBe(500)
+  })
+
+  it('les données d’identité ne fuient jamais vers le rédacteur (contexts)', async () => {
+    const { app, contexts } = makeApp({ identity: IDENTITY })
+    await runToRecap(app)
+    expect(contexts.length).toBeGreaterThan(0)
+    // prenom est légitimement transmis (règle PII de CLAUDE.md) — seul son absence serait un bug.
+    expect(contexts[0]).toMatchObject({ prenom: 'Bernard' })
+    const dump = JSON.stringify(contexts)
+    expect(dump).not.toContain('Roussel')
+    expect(dump).not.toContain('Camille')
+    expect(dump).not.toContain('2026-09-12')
+    expect(dump).not.toContain('12/09/2026')
+    expect(dump).not.toContain('12 September 2026')
   })
 })

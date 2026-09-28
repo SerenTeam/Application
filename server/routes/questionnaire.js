@@ -11,6 +11,7 @@ import { createUserRateLimiter } from '../lib/rate-limit.js'
 import { msg } from '../lib/messages.js'
 import { FAIL_CLOSED_GATE } from '../lib/require-active-dossier.js'
 import { prefillFromDossier } from '../lib/dossier-prefill.js'
+import { formatLetterValue } from '../lib/letter-render.js'
 
 const SORTED = [...QUESTIONS_CATALOG].sort((a, b) => a.order - b.order)
 const TRISTATE_LABELS = {
@@ -19,6 +20,10 @@ const TRISTATE_LABELS = {
 }
 const BOOLEAN_LABELS = { fr: { true: 'Oui', false: 'Non' }, en: { true: 'Yes', false: 'No' } }
 const NONE_LABEL = { fr: 'Aucun', en: 'None' }
+// Récap EN : mois en toutes lettres, jour sans zéro initial (« 5 March 2026 », jamais « 05/03 »,
+// format ambigu jour/mois en anglais). Les courriers, eux, restent toujours en français (CLAUDE.md) :
+// aucune contrepartie EN n'existe côté formatLetterValue, ce tableau est propre au récapitulatif.
+const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 // Types à valeurs fermées (enums non identifiants) : seuls autorisés dans le contexte LLM.
 const CLOSED_TYPES = ['boolean', 'tristate', 'select', 'multiselect']
 // deceased_department (chantier 2a) est un select — donc un CLOSED_TYPE — mais reste une
@@ -85,9 +90,17 @@ export function displayValue(spec, value, lang = 'fr') {
       return list.map((v) => textIn(spec.options.find((o) => o.value === v)?.label, lang) ?? v).join(', ')
     }
     case 'date': {
-      // Récapitulatif lisible : AAAA-MM-JJ → JJ/MM/AAAA (même rendu que les courriers).
-      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value))
-      return match ? `${match[3]}/${match[2]}/${match[1]}` : String(value)
+      // Récapitulatif lisible : AAAA-MM-JJ → JJ/MM/AAAA en FR (identique aux courriers, qui
+      // restent TOUJOURS en français — réutilise formatLetterValue plutôt que dupliquer la
+      // conversion) ; en EN, un format distinct (« 12 September 2026 ») puisque JJ/MM et MM/JJ
+      // sont tous deux ambigus pour un lecteur anglophone et qu'aucun courrier ne les emploie.
+      if (lang === 'en') {
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value))
+        if (!match) return String(value)
+        const [, year, month, day] = match
+        return `${Number(day)} ${MONTHS_EN[Number(month) - 1]} ${year}`
+      }
+      return formatLetterValue(String(value))
     }
     default:
       return String(value)

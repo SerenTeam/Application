@@ -15,6 +15,23 @@ export const DOSSIER_PREFILL = [
   ['deceased_death_date', 'deceased_dod'],
 ]
 
+// /start ne doit jamais attendre indéfiniment ce dossier : au-delà, dégradation silencieuse comme
+// toute autre panne (les 3 questions seront posées normalement).
+const RPC_TIMEOUT_MS = 2000
+
+/**
+ * Course entre `promise` et un délai de `ms` — rejette avec le code `my_dossier_identity_timeout`
+ * si `promise` n'a pas réglé à temps. Le minuteur est toujours nettoyé (aucun handle actif restant
+ * une fois l'un des deux réglé), que ce soit lui ou `promise` qui gagne la course.
+ */
+function withTimeout(promise, ms) {
+  let timer
+  const timeout = new Promise((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error('my_dossier_identity_timeout')), ms)
+  })
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
+}
+
 /**
  * Retourne les réponses enrichies des champs d'identité connus du dossier. Une valeur absente ou
  * invalide est ignorée (la question sera posée) ; une réponse déjà présente n'est jamais écrasée.
@@ -24,11 +41,13 @@ export const DOSSIER_PREFILL = [
 export async function prefillFromDossier(client, answers) {
   let identity
   try {
-    const { data, error } = await client.rpc('my_dossier_identity')
-    if (error) throw new Error(error.message ?? 'my_dossier_identity')
+    const { data, error } = await withTimeout(client.rpc('my_dossier_identity'), RPC_TIMEOUT_MS)
+    // Jamais le texte Postgres brut vers les journaux/Sentry (un DETAIL peut porter des valeurs
+    // littérales de la ligne en cause) : seul un code stable en sort.
+    if (error) throw new Error(`my_dossier_identity_failed:${error.code ?? 'unknown'}`)
     identity = data
   } catch (error) {
-    console.error('⚠️ questionnaire/start : identité du dossier indisponible, questions posées normalement')
+    console.error('⚠️ questionnaire/start : identité du dossier indisponible, questions posées normalement —', error?.message ?? 'erreur inconnue')
     Sentry.captureException(error)
     return answers
   }

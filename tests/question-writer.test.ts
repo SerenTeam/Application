@@ -128,4 +128,8 @@ describe('buildWriterMessages', () => {
     expect(messages[1].content).toContain('First choice')
     expect(messages[1].content).not.toContain('Premier choix')
   })
+  it('prénom avec saut de ligne (dossier saisi par un tiers, personnalisation v2) : rendu sur une seule ligne', () => {
+    const content = buildWriterMessages(SPEC, { prenom: 'Jean\n  Michel', relation: 'conjoint_marie' })[1].content
+    expect(content).toContain('Prénom du défunt : Jean Michel.')
+  })
 })

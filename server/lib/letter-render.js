@@ -35,7 +35,7 @@ function resolveValue(key, values) {
 // <input type="date"> renvoie l'ISO AAAA-MM-JJ, rendu JJ/MM/AAAA au rendu seulement.
 const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 
-function formatLetterValue(value) {
+export function formatLetterValue(value) {
   const match = value ? ISO_DATE_RE.exec(value) : null
   return match ? `${match[3]}/${match[2]}/${match[1]}` : value
 }

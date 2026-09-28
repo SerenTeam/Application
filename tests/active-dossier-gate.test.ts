@@ -28,11 +28,21 @@ export const ACTIVE_ACCOUNT = {
 }
 
 // Client au jeton utilisateur, PARTAGÉ par tous les tests de ce fichier (mini() et makeAllRouters()).
-// my_dossier_identity() (personnalisation v2, Task 6) est la seule RPC réellement exercée dessus ici :
-// my_account(), la RPC par défaut du gate, est toujours substituée par le loadAccount de gateWith()
-// ci-dessous et n'est donc jamais appelée sur ce client. Répondre « aucun dossier » est neutre pour
-// le gate (loadAccount ignore le client qu'on lui passe) : aucune décision 200/403/500 n'en dépend.
-const USER_CLIENT = { marker: 'user-client', rpc: async () => ({ data: null, error: null }) }
+// my_dossier_identity() (personnalisation v2, Task 6) est la seule RPC réellement exercée dessus
+// ici : my_account(), la RPC par défaut du gate, est toujours substituée par un loadAccount injecté
+// — gateWith() pour la plupart des tests, un loadAccount ad hoc pour le seul test qui atteint
+// réellement le handler /start (« un refus du gate ne consomme pas le quota… », plus bas) — et
+// n'est donc jamais appelée sur ce client. rpc() est volontairement strict : il ne répond « aucun
+// dossier » QUE pour my_dossier_identity et lève sur tout autre nom, pour qu'un futur test qui
+// omettrait d'injecter loadAccount (retombant sur le défaut my_account()) échoue visiblement
+// (500 ACCOUNT_ERROR) plutôt que de passer silencieusement avec un compte vide.
+const USER_CLIENT = {
+  marker: 'user-client',
+  rpc: async (fn: string) => {
+    if (fn === 'my_dossier_identity') return { data: null, error: null }
+    throw new Error(`USER_CLIENT.rpc : appel RPC inattendu « ${fn} » — ce client ne simule que my_dossier_identity`)
+  },
+}
 
 const requireAuth = (req: Req, _res: express.Response, next: express.NextFunction) => {
   req.user = { id: 'user-1' }

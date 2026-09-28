@@ -68,14 +68,20 @@ const RELATION_LABELS = {
 export function buildWriterMessages(spec, context, lang = 'fr') {
   const relationLabels = RELATION_LABELS[lang] ?? RELATION_LABELS.fr
   const defaultProche = lang === 'en' ? 'your loved one' : 'votre proche'
+  // Défense en profondeur (personnalisation v2) : le prénom peut désormais venir du dossier saisi
+  // par un tiers (la PF), pas seulement retapé par la famille dans le questionnaire — normaliser
+  // ses blancs (saut de ligne, espaces multiples) avant de l'injecter dans le prompt. Un résultat
+  // vide après normalisation (prénom composé uniquement d'espaces) est traité comme inconnu, à
+  // l'identique d'une chaîne vide.
+  const prenom = context.prenom ? String(context.prenom).replace(/\s+/g, ' ').trim() : context.prenom
   const parts = lang === 'en'
     ? [
         `Field to ask about: ${spec.id} (type ${spec.type}).`,
         // First name absent (real case: the `relation` question precedes `deceased_firstname`):
         // without an explicit ban, the writer still "personalizes" anyway with a raw
         // placeholder ("[deceased's first name]") shown as-is to a grieving user.
-        context.prenom
-          ? `Deceased's first name: ${context.prenom}.`
+        prenom
+          ? `Deceased's first name: ${prenom}.`
           : 'Deceased\'s first name unknown for now: make NO reference to it, do not invent a first name or a placeholder (brackets, "[first name]", etc.). Refer to the deceased as "your loved one" or an equivalent phrase.',
         context.relation
           ? `The deceased was ${relationLabels[context.relation] ?? 'a loved one'} of the user. Never get this relationship backwards.`
@@ -88,15 +94,15 @@ export function buildWriterMessages(spec, context, lang = 'fr') {
           ? `The choices offered to the user will be: ${spec.options.map((o) => textIn(o.label, lang)).join(' / ')}. Choose an open-ended phrasing compatible with ALL these choices (never a yes/no question over a multiple choice), without listing them.`
           : '',
         // Always interpolated: a raw {prenom} in the reference phrasing invites the model to copy a placeholder.
-        `Reference phrasing (to improve on, not to copy): "${textIn(spec.fallback_text.question, lang).replaceAll('{prenom}', context.prenom || defaultProche)}"`,
+        `Reference phrasing (to improve on, not to copy): "${textIn(spec.fallback_text.question, lang).replaceAll('{prenom}', prenom || defaultProche)}"`,
       ]
     : [
         `Champ à demander : ${spec.id} (type ${spec.type}).`,
         // Prénom absent (cas réel : la question `relation` précède `deceased_firstname`) : sans
         // interdiction explicite, le rédacteur « personnalise » quand même avec un placeholder
         // brut (« [prénom du défunt] ») affiché tel quel à un utilisateur en deuil.
-        context.prenom
-          ? `Prénom du défunt : ${context.prenom}.`
+        prenom
+          ? `Prénom du défunt : ${prenom}.`
           : 'Prénom du défunt inconnu pour l\'instant : n\'y fais AUCUNE référence, n\'invente ni prénom ni placeholder (crochets, « [prénom] », etc.). Désigne la personne décédée par « la personne qui vous a quitté » ou une formule équivalente.',
         context.relation
           ? `La personne décédée était ${relationLabels[context.relation] ?? 'un proche'} de l'utilisateur. Ne te trompe jamais de sens sur cette relation.`
@@ -109,7 +115,7 @@ export function buildWriterMessages(spec, context, lang = 'fr') {
           ? `Les réponses proposées à l'utilisateur seront : ${spec.options.map((o) => textIn(o.label, lang)).join(' / ')}. Choisis une formulation ouverte compatible avec TOUS ces choix (jamais une question oui/non au-dessus d'un choix multiple), sans les lister.`
           : '',
         // Toujours interpolée : un {prenom} brut dans la référence invite le modèle à recopier un placeholder.
-        `Formulation de référence (à améliorer, pas à copier) : « ${textIn(spec.fallback_text.question, lang).replaceAll('{prenom}', context.prenom || defaultProche)} »`,
+        `Formulation de référence (à améliorer, pas à copier) : « ${textIn(spec.fallback_text.question, lang).replaceAll('{prenom}', prenom || defaultProche)} »`,
       ]
   return [
     { role: 'system', content: WRITER_SYSTEM_PROMPTS[lang] ?? WRITER_SYSTEM_PROMPTS.fr },
