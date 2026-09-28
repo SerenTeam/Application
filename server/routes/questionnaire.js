@@ -10,6 +10,7 @@ import { writeQuestionText } from '../lib/question-writer.js'
 import { createUserRateLimiter } from '../lib/rate-limit.js'
 import { msg } from '../lib/messages.js'
 import { FAIL_CLOSED_GATE } from '../lib/require-active-dossier.js'
+import { prefillFromDossier } from '../lib/dossier-prefill.js'
 
 const SORTED = [...QUESTIONS_CATALOG].sort((a, b) => a.order - b.order)
 const TRISTATE_LABELS = {
@@ -83,6 +84,11 @@ export function displayValue(spec, value, lang = 'fr') {
       if (list.length === 0) return NONE_LABEL[lang] ?? NONE_LABEL.fr
       return list.map((v) => textIn(spec.options.find((o) => o.value === v)?.label, lang) ?? v).join(', ')
     }
+    case 'date': {
+      // Récapitulatif lisible : AAAA-MM-JJ → JJ/MM/AAAA (même rendu que les courriers).
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value))
+      return match ? `${match[3]}/${match[2]}/${match[1]}` : String(value)
+    }
     default:
       return String(value)
   }
@@ -137,6 +143,14 @@ export function createQuestionnaireRouter({
     }
     try {
       const session = await store.createSession(req.supabaseClient, req.user.id, lang)
+      // Personnalisation v2 (spec §4.3) : identité du défunt reprise du dossier PF — les 3
+      // questions sont sautées par le moteur, et restent modifiables au récapitulatif.
+      const answers = session.answers ?? {}
+      const prefilled = await prefillFromDossier(req.supabaseClient, answers)
+      if (prefilled !== answers) {
+        session.answers = prefilled
+        await store.saveAnswers(req.supabaseClient, session.id, prefilled)
+      }
       const data = await renderNext(session)
       res.json({ success: true, session_id: session.id, data })
     } catch (error) {

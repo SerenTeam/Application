@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import express from 'express'
 import request from 'supertest'
 // @ts-expect-error — module JS serveur
@@ -18,7 +18,7 @@ const PASS = (_req: express.Request, _res: express.Response, next: express.NextF
 // ── Fakes ────────────────────────────────────────────────────────────────
 type Session = { id: string; user_id: string; answers: Record<string, unknown>; lang: 'fr' | 'en' }
 
-function makeApp() {
+function makeApp(opts: { identity?: unknown; rpcError?: boolean } = {}) {
   const contexts: Array<Record<string, unknown>> = []
   const sessions = new Map<string, Session>()
   let seq = 0
@@ -40,9 +40,17 @@ function makeApp() {
       sessions.delete(id)
     },
   }
+  const rpcCalls: string[] = []
   const requireAuth = (req: express.Request & { user?: unknown; supabaseClient?: unknown }, _res: express.Response, next: express.NextFunction) => {
     req.user = { id: 'user-1' }
-    req.supabaseClient = {}
+    req.supabaseClient = {
+      rpc: async (fn: string) => {
+        rpcCalls.push(fn)
+        return opts.rpcError
+          ? { data: null, error: { message: 'boom' } }
+          : { data: opts.identity ?? null, error: null }
+      },
+    }
     next()
   }
   // writer synchrone déterministe : pas de LLM dans les tests de routes. Il enregistre chaque
@@ -58,7 +66,7 @@ function makeApp() {
   const app = express()
   app.use(express.json())
   app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, requireActiveDossier: PASS, store, writeText }))
-  return { app, sessions, contexts }
+  return { app, sessions, contexts, rpcCalls }
 }
 
 const CANNED: Record<string, unknown> = {
@@ -181,7 +189,7 @@ describe('POST /api/questionnaire/answer', () => {
     const app2 = express()
     app2.use(express.json())
     app2.use('/api/questionnaire', createQuestionnaireRouter({
-      requireAuth: (req: express.Request & { user?: unknown; supabaseClient?: unknown }, _res: express.Response, next: express.NextFunction) => { req.user = { id: 'u' }; req.supabaseClient = {}; next() },
+      requireAuth: (req: express.Request & { user?: unknown; supabaseClient?: unknown }, _res: express.Response, next: express.NextFunction) => { req.user = { id: 'u' }; req.supabaseClient = { rpc: async () => ({ data: null, error: null }) }; next() },
       requireActiveDossier: PASS,
       store: {
         async createSession() { throw new Error('n/a') },
@@ -316,7 +324,7 @@ describe('PII : rédacteur Mistral (chantier 2a)', () => {
     }
     const requireAuth = (req: express.Request & { user?: unknown; supabaseClient?: unknown }, _res: express.Response, next: express.NextFunction) => {
       req.user = { id: 'user-1' }
-      req.supabaseClient = {}
+      req.supabaseClient = { rpc: async () => ({ data: null, error: null }) }
       next()
     }
     const writeText = async (
@@ -396,7 +404,7 @@ describe('FEATURE_LLM fermé → mistral null : textes relus du catalogue', () =
     const app = express()
     app.use(express.json())
     app.use('/api/questionnaire', createQuestionnaireRouter({
-      requireAuth: (req: express.Request & { user?: unknown; supabaseClient?: unknown }, _res: express.Response, next: express.NextFunction) => { req.user = { id: 'u' }; req.supabaseClient = {}; next() },
+      requireAuth: (req: express.Request & { user?: unknown; supabaseClient?: unknown }, _res: express.Response, next: express.NextFunction) => { req.user = { id: 'u' }; req.supabaseClient = { rpc: async () => ({ data: null, error: null }) }; next() },
       requireActiveDossier: PASS,
       store,
       mistral: null,
@@ -405,5 +413,69 @@ describe('FEATURE_LLM fermé → mistral null : textes relus du catalogue', () =
     expect(res.status).toBe(200)
     const spec = QUESTIONS_CATALOG.find((q: { id: string }) => q.id === res.body.data.question_id)
     expect(res.body.data.question).toBe(interpolateFallback(spec, undefined, 'fr').question)
+  })
+})
+
+describe('POST /api/questionnaire/start — pré-remplissage depuis le dossier PF', () => {
+  const IDENTITY = {
+    family_first_name: 'Camille',
+    family_last_name: 'Roussel',
+    deceased_first_name: 'Bernard',
+    deceased_last_name: 'Roussel',
+    deceased_death_date: '2026-09-12',
+  }
+
+  it('les 3 champs d’identité sont enregistrés dans la session et ne sont pas posés', async () => {
+    const { app, sessions, rpcCalls } = makeApp({ identity: IDENTITY })
+    const start = await request(app).post('/api/questionnaire/start')
+    expect(start.status).toBe(200)
+    expect(rpcCalls).toEqual(['my_dossier_identity'])
+    expect(start.body.data.question_id).toBe('relation')
+    expect(sessions.get(start.body.session_id)!.answers).toEqual({
+      deceased_firstname: 'Bernard',
+      deceased_lastname: 'Roussel',
+      deceased_dod: '2026-09-12',
+    })
+    const next = await request(app)
+      .post('/api/questionnaire/answer')
+      .send({ session_id: start.body.session_id, question_id: 'relation', value: 'parent' })
+    expect(next.body.data.question_id).toBe('deceased_department')
+  })
+
+  it('la progression compte les réponses pré-remplies', async () => {
+    const { app } = makeApp({ identity: IDENTITY })
+    const start = await request(app).post('/api/questionnaire/start')
+    const { current, total } = start.body.data.progress
+    expect(current).toBe(3)
+    expect(total - current).toBeLessThanOrEqual(15)
+  })
+
+  it('le récapitulatif affiche l’identité pré-remplie, date en JJ/MM/AAAA', async () => {
+    const { app } = makeApp({ identity: IDENTITY })
+    const { recap } = await runToRecap(app)
+    const byId = Object.fromEntries(
+      recap.recap.map((e: { question_id: string; display: string }) => [e.question_id, e.display])
+    )
+    expect(byId.deceased_firstname).toBe('Bernard')
+    expect(byId.deceased_lastname).toBe('Roussel')
+    expect(byId.deceased_dod).toBe('12/09/2026')
+  })
+
+  it('RPC en échec : le questionnaire démarre et pose les questions d’identité', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { app } = makeApp({ rpcError: true })
+    const start = await request(app).post('/api/questionnaire/start')
+    expect(start.status).toBe(200)
+    const next = await request(app)
+      .post('/api/questionnaire/answer')
+      .send({ session_id: start.body.session_id, question_id: 'relation', value: 'parent' })
+    expect(next.body.data.question_id).toBe('deceased_firstname')
+  })
+
+  it('aucun dossier : session vide, comportement historique', async () => {
+    const { app, sessions } = makeApp({ identity: null })
+    const start = await request(app).post('/api/questionnaire/start')
+    expect(sessions.get(start.body.session_id)!.answers).toEqual({})
+    expect(start.body.data.progress.current).toBe(0)
   })
 })
