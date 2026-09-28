@@ -205,3 +205,42 @@ describe('renderLetter — fusion mustache-light (miroir useLetterGenerator)', (
     expect(result.missingVariables).toEqual(['b'])
   })
 })
+
+describe('personnalisation v2 — 5 courriers papier, destinataire saisi par la famille', () => {
+  const VALUES: Record<string, string> = {
+    organisme_name: 'La Gazette des Chartrons',
+    subscriber_number: 'AB-204518',
+    user_firstname: 'Camille',
+    user_lastname: 'Roussel',
+    user_relation: 'fille',
+    user_address: '18 rue des Tanneurs, 33000 Bordeaux',
+    city: 'Bordeaux',
+    deceased_firstname: 'Bernard',
+    deceased_lastname: 'Roussel',
+    deceased_dob: '1941-03-14',
+    deceased_dod: '2026-09-12',
+    today_date: '28 septembre 2026',
+  }
+  const IDS = ['resiliation-presse', 'resiliation-telecom', 'resiliation-sport-association', 'ehpad-fin-contrat', 'aides-departement']
+  for (const id of IDS) {
+    it(`${id} : canal papier, destinataire propre à la famille, rendu complet sans résidu`, () => {
+      const t = SERVER_TEMPLATES.find((x: { id: string }) => x.id === id)
+      expect(t, id).toBeDefined()
+      expect(t.channel).toBe('papier')
+      expect(t.recipient_kind).toBe('user_specific')
+      const { subject, body, missingVariables } = renderLetter(id, VALUES)
+      expect(missingVariables).toEqual([])
+      expect(`${subject}\n${body}`).not.toMatch(/\{\{|\[[A-Z_]+\]/)
+      expect(body).toContain('Camille Roussel')
+      expect(body).toContain('fille de Bernard Roussel')
+      expect(body).toContain('Bordeaux, le 28 septembre 2026')
+    })
+  }
+  it('presse et télécom exigent le numéro d’abonné ou de client', () => {
+    for (const id of ['resiliation-presse', 'resiliation-telecom']) {
+      const partial = { ...VALUES }
+      delete partial.subscriber_number
+      expect(renderLetter(id, partial).missingVariables, id).toContain('subscriber_number')
+    }
+  })
+})

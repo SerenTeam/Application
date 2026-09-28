@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { STEPS_CATALOG } from '@/data/steps-catalog'
 import { STEPS_CATALOG_FR } from '@/data/steps-catalog.fr'
 import { STEPS_CATALOG_EN } from '@/data/steps-catalog.en'
+import { LETTER_TEMPLATES } from '@/data/letter-templates'
 import { isApplicable } from '@/lib/roadmap-generator'
 import type { StepTemplate } from '@/data/steps-catalog'
 import type { QuestionnaireAnswersV2 } from '@/types/questionnaire'
@@ -197,6 +198,34 @@ describe('matchers : condition en tableau sur une réponse à cocher (multiselec
       expect(
         isApplicable({ applicable_when: w } as unknown as StepTemplate, answers as unknown as QuestionnaireAnswersV2)
       ).toBe(expected)
+    }
+  })
+})
+
+describe('invariant : étapes ↔ courriers', () => {
+  it('chaque letter_template_id d’étape existe', () => {
+    for (const s of STEPS_CATALOG) {
+      if (!s.letter_template_id) continue
+      expect(LETTER_TEMPLATES.some((t) => t.id === s.letter_template_id), `${s.id} → ${s.letter_template_id}`).toBe(true)
+    }
+  })
+  it('chaque courrier est rattaché à une étape qui le propose', () => {
+    for (const t of LETTER_TEMPLATES) {
+      const step = STEPS_CATALOG.find((s) => s.id === t.step_id)
+      expect(step, `${t.id} : étape ${t.step_id} introuvable`).toBeDefined()
+      expect(step!.letter_template_id, `${t.id} : l’étape ${t.step_id} ne le propose pas`).toBe(t.id)
+    }
+  })
+  it('personnalisation v2 : les 5 nouvelles démarches proposent leur courrier', () => {
+    const expected: Record<string, string> = {
+      'abonnements-presse': 'resiliation-presse',
+      'logement-resiliation-telecom': 'resiliation-telecom',
+      'abonnements-sport-association': 'resiliation-sport-association',
+      'logement-ehpad': 'ehpad-fin-contrat',
+      'aides-departement': 'aides-departement',
+    }
+    for (const [stepId, templateId] of Object.entries(expected)) {
+      expect(STEPS_CATALOG.find((s) => s.id === stepId)?.letter_template_id, stepId).toBe(templateId)
     }
   })
 })

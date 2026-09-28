@@ -284,6 +284,135 @@ Je reste à votre disposition pour fournir tout document nécessaire, notamment 
 
 ${SIGNATURE}`,
   },
+
+  // ── Personnalisation v2 : courriers papier (spec docs/design-personnalisation-v2.md §6.4) ──
+
+  // 11. Presse — Résiliation d'abonnement
+  {
+    id: 'resiliation-presse',
+    channel: 'papier',
+    // Éditeur propre à l'abonnement du défunt : aucun annuaire réseau → adresse saisie par la famille.
+    recipient_kind: 'user_specific',
+    subject: 'Résiliation de l\'abonnement de {{deceased_firstname}} {{deceased_lastname}} à la suite de son décès',
+    recipient_label: 'Au Service Abonnements de {{organisme_name}}',
+    body: `{{recipient_label}}
+
+Objet : {{subject}}
+Abonnement n° {{subscriber_number}}
+
+Madame, Monsieur,
+
+Je soussigné(e) {{user_firstname}} {{user_lastname}}, {{user_relation}} de {{deceased_firstname}} {{deceased_lastname}}, vous informe de son décès survenu le {{deceased_dod}}.
+
+Je vous demande de bien vouloir résilier l'abonnement n° {{subscriber_number}} souscrit à son nom, à compter de la réception de ce courrier, et de mettre fin aux prélèvements correspondants.
+
+Je vous remercie de me confirmer cette résiliation par écrit et de procéder, le cas échéant, au remboursement des numéros payés d'avance et non servis.
+
+Vous trouverez ci-joint une copie de l'acte de décès.
+
+${SIGNATURE}`,
+  },
+
+  // 12. Opérateur télécom — Résiliation des contrats
+  {
+    id: 'resiliation-telecom',
+    channel: 'papier',
+    // Opérateur choisi par le défunt : aucun annuaire réseau → adresse saisie par la famille.
+    recipient_kind: 'user_specific',
+    subject: 'Résiliation des contrats de {{deceased_firstname}} {{deceased_lastname}} à la suite de son décès',
+    recipient_label: 'Au Service Clients de {{organisme_name}}',
+    body: `{{recipient_label}}
+
+Objet : {{subject}}
+Numéro client : {{subscriber_number}}
+
+Madame, Monsieur,
+
+Je soussigné(e) {{user_firstname}} {{user_lastname}}, {{user_relation}} de {{deceased_firstname}} {{deceased_lastname}}, vous informe de son décès survenu le {{deceased_dod}}.
+
+Je vous demande de bien vouloir résilier l'ensemble des contrats souscrits à son nom et rattachés au numéro client {{subscriber_number}} (ligne mobile, box internet, ligne fixe).
+
+Je vous remercie de procéder à cette résiliation sans frais, au motif du décès du titulaire, de m'adresser la facture de clôture et de m'indiquer les modalités de restitution du matériel éventuel (box, décodeur). Les sommes versées d'avance devront m'être restituées au plus tard dix jours après le paiement de la dernière facture, conformément à l'article L. 224-35 du code de la consommation.
+
+Vous trouverez ci-joint une copie de l'acte de décès.
+
+${SIGNATURE}`,
+  },
+
+  // 13. Club, salle de sport ou association — Fin d'abonnement ou d'adhésion
+  {
+    id: 'resiliation-sport-association',
+    channel: 'papier',
+    // Club ou association propre au défunt : aucun annuaire réseau → adresse saisie par la famille.
+    recipient_kind: 'user_specific',
+    subject: 'Fin de l\'abonnement ou de l\'adhésion de {{deceased_firstname}} {{deceased_lastname}} à la suite de son décès',
+    recipient_label: 'À {{organisme_name}}',
+    body: `{{recipient_label}}
+
+Objet : {{subject}}
+
+Madame, Monsieur,
+
+Je soussigné(e) {{user_firstname}} {{user_lastname}}, {{user_relation}} de {{deceased_firstname}} {{deceased_lastname}}, vous informe de son décès survenu le {{deceased_dod}}.
+
+Je vous demande de bien vouloir mettre fin à son abonnement ou à son adhésion à compter de la réception de ce courrier, et d'arrêter les prélèvements correspondants.
+
+Je vous remercie de me confirmer cette résiliation par écrit et de m'indiquer si un remboursement de la période non utilisée est prévu.
+
+Vous trouverez ci-joint une copie de l'acte de décès.
+
+${SIGNATURE}`,
+  },
+
+  // 14. EHPAD — Fin du séjour après le décès du résident
+  {
+    id: 'ehpad-fin-contrat',
+    channel: 'papier',
+    // Établissement du défunt : aucun annuaire réseau → adresse saisie par la famille.
+    recipient_kind: 'user_specific',
+    subject: 'Décès de {{deceased_firstname}} {{deceased_lastname}} — fin du séjour et facture de clôture',
+    recipient_label: 'À la Direction de {{organisme_name}}',
+    body: `{{recipient_label}}
+
+Objet : {{subject}}
+
+Madame, Monsieur,
+
+Je soussigné(e) {{user_firstname}} {{user_lastname}}, {{user_relation}} de {{deceased_firstname}} {{deceased_lastname}}, né(e) le {{deceased_dob}}, résident(e) de votre établissement, vous confirme son décès survenu le {{deceased_dod}}.
+
+Je souhaite convenir avec vous, dans les meilleurs délais, d'une date pour retirer ses effets personnels et réaliser l'état des lieux de sortie.
+
+Je vous remercie de m'adresser la facture de clôture, établie selon les règles applicables après le décès d'un résident (pour un EHPAD, articles L. 314-10-1 et R. 314-149 du code de l'action sociale et des familles), et de restituer les sommes perçues d'avance ainsi que le dépôt de garantie dans les délais prévus.
+
+Vous trouverez ci-joint une copie de l'acte de décès.
+
+${SIGNATURE}`,
+  },
+
+  // 15. Conseil départemental — Aides versées au défunt
+  {
+    id: 'aides-departement',
+    channel: 'papier',
+    // Conseil départemental : hors des 4 réseaux de l'annuaire (caf/cpam/carsat/impots) → adresse saisie.
+    recipient_kind: 'user_specific',
+    subject: 'Décès de {{deceased_firstname}} {{deceased_lastname}} — aides versées par le département',
+    recipient_label: 'À l\'attention du service autonomie — {{organisme_name}}',
+    body: `{{recipient_label}}
+
+Objet : {{subject}}
+
+Madame, Monsieur,
+
+Je soussigné(e) {{user_firstname}} {{user_lastname}}, {{user_relation}} de {{deceased_firstname}} {{deceased_lastname}}, né(e) le {{deceased_dob}}, vous informe de son décès survenu le {{deceased_dod}}.
+
+{{deceased_firstname}} {{deceased_lastname}} bénéficiait d'une ou de plusieurs aides versées par votre département (allocation personnalisée d'autonomie, aide sociale à l'hébergement ou prestation de compensation du handicap). Je vous demande de bien vouloir mettre fin à leur versement et de m'indiquer, le cas échéant, les sommes à régulariser.
+
+Si une aide sociale à l'hébergement lui était accordée, je vous remercie de m'adresser le relevé des sommes versées, afin que je puisse le transmettre au notaire chargé de la succession.
+
+Vous trouverez ci-joint une copie de l'acte de décès.
+
+${SIGNATURE}`,
+  },
 ]
 
 export const LETTER_TEMPLATES = RAW_TEMPLATES.map((t) => ({

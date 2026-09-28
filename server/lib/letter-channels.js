@@ -21,4 +21,10 @@ export const LETTER_CHANNELS = {
   'bailleur-notification': 'papier',
   'cpam-notification': 'portail',
   'impots-notification': 'portail',
+  // Personnalisation v2 : courriers papier, destinataire saisi par la famille (user_specific).
+  'resiliation-presse': 'papier',
+  'resiliation-telecom': 'papier',
+  'resiliation-sport-association': 'papier',
+  'ehpad-fin-contrat': 'papier',
+  'aides-departement': 'papier',
 }

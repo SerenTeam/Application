@@ -450,6 +450,7 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
     requires_notary: false,
     applicable_when: { abonnements: ['telephonie'] },
     source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/R64939',
+    letter_template_id: 'resiliation-telecom',
     display_order: 21,
   },
   {
@@ -1121,6 +1122,7 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
     requires_notary: false,
     applicable_when: { logement: ['ehpad'] },
     source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F763',
+    letter_template_id: 'ehpad-fin-contrat',
     display_order: 52,
   },
   {
@@ -1143,6 +1145,7 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
     requires_notary: false,
     applicable_when: { aides_percues: ['apa', 'ash', 'handicap'] },
     source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F10009',
+    letter_template_id: 'aides-departement',
     display_order: 53,
   },
   {
@@ -1220,6 +1223,7 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
     requires_notary: false,
     applicable_when: { abonnements: ['presse'] },
     source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F37096',
+    letter_template_id: 'resiliation-presse',
     display_order: 56,
   },
   {
@@ -1240,6 +1244,7 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
     requires_notary: false,
     applicable_when: { abonnements: ['sport_loisirs'] },
     source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F37096',
+    letter_template_id: 'resiliation-sport-association',
     display_order: 57,
   },
   {
