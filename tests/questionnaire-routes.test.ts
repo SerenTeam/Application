@@ -70,8 +70,8 @@ const CANNED: Record<string, unknown> = {
   abonnements: ['presse', 'telephonie'], organismes_contactes: ['banque'],
 }
 
-async function runToRecap(app: express.Express) {
-  const start = await request(app).post('/api/questionnaire/start')
+async function runToRecap(app: express.Express, lang: 'fr' | 'en' = 'fr') {
+  const start = await request(app).post('/api/questionnaire/start').send({ lang })
   const sessionId = start.body.session_id
   let data = start.body.data
   const rendered: Record<string, Record<string, unknown>> = {} // chaque question telle que rendue au client
@@ -363,6 +363,22 @@ describe('PII : rédacteur Mistral (chantier 2a)', () => {
       // logement exclu par prudence : la valeur EHPAD révèle une perte d'autonomie
       expect(dump).not.toContain('EHPAD')
       expect(dump).not.toContain('Locataire de son logement')
+    }
+  })
+  // La « dernière question » de la transition est le texte de repli du catalogue : un {prenom}
+  // brut invite le modèle à recopier le marqueur. Elle doit être interpolée comme le repli
+  // (prénom déjà transmis, sinon libellé neutre) — sans élargir les données envoyées.
+  it('aucun contexte transmis au rédacteur ne contient le marqueur {prenom} brut (FR et EN)', async () => {
+    const enfants = QUESTIONS_CATALOG.find((q: { id: string }) => q.id === 'enfants')
+    for (const lang of ['fr', 'en'] as const) {
+      const { app, contexts } = makeApp()
+      await runToRecap(app, lang)
+      expect(contexts.length).toBeGreaterThan(0)
+      for (const ctx of contexts) {
+        expect(JSON.stringify(ctx)).not.toContain('{prenom}')
+      }
+      // Interpolé, pas effacé : même fonction que le repli, prénom et langue de la session.
+      expect(contexts.map((ctx) => ctx.derniereQuestion)).toContain(interpolateFallback(enfants, 'Pierre', lang).question)
     }
   })
 })
