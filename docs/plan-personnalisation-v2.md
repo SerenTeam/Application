@@ -345,6 +345,10 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 >   - 2 fichiers de migration au lieu d'un ;
 >   - pas d'`order by` : l'index unique `dossiers_user_uidx` et `dossiers_state_check` garantissent au plus un dossier `active`/`closed` par compte ;
 >   - **rejeu SQL réel reporté à la Task 11 Step 4.**
+> - **Rejeu SQL fait le 2026-09-28 au soir** (Task 11 Step 4, avancée pendant la Task 7, base LOCALE sur le HEAD `611ad24`, identique pour le SQL) :
+>   - migrations : 20 ;
+>   - `sql-scenarios-f1.sql` + `sql-scenarios-v2.sql` : 271 lignes `OK`, aucune `ERROR`, dont les 4 `OK S13p` de `my_dossier_identity()`, les 8 `OK S15…` (S15a, S15b, S15b2, S15c, S15d, S15d2, S15e, S15f) et `SCENARIOS V2 : OK` ;
+>   - `hook-scenarios-v2.mjs` : 9/9 (5 refus, aucun compte créé par ces refus, 3 acceptations).
 
 ---
 
@@ -2990,17 +2994,55 @@ générateur remplit la ville et resynchronise les champs auto sans effacer une 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
+> **Note post-revue (Task 7, 2026-09-28)** — Commits : `611ad24` (la tâche, identique au plan), `65c57b0` (correctifs de la revue qualité), `64c0446` (mineurs de la re-revue). Revue de spec : conforme. Revue qualité : « approuvée sous réserve » (I1, I2), puis approuvée en re-revue avec 12 mutations attrapées sur 15. Les 3 survivantes ont été traitées dans la dernière passe, et 3 mutations de contrôle y sont attrapées. Suite à **917** tests. **Le code livré s'écarte des blocs de code de cette tâche sur les points ci-dessous**, qui font foi.
+> - **Dates des courriers en UTC (I1).**
+>   - Cause : `new Date('1941-03-14')` vaut minuit UTC, et le formatage en heure locale donnait la veille aux Antilles, en Guyane ou à Tahiti. Les départements 971 à 973 sont couverts et un courrier papier part sans retour possible.
+>   - Correctif : `formatDate` formate en `timeZone: 'UTC'` les dates seules (AAAA-MM-JJ). Une date invalide donne `''` (jamais « Invalid Date » dans un courrier). `today_date` reste en heure locale.
+>   - Test sous `TZ=America/Martinique`.
+> - **Resynchronisation ciblée (I2).**
+>   - Cause : au moindre changement de source, toutes les valeurs auto étaient réimposées. Une ville corrigée à la main était écrasée par un changement d'adresse du profil.
+>   - Correctif : seules les clés auto dont la source a changé sont réappliquées. `pickChangedAuto` fait la comparaison, `createAutoSync` (état React créé une fois, appelé hors de l'updater) garde la mémoire.
+>   - Limite : le câblage de l'effet lui-même n'est pas testable en environnement node, faute de moteur de rendu. Il est couvert par la recette (Task 11, ligne 15).
+> - **Écriture des réponses du questionnaire.**
+>   - `patchQuestionnaireAnswers(client, id, patch)` relit les réponses avant d'écrire, n'écrit rien si le patch ne change rien, et exige une ligne touchée (`.select('id')` ; codes `questionnaire_not_found` / `questionnaire_not_updated`).
+>   - `saveDeceasedDob(client, id, dob)` perd son paramètre `answers` ; les appels des Tasks 9 et 10 sont adaptés.
+>   - Le département (DashboardPage, 2a) passe aussi par ce patch en Task 10. Motif : son instantané en mémoire pouvait effacer une date de naissance enregistrée depuis un autre onglet.
+> - **Validation.**
+>   - Lien limité à 45 caractères.
+>   - `dobOutOfRange` est scindée en `dobTooEarly` / `dobAfterDeath`, et les messages de la Task 8 sont adaptés.
+>   - « Aujourd'hui » est la date LOCALE (verrouillé par un test).
+>   - Un `max` vide est traité comme inconnu.
+> - **Détails.**
+>   - Les clés du prototype sont exclues de `relationLabelOptions` : avec `hasOwnProperty`, car la lib TS est en ES2021 et `Object.hasOwn` n'y est pas typé.
+>   - `updated_at` est rafraîchi à chaque enregistrement du profil.
+>   - Tests renforcés : faux client aux colonnes séparées, tri et limite verrouillés, chemins null et d'erreur.
+> - **Plan adapté en conséquence.**
+>   - **Task 8** :
+>     - nouveau Step 3bis : `normalizeRelationLabel` / `isFreeRelationLabel`, pour qu'un lien enregistré hors des formes proposées (« Fille » du 2a, relation changée) reste visible en saisie libre ; et `nullOnError`, qui remplace les `.catch(() => null)` silencieux (un front déployé avant sa migration passait inaperçu) ;
+>     - formulaire : édition dérivée (un panneau vierge passe en lecture quand un autre panneau enregistre le profil, et « Modifier » repart des données à jour) ;
+>     - « Coordonnées enregistrées. » visible sur la carte en lecture (le message ne s'affichait jamais en variante panel) ;
+>     - `maxLength` sur le lien libre, `min` sur la date de naissance, erreurs d'enregistrement envoyées à Sentry.
+>   - **Task 10** : carte de rappel si `!letterProfile?.first_name`. Un profil 2a sans prénom ni nom séparés signerait avec les noms du dossier PF, qui peuvent différer de l'enveloppe.
+>   - **Task 11** : recette complétée (lignes 13 et 15).
+>   - **Task 12** : USER STEP précisé, `db push` des 2 migrations **avant** le déploiement du front.
+> - **Non retenus.**
+>   - Déplacer les fonctions pures vers `src/lib/letter-values.ts` : l'import est un import de type, effacé à la compilation, et les Tasks 8 à 10 importent déjà depuis ces fichiers.
+>   - Aligner le format de date auto (« 14 mars 1941 ») et celui de la saisie au sélecteur (« 14/03/1941 ») : l'écart existait déjà avant.
+>   - Déplacer les gloses EN des liens hors de `src/lib` : elles sont liées 1:1 aux valeurs françaises, comme dans le catalogue serveur.
+> - **Hors périmètre.** Des 404 aléatoires touchent les tests de routes supertest (préexistants, environ 1 exécution complète sur 15). Confiés à une tâche séparée.
+
 ---
 
 ### Task 8 : Formulaire unique `LetterProfileForm`, contexte profil courrier, panneau d'envoi
 
 **Files :**
-- Create : `src/components/letter/LetterProfileForm.tsx`, `src/hooks/useLetterProfileContext.ts`
+- Create : `src/components/letter/LetterProfileForm.tsx`, `src/hooks/useLetterProfileContext.ts`, `tests/sentry-helpers.test.ts`
 - Delete : `src/components/letter/SenderProfileForm.tsx`
-- Modify : `src/components/letter/PaperSendPanel.tsx` (import l.13, état l.108-109, effet l.143-157, rendu l.460)
+- Modify : `src/components/letter/PaperSendPanel.tsx` (import l.14, état l.109-110, effet l.142-157, rendu l.468 — numéros relevés après la Task 5)
 - Modify : `src/i18n/strings.fr.ts`, `src/i18n/strings.en.ts` (espace `letterProfile`, retrait de 14 clés `paperSend.sender*`)
+- Modify : `src/lib/relation-labels.ts` + `tests/relation-labels.test.ts` (2 fonctions pures, Step 3bis), `src/lib/sentry.ts` (`nullOnError`, Step 3bis)
 
-Pas de test unitaire de rendu (Vitest tourne en environnement node) : la vérification est `tsc` + build + la recette navigateur de la Task 11.
+Pas de test unitaire de rendu (Vitest tourne en environnement node) : la vérification est `tsc` + build + la recette navigateur de la Task 11. Les fonctions pures ajoutées au Step 3bis, elles, sont testées.
 
 - [ ] **Step 1 : chaînes FR**
 
@@ -3043,7 +3085,8 @@ Dans `src/i18n/strings.fr.ts` :
       cityRequired: 'Indiquez votre ville.',
       relationshipRequired: 'Indiquez votre lien avec la personne décédée.',
       dobInvalid: 'Date invalide.',
-      dobOutOfRange: 'La date de naissance doit précéder la date du décès.',
+      dobTooEarly: 'La date de naissance ne peut pas précéder le 1er janvier 1900.',
+      dobAfterDeath: 'La date de naissance doit précéder la date du décès.',
     },
     screenTitle: 'Dernière étape : vos coordonnées pour les courriers',
     screenLead: 'Remplies une seule fois, elles pré-remplissent tous vos courriers.',
@@ -3094,7 +3137,8 @@ Dans `src/i18n/strings.en.ts` : supprimer les mêmes 14 clés `paperSend.sender*
       cityRequired: 'Enter your city.',
       relationshipRequired: 'Enter your relationship with the deceased.',
       dobInvalid: 'Invalid date.',
-      dobOutOfRange: 'The date of birth must be before the date of death.',
+      dobTooEarly: 'The date of birth cannot be before 1 January 1900.',
+      dobAfterDeath: 'The date of birth must be before the date of death.',
     },
     screenTitle: 'Last step: your details for letters',
     screenLead: 'Entered once, they pre-fill all your letters.',
@@ -3135,10 +3179,133 @@ export function useLetterProfileContext(): LetterProfileContextValue | null {
 }
 ```
 
+- [ ] **Step 3bis : fonctions pures du formulaire et des lectures non bloquantes (TDD)**
+
+*(Ajouté par la note post-revue de la Task 7 : lien enregistré hors des formes proposées, échecs de lecture silencieux.)*
+
+1. Tests d'abord. À la fin de `tests/relation-labels.test.ts`, compléter l'import (`normalizeRelationLabel`, `isFreeRelationLabel`) et ajouter :
+
+```ts
+describe('normalizeRelationLabel — lien enregistré relu dans le formulaire', () => {
+  it('ramène une saisie libre du 2a à la forme proposée (casse et accents ignorés)', () => {
+    expect(normalizeRelationLabel('parent', 'Fille')).toBe('fille')
+    expect(normalizeRelationLabel('enfant', ' Pere ')).toBe('père')
+    expect(normalizeRelationLabel('conjoint_marie', 'EPOUSE')).toBe('épouse')
+  })
+  it('ne confond pas deux formes distinctes', () => {
+    expect(normalizeRelationLabel('conjoint_marie', 'époux')).toBe('époux')
+    expect(normalizeRelationLabel('parent', 'fils')).toBe('fils')
+  })
+  it('« Soeur » tapé sans œ (clavier courant) retrouve « sœur »', () => {
+    expect(normalizeRelationLabel('frere_soeur', 'Soeur')).toBe('sœur')
+  })
+  it('garde tel quel, sans espaces autour, un lien hors des formes proposées', () => {
+    expect(normalizeRelationLabel('parent', ' neveu ')).toBe('neveu')
+    expect(normalizeRelationLabel('autre', 'ami')).toBe('ami')
+    expect(normalizeRelationLabel(undefined, 'petite-fille')).toBe('petite-fille')
+  })
+  it('vide reste vide', () => {
+    expect(normalizeRelationLabel('parent', '   ')).toBe('')
+  })
+})
+
+describe('isFreeRelationLabel — saisie libre ou boutons', () => {
+  it('saisie libre quand aucune forme n’est proposée', () => {
+    expect(isFreeRelationLabel('autre', '')).toBe(true)
+    expect(isFreeRelationLabel(undefined, 'fille')).toBe(true)
+  })
+  it('boutons quand le lien est vide ou fait partie des formes proposées', () => {
+    expect(isFreeRelationLabel('parent', '')).toBe(false)
+    expect(isFreeRelationLabel('parent', 'fille')).toBe(false)
+  })
+  it('saisie libre pour un lien enregistré hors des formes proposées (il reste visible)', () => {
+    expect(isFreeRelationLabel('parent', 'neveu')).toBe(true)
+    expect(isFreeRelationLabel('enfant', 'fille')).toBe(true) // relation changée par un nouveau questionnaire
+  })
+})
+```
+
+Créer `tests/sentry-helpers.test.ts` :
+
+```ts
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+const { captureException } = vi.hoisted(() => ({ captureException: vi.fn() }))
+vi.mock('@sentry/react', () => ({ captureException, init: vi.fn() }))
+
+import { nullOnError } from '@/lib/sentry'
+
+describe('nullOnError — lecture non bloquante mais jamais silencieuse', () => {
+  beforeEach(() => captureException.mockClear())
+
+  it('laisse passer la valeur (null compris) sans rien signaler', async () => {
+    await expect(nullOnError(Promise.resolve(42))).resolves.toBe(42)
+    await expect(nullOnError(Promise.resolve(null))).resolves.toBeNull()
+    expect(captureException).not.toHaveBeenCalled()
+  })
+
+  it('remplace un échec par null et le signale à Sentry', async () => {
+    const err = new Error('column sender_profiles.first_name does not exist')
+    await expect(nullOnError(Promise.reject(err))).resolves.toBeNull()
+    expect(captureException).toHaveBeenCalledTimes(1)
+    expect(captureException).toHaveBeenCalledWith(err)
+  })
+})
+```
+
+Lancer `npx vitest run tests/relation-labels.test.ts tests/sentry-helpers.test.ts` : **échec attendu** (fonctions absentes).
+
+2. Implémenter. À la fin de `src/lib/relation-labels.ts` :
+
+```ts
+/**
+ * Lien enregistré ramené à la forme proposée équivalente, casse et accents ignorés (saisie libre du
+ * chantier 2a, ex. « Fille » → « fille ») ; sinon renvoyé tel quel, sans espaces autour.
+ */
+export function normalizeRelationLabel(relation: RelationV2 | undefined, saved: string): string {
+  const value = saved.trim()
+  if (!value) return ''
+  const match = relationLabelOptions(relation)?.find(
+    (option) => option.value.localeCompare(value, 'fr', { sensitivity: 'base' }) === 0
+  )
+  return match?.value ?? value
+}
+
+/**
+ * Vrai quand le lien se saisit librement : relation « autre » ou inconnue, ou lien enregistré hors des
+ * formes proposées (relation modifiée par un nouveau questionnaire…) — il reste alors visible et
+ * modifiable, au lieu d'un groupe de boutons dont aucun n'est sélectionné.
+ */
+export function isFreeRelationLabel(relation: RelationV2 | undefined, value: string): boolean {
+  const options = relationLabelOptions(relation)
+  return !options || (value !== '' && !options.some((option) => option.value === value))
+}
+```
+
+À la fin de `src/lib/sentry.ts` :
+
+```ts
+/**
+ * Lecture non bloquante (personnalisation v2) : un échec est remplacé par null — l'écran continue sans
+ * la donnée — mais signalé à Sentry (inerte sans DSN), pour qu'un front déployé avant sa migration ne
+ * passe pas inaperçu. Les fonctions de lecture ne remontent que `error.message`, jamais les `details`
+ * PostgreSQL (qui peuvent contenir la ligne, donc des données personnelles).
+ */
+export function nullOnError<T>(promise: Promise<T>): Promise<T | null> {
+  return promise.catch((err: unknown) => {
+    Sentry.captureException(err)
+    return null
+  })
+}
+```
+
+Relancer les 2 fichiers de test : **succès attendu**.
+
 - [ ] **Step 4 : créer `src/components/letter/LetterProfileForm.tsx`**
 
 ```tsx
 import { useId, useState } from 'react'
+import * as Sentry from '@sentry/react'
 import { Loader2, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -3148,8 +3315,14 @@ import { supabase } from '@/lib/supabase'
 import { useT } from '@/i18n/useT'
 import { useLang } from '@/i18n/LanguageContext'
 import { fmt } from '@/i18n'
-import { defaultRelationLabel, relationLabelOptions } from '@/lib/relation-labels'
 import {
+  defaultRelationLabel,
+  isFreeRelationLabel,
+  normalizeRelationLabel,
+  relationLabelOptions,
+} from '@/lib/relation-labels'
+import {
+  DOB_MIN,
   LINE_MAX,
   saveLetterProfile,
   validateLetterProfile,
@@ -3195,7 +3368,8 @@ function initialInput(
     address_line2: profile?.address_line2 ?? '',
     postal_code: profile?.postal_code ?? '',
     city: profile?.city ?? '',
-    relationship: profile?.relationship ?? defaultRelationLabel(relation),
+    // Lien saisi librement au 2a (« Fille ») : ramené à la forme proposée équivalente.
+    relationship: normalizeRelationLabel(relation, profile?.relationship ?? '') || defaultRelationLabel(relation),
   }
 }
 
@@ -3217,15 +3391,32 @@ export function LetterProfileForm({
   const t = useT()
   const { lang } = useLang()
   const uid = useId()
-  const [editing, setEditing] = useState(variant === 'screen' || !profile)
+  const relationOptions = relationLabelOptions(relation)
+  // Édition explicite (« Modifier ») ; sans profil, le formulaire s'affiche d'office. Dérivé plutôt que
+  // figé au montage : plusieurs étapes peuvent être dépliées à la fois, et si un autre panneau
+  // enregistre le profil, celui-ci passe en lecture au lieu de rester un formulaire vide.
+  const [editRequested, setEditRequested] = useState(false)
+  const editing = variant === 'screen' || editRequested || !profile
   const [form, setForm] = useState<LetterProfileInput>(() => initialInput(profile, defaults, relation))
+  // Lien enregistré hors des formes proposées : saisie libre, pour qu'il reste visible et modifiable.
+  const [freeRelationship, setFreeRelationship] = useState(() => isFreeRelationLabel(relation, form.relationship))
   const [dob, setDob] = useState(deceasedDob?.value ?? '')
   const [errors, setErrors] = useState<LetterProfileErrors>({})
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  const relationOptions = relationLabelOptions(relation)
+  // « Modifier » repart des données à jour : le profil a pu changer depuis un autre panneau.
+  const startEditing = () => {
+    const next = initialInput(profile, defaults, relation)
+    setForm(next)
+    setFreeRelationship(isFreeRelationLabel(relation, next.relationship))
+    setDob(deceasedDob?.value ?? '')
+    setErrors({})
+    setSaved(false)
+    setSaveError(false)
+    setEditRequested(true)
+  }
 
   const setField = (key: keyof LetterProfileInput, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -3248,9 +3439,11 @@ export function LetterProfileForm({
       const row = await saveLetterProfile(supabase, userId, form)
       if (deceasedDob) await deceasedDob.save(dob || null)
       setSaved(true)
-      if (variant === 'panel') setEditing(false)
+      if (variant === 'panel') setEditRequested(false)
       onSaved(row)
-    } catch {
+    } catch (err) {
+      // Message Supabase seul (jamais les `details`, qui contiennent la ligne) : pas de donnée personnelle.
+      Sentry.captureException(err)
       setSaveError(true)
     } finally {
       setSaving(false)
@@ -3274,11 +3467,12 @@ export function LetterProfileForm({
               </p>
             )}
           </div>
-          <Button variant="ghost" size="sm" onClick={() => setEditing(true)} className="shrink-0 gap-1.5">
+          <Button variant="ghost" size="sm" onClick={startEditing} className="shrink-0 gap-1.5">
             <Pencil className="h-3.5 w-3.5" />
             {t.letterProfile.editCta}
           </Button>
         </div>
+        {saved && <p className="text-xs text-success">{t.letterProfile.savedHint}</p>}
       </div>
     )
   }
@@ -3304,7 +3498,7 @@ export function LetterProfileForm({
           {errorText('last_name')}
         </div>
 
-        {relationOptions ? (
+        {relationOptions && !freeRelationship ? (
           <fieldset className="space-y-1.5 sm:col-span-2">
             <legend className="mb-1.5 text-sm font-medium text-text">{t.letterProfile.relationshipLabel}</legend>
             <div className="flex flex-wrap gap-2">
@@ -3343,6 +3537,7 @@ export function LetterProfileForm({
             <Input
               id={`${uid}-relationship`}
               value={form.relationship}
+              maxLength={LINE_MAX}
               placeholder={t.letterProfile.relationshipFreePlaceholder}
               onChange={(e) => setField('relationship', e.target.value)}
             />
@@ -3381,6 +3576,7 @@ export function LetterProfileForm({
               id={`${uid}-dob`}
               type="date"
               value={dob}
+              min={DOB_MIN}
               max={deceasedDob.max ?? undefined}
               onChange={(e) => {
                 setDob(e.target.value)
@@ -3422,6 +3618,7 @@ Dans `src/components/letter/PaperSendPanel.tsx` :
 ```ts
 import { LetterProfileForm } from './LetterProfileForm'
 import { fetchLetterProfile, type LetterProfileRow } from '@/lib/letter-profile'
+import { nullOnError } from '@/lib/sentry'
 import { useLetterProfileContext } from '@/hooks/useLetterProfileContext'
 ```
 
@@ -3445,11 +3642,12 @@ import { useLetterProfileContext } from '@/hooks/useLetterProfileContext'
 
 ```ts
   // Profil expéditeur hors tableau de bord : lecture directe RLS owner (chantier 2a, spec §3.1).
+  // Un échec laisse le formulaire vide (non bloquant) mais est signalé à Sentry.
   useEffect(() => {
     if (letterProfileCtx) return
     let cancelled = false
     void (async () => {
-      const data = await fetchLetterProfile(supabase, userId).catch(() => null)
+      const data = await nullOnError(fetchLetterProfile(supabase, userId))
       if (cancelled) return
       setOwnProfile(data)
       setOwnProfileLoading(false)
@@ -3498,7 +3696,8 @@ Attendu : `TSC_OK`, 0 échec, `✓ built`.
 - [ ] **Step 7 : commit**
 
 ```bash
-git add -A src/components/letter src/hooks/useLetterProfileContext.ts src/i18n/strings.fr.ts src/i18n/strings.en.ts
+git add -A src/components/letter src/hooks/useLetterProfileContext.ts src/i18n/strings.fr.ts src/i18n/strings.en.ts \
+  src/lib/relation-labels.ts src/lib/sentry.ts tests/relation-labels.test.ts tests/sentry-helpers.test.ts
 git commit -m "feat(perso-v2): formulaire unique du profil courrier (prénom/nom, lien exact) et contexte partagé
 
 LetterProfileForm remplace SenderProfileForm : prénom et nom séparés, « Vous signez en tant que »
@@ -3531,6 +3730,7 @@ import {
   type DossierIdentity,
   type LetterProfileRow,
 } from '@/lib/letter-profile'
+import { nullOnError } from '@/lib/sentry'
 import type { QuestionnaireAnswersV2 } from '@/types/questionnaire'
 
 interface CoordinatesScreenProps {
@@ -3552,10 +3752,11 @@ export function CoordinatesScreen({ userId, questionnaireId, answers, onDone }: 
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      // Lectures indépendantes : un échec laisse simplement le champ vide, jamais bloquant.
+      // Lectures indépendantes : un échec laisse simplement le champ vide, jamais bloquant (mais signalé
+      // à Sentry).
       const [p, d] = await Promise.all([
-        fetchLetterProfile(supabase, userId).catch(() => null),
-        fetchDossierIdentity(supabase).catch(() => null),
+        nullOnError(fetchLetterProfile(supabase, userId)),
+        nullOnError(fetchDossierIdentity(supabase)),
       ])
       if (cancelled) return
       setProfile(p)
@@ -3590,7 +3791,8 @@ export function CoordinatesScreen({ userId, questionnaireId, answers, onDone }: 
             value: answers.deceased_dob ?? null,
             max: answers.deceased_dod ?? null,
             save: async (dob) => {
-              await saveDeceasedDob(supabase, questionnaireId, answers as unknown as Record<string, unknown>, dob)
+              // saveDeceasedDob relit les réponses en base avant d'écrire (note post-revue Task 7).
+              await saveDeceasedDob(supabase, questionnaireId, dob)
             },
           }}
           variant="screen"
@@ -3667,8 +3869,15 @@ Dans `src/pages/DashboardPage.tsx` :
 1. Imports à ajouter :
 
 ```ts
-import { fetchDossierIdentity, fetchLetterProfile, type DossierIdentity, type LetterProfileRow } from '@/lib/letter-profile'
+import {
+  fetchDossierIdentity,
+  fetchLetterProfile,
+  patchQuestionnaireAnswers,
+  type DossierIdentity,
+  type LetterProfileRow,
+} from '@/lib/letter-profile'
 import { buildLetterAutofill } from '@/lib/letter-autofill'
+import { nullOnError } from '@/lib/sentry'
 import { LetterProfileContext, type LetterProfileContextValue } from '@/hooks/useLetterProfileContext'
 import type { RelationV2 } from '@/types/questionnaire'
 ```
@@ -3686,10 +3895,10 @@ import type { RelationV2 } from '@/types/questionnaire'
 
 ```ts
       // Lectures indépendantes et non bloquantes : sans elles, les courriers demandent simplement
-      // les champs manquants, comme avant.
+      // les champs manquants, comme avant. Un échec est signalé à Sentry.
       const [profileRow, identity] = await Promise.all([
-        fetchLetterProfile(supabase, user!.id).catch(() => null),
-        fetchDossierIdentity(supabase).catch(() => null),
+        nullOnError(fetchLetterProfile(supabase, user!.id)),
+        nullOnError(fetchDossierIdentity(supabase)),
       ])
       setLetterProfile(profileRow)
       setDossierIdentity(identity)
@@ -3724,7 +3933,7 @@ et la balise fermante `</main>` correspondante par :
         </LetterProfileContext.Provider>
 ```
 
-6. Passer l'indicateur de rappel à `DashboardOverview` : dans son appel, ajouter la prop `showProfileReminder={!letterProfile}` ; dans `DashboardOverviewProps`, ajouter `showProfileReminder: boolean` ; dans la signature de `DashboardOverview`, ajouter `showProfileReminder` ; et insérer, juste après `<ProgressHero … />` :
+6. Passer l'indicateur de rappel à `DashboardOverview` : dans son appel, ajouter la prop `showProfileReminder={!letterProfile?.first_name}` (note post-revue Task 7 : un profil hérité du 2a n'a que `full_name` — sans prénom/nom séparés, la signature viendrait du dossier PF et pourrait différer de l'enveloppe ; la carte invite aussi ces personnes à compléter) ; dans `DashboardOverviewProps`, ajouter `showProfileReminder: boolean` ; dans la signature de `DashboardOverview`, ajouter `showProfileReminder` ; et insérer, juste après `<ProgressHero … />` :
 
 ```tsx
       {showProfileReminder && (
@@ -3738,6 +3947,28 @@ et la balise fermante `</main>` correspondante par :
       )}
 ```
 (`Button` et `Link` sont déjà importés dans ce fichier.)
+
+7. *(Note post-revue Task 7.)* Dans `handleDeceasedDepartmentResolved`, remplacer le bloc d'écriture :
+
+```ts
+      // Écriture Supabase HORS de l'updater setState ci-dessus (correctif revue finale) : un
+      // simple appel, jamais dupliqué par React.
+      if (questionnaireId) {
+        void supabase.from('questionnaires').update({ answers: next }).eq('id', questionnaireId)
+      }
+```
+
+par :
+
+```ts
+      // Écriture Supabase HORS de l'updater setState ci-dessus (correctif revue finale) : un
+      // simple appel, jamais dupliqué par React. Personnalisation v2 : patch relu en base plutôt que
+      // l'instantané en mémoire, qui effacerait une date de naissance enregistrée depuis un autre
+      // onglet (Profil) ; un échec, silencieux jusqu'ici, est signalé à Sentry.
+      if (questionnaireId) {
+        void nullOnError(patchQuestionnaireAnswers(supabase, questionnaireId, { deceased_department: department }))
+      }
+```
 
 - [ ] **Step 2 : `StepLetterSection` lit le pré-remplissage dans le contexte**
 
@@ -3796,6 +4027,7 @@ import {
   type DossierIdentity,
   type LetterProfileRow,
 } from '@/lib/letter-profile'
+import { nullOnError } from '@/lib/sentry'
 import type { RelationV2 } from '@/types/questionnaire'
 import { useT } from '@/i18n/useT'
 
@@ -3813,10 +4045,11 @@ export function ProfilePage() {
     if (!user) return
     let cancelled = false
     void (async () => {
+      // Non bloquantes : un échec masque la donnée concernée et est signalé à Sentry.
       const [p, d, q] = await Promise.all([
-        fetchLetterProfile(supabase, user.id).catch(() => null),
-        fetchDossierIdentity(supabase).catch(() => null),
-        fetchLatestQuestionnaire(supabase, user.id).catch(() => null),
+        nullOnError(fetchLetterProfile(supabase, user.id)),
+        nullOnError(fetchDossierIdentity(supabase)),
+        nullOnError(fetchLatestQuestionnaire(supabase, user.id)),
       ])
       if (cancelled) return
       setProfile(p)
@@ -3883,7 +4116,7 @@ export function ProfilePage() {
                       value: (answers.deceased_dob as string | undefined) ?? null,
                       max: (answers.deceased_dod as string | undefined) ?? null,
                       save: async (dob) => {
-                        const next = await saveDeceasedDob(supabase, questionnaire.id, questionnaire.answers, dob)
+                        const next = await saveDeceasedDob(supabase, questionnaire.id, dob)
                         setQuestionnaire({ id: questionnaire.id, answers: next })
                       },
                     }
@@ -4133,9 +4366,9 @@ Parcours complet, données fictives, dans le navigateur intégré (un onglet par
 | 10 | Étape « Résilier les abonnements presse » → générer le courrier | seuls « Titre du journal ou du magazine » et « Numéro d'abonné ou de client » sont à saisir ; l'aperçu contient « À l'attention du service abonnements — … », « Camille Roussel », « fille de Bernard Roussel », l'adresse, « Bordeaux, le … » |
 | 11 | Panneau d'envoi papier de ce courrier | expéditeur déjà rempli (lecture seule + « Modifier ») ; sans pièce jointe, avertissement « Ce courrier indique qu'une copie de l'acte de décès est jointe… » ; il disparaît une fois un acte de décès (PDF fictif) joint |
 | 12 | Étape EHPAD → courrier | complet sauf « Nom de l'établissement » |
-| 13 | Profil | carte « Vos coordonnées pour les courriers » ; prénom affiché (plus « Non renseigné ») |
+| 13 | Profil | carte « Vos coordonnées pour les courriers » ; prénom affiché (plus « Non renseigné ») ; « Modifier » rouvre le formulaire avec les valeurs enregistrées (« fille » sélectionné) ; changer le complément d'adresse puis « Enregistrer » → carte en lecture + « Coordonnées enregistrées. » ; de retour au tableau de bord, le courrier presse affiche la nouvelle adresse |
 | 14 | Bascule EN (toggle) sur le tableau de bord puis retour FR | libellés traduits, courriers toujours en français |
-| 15 | Nouveau dossier famille, « Plus tard » sur l'écran de coordonnées | carte de rappel visible au tableau de bord ; courriers : champs identité/adresse à saisir |
+| 15 | Nouveau dossier famille, « Plus tard » sur l'écran de coordonnées | carte de rappel visible au tableau de bord ; courriers : champs identité/adresse à saisir ; **resynchronisation sans rechargement** (seule preuve du câblage de l'effet, que Vitest ne rend pas) : (a) ouvrir un courrier, taper la ville à la main, puis remplir le profil dans le panneau papier → l'aperçu affiche aussitôt l'adresse et la ville du profil ; (b) corriger la ville de ce courrier, « Modifier » le profil et ne changer que le complément d'adresse → la ville corrigée reste, l'adresse suit |
 
 Tout écart → tâche correctrice confiée à un sous-agent (même double revue), puis rejeu de la ligne concernée.
 
@@ -4159,7 +4392,7 @@ Laisser tourner la pile Supabase locale si la Task 13 suit ; sinon `supabase sto
 1. Après la puce « **Fait (suite) — démonstrateur v2** », ajouter :
 
 ```markdown
-- **Fait (suite) — personnalisation v2** (spec `docs/design-personnalisation-v2.md`, plan `docs/plan-personnalisation-v2.md`) : courriers pré-remplis — profil courrier unique (`sender_profiles` + `first_name`/`last_name`), RPC `my_dossier_identity()` (5 champs d'identité du dossier PF, lecture seule), questionnaire pré-rempli au `/start` (identité du défunt), écran « Vos coordonnées pour les courriers » en fin de questionnaire, contexte `LetterProfileContext` (courriers et enveloppe ne divergent plus) ; questionnaire enrichi — `aides_percues` et `abonnements` (multiselect, condition « au moins une valeur commune »), option `ehpad`, 9 étapes sourcées + 5 courriers papier, thème `abonnements` ; **15 questions vues** (18 au catalogue, 3 pré-remplies). Tag `preprod-v2-rc4`. Nouveaux contenus ajoutés à la relecture juridique bloquante. Migrations `20260928120000` + `20260928121000` (USER STEP : `db push` préprod quand la v2 y sera déployée).
+- **Fait (suite) — personnalisation v2** (spec `docs/design-personnalisation-v2.md`, plan `docs/plan-personnalisation-v2.md`) : courriers pré-remplis — profil courrier unique (`sender_profiles` + `first_name`/`last_name`), RPC `my_dossier_identity()` (5 champs d'identité du dossier PF, lecture seule), questionnaire pré-rempli au `/start` (identité du défunt), écran « Vos coordonnées pour les courriers » en fin de questionnaire, contexte `LetterProfileContext` (courriers et enveloppe ne divergent plus) ; questionnaire enrichi — `aides_percues` et `abonnements` (multiselect, condition « au moins une valeur commune »), option `ehpad`, 9 étapes sourcées + 5 courriers papier, thème `abonnements` ; **15 questions vues** (18 au catalogue, 3 pré-remplies). Tag `preprod-v2-rc4`. Nouveaux contenus ajoutés à la relecture juridique bloquante. Migrations `20260928120000` + `20260928121000` (USER STEP : `db push` préprod **avant** de déployer le front de rc4 — sinon la lecture et l'enregistrement du profil courrier échouent, signalés à Sentry, et l'envoi papier reste bloqué faute d'expéditeur).
 ```
 
 2. Dans « Points d'attention » → **Tests**, remplacer « **484 sur `integration/v2-demo` après les stubs L0bis** (valeur définitive du démonstrateur v2 consignée par L8 au tag `preprod-v2-rc1`) » par « **796 sur `integration/v2-demo` à rc3, <N> à `preprod-v2-rc4`** » (N = total réel relevé au Step 4).
