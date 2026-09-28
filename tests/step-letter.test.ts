@@ -17,14 +17,16 @@ describe('stepLetterTemplateId — courrier affiché pour une étape d’une roa
   })
 
   // Tests « reste affiché » : la garde sur le catalogue est indispensable, car une étape disparue du
-  // catalogue garde la valeur en base (dernier test) — sans elle, ils passeraient à vide.
+  // catalogue garde la valeur en base (test « étape inconnue du catalogue ») — sans elle, ils
+  // passeraient à vide.
   it('le courrier bailleur reste affiché sur « Résilier le bail »', () => {
     expect(step('logement-resilier-bail')?.letter_template_id).toBe('bailleur-notification')
     expect(stepLetterTemplateId(step('logement-resilier-bail'), 'bailleur-notification')).toBe('bailleur-notification')
   })
 
-  // Même famille de défaut (2026-09-28) : le courrier banque-declaration-deces demande « le blocage
-  // des comptes », à l'inverse du but de l'étape compte joint (continuer à l'utiliser, le transférer).
+  // Même famille de défaut (2026-09-28) : le courrier banque-declaration-deces demande de « procéder
+  // au blocage des comptes », à l'inverse du but de l'étape compte joint (continuer à l'utiliser, le
+  // transférer).
   it('le courrier de blocage des comptes n’est plus affiché sur l’étape compte joint d’une ancienne roadmap', () => {
     expect(step('banque-debloquer-compte-joint')).toBeDefined()
     expect(stepLetterTemplateId(step('banque-debloquer-compte-joint'), 'banque-declaration-deces')).toBeUndefined()

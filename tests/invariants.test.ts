@@ -229,10 +229,10 @@ describe('invariant : étapes ↔ courriers', () => {
     }
   })
   // Défaut préexistant de même famille, relevé le 2026-09-28 : le courrier banque-declaration-deces
-  // demande « le blocage des comptes » ; l'étape du compte joint, qui vise à continuer d'utiliser ce
-  // compte ou à le transférer, le proposait. Liste fermée : toute nouvelle étape qui voudrait
-  // proposer un courrier de blocage doit y être ajoutée sciemment.
-  it('un courrier qui demande « le blocage des comptes » n’est proposé que par les étapes qui déclarent le décès à une banque', () => {
+  // demande de « procéder au blocage des comptes » ; l'étape du compte joint, qui vise à continuer
+  // d'utiliser ce compte ou à le transférer, le proposait. Liste fermée : toute nouvelle étape qui
+  // voudrait proposer un courrier de blocage doit y être ajoutée sciemment.
+  it('un courrier qui demande le « blocage des comptes » n’est proposé que par les étapes qui déclarent le décès à une banque', () => {
     const BANK_DEATH_NOTICE_STEPS = ['banque-declaration-principale', 'banque-autres-banques']
     const blockingLetters = LETTER_TEMPLATES.filter((t) => t.body.includes('blocage des comptes')).map((t) => t.id)
     expect(blockingLetters).toContain('banque-declaration-deces')
