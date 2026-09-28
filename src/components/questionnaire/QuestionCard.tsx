@@ -20,6 +20,7 @@ export interface QuestionData {
   question: string
   type: 'select' | 'multiselect' | 'boolean' | 'tristate' | 'text' | 'date'
   options?: QuestionOption[]
+  min_selected?: number // multiselect : nombre minimal de cases (absent = réponse vide acceptée)
   aide?: string
   categorie?: string
   obligatoire: boolean
@@ -46,7 +47,9 @@ export function QuestionCard({ question, onAnswer, onSkip, onCancel, isSubmittin
   useEffect(() => {
     const cv = question.current_value
     if (question.type === 'multiselect') {
-      setSelectedValues(Array.isArray(cv) ? (cv as string[]) : [])
+      // Sessions antérieures au passage en choix multiples (ex. logement) : une valeur scalaire
+      // pré-remplit une liste d'un élément.
+      setSelectedValues(Array.isArray(cv) ? (cv as string[]) : cv == null ? [] : [cv as string])
       setSelectedValue(null)
     } else {
       setSelectedValue(cv ?? null)
@@ -56,8 +59,11 @@ export function QuestionCard({ question, onAnswer, onSkip, onCancel, isSubmittin
 
   const isMulti = question.type === 'multiselect'
   const hasValue = selectedValue !== null && selectedValue !== ''
-  // Le multiselect est toujours soumissible : une sélection vide est une réponse valide (« aucun »).
-  const isNextDisabled = isSubmitting || (!isMulti && question.obligatoire && !hasValue)
+  // Le multiselect est toujours soumissible, sauf min_selected : une sélection vide est une réponse
+  // valide (« aucun ») tant que la question n'exige pas un nombre minimal de cases (ex. logement).
+  const isNextDisabled =
+    isSubmitting ||
+    (isMulti ? selectedValues.length < (question.min_selected ?? 0) : question.obligatoire && !hasValue)
   const percent = Math.round((question.progress.current / Math.max(question.progress.total, 1)) * 100)
 
   function handleSubmit() {

@@ -53,6 +53,7 @@ export function validateAnswer(spec, value) {
       return spec.options.some((o) => o.value === value) ? { ok: true } : fail('unknown_option')
     case 'multiselect':
       if (!Array.isArray(value)) return fail('Tableau attendu')
+      if (value.length < (spec.min_selected ?? 0)) return fail('selection_required')
       if (new Set(value).size !== value.length) return fail('duplicates')
       return value.every((v) => spec.options.some((o) => o.value === v))
         ? { ok: true }

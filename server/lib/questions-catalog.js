@@ -15,6 +15,7 @@ import { DEPARTMENTS } from './departments.js'
  * @property {string} id - clé du champ QuestionnaireAnswersV2
  * @property {'select'|'multiselect'|'boolean'|'tristate'|'text'|'date'} type
  * @property {{value: string, label: {fr: string, en: string}}[]=} options - canoniques, jamais générées par le LLM
+ * @property {number=} min_selected - multiselect : nombre minimal de cases (défaut 0 = réponse vide acceptée)
  * @property {Object} applicable_when - conditions sur les réponses antérieures
  * @property {boolean} obligatoire
  * @property {{question: {fr: string, en: string}, aide?: {fr: string, en: string}}} fallback_text
@@ -167,6 +168,7 @@ export const QUESTIONS_CATALOG = [
       { value: 'ehpad', label: { fr: 'En EHPAD ou en résidence pour personnes âgées', en: 'In a care home or a residence for older people' } },
       { value: 'heberge_ou_autre', label: { fr: 'Hébergement chez un proche ou autre situation', en: 'Living with someone else, or another situation' } },
     ],
+    min_selected: 1,
     applicable_when: {},
     obligatoire: true,
     fallback_text: {
@@ -177,8 +179,8 @@ export const QUESTIONS_CATALOG = [
       },
     },
     writer_hints: {
-      fr: 'Préciser que plusieurs réponses sont possibles (par exemple EHPAD et propriétaire).',
-      en: 'Mention that several answers are possible (for example care home and owner).',
+      fr: 'Préciser que plusieurs réponses sont possibles.',
+      en: 'Mention that several answers are possible.',
     },
     categorie: { fr: 'Sa situation', en: 'Their situation' },
     order: 7,

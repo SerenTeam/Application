@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import express from 'express'
 import request from 'supertest'
 // @ts-expect-error — module JS serveur
-import { createQuestionnaireRouter } from '../server/routes/questionnaire.js'
+import { createQuestionnaireRouter, displayValue } from '../server/routes/questionnaire.js'
 // @ts-expect-error — module JS serveur
 import { textIn } from '../server/lib/questions-catalog.js'
 // @ts-expect-error — module JS serveur
@@ -73,8 +73,10 @@ async function runToRecap(app: express.Express) {
   const start = await request(app).post('/api/questionnaire/start')
   const sessionId = start.body.session_id
   let data = start.body.data
+  const rendered: Record<string, Record<string, unknown>> = {} // chaque question telle que rendue au client
   let guard = 0
   while (data.action === 'question') {
+    rendered[data.question_id] = data
     const res = await request(app)
       .post('/api/questionnaire/answer')
       .send({ session_id: sessionId, question_id: data.question_id, value: CANNED[data.question_id] })
@@ -82,7 +84,7 @@ async function runToRecap(app: express.Express) {
     data = res.body.data
     if (++guard > 20) throw new Error('boucle infinie')
   }
-  return { sessionId, recap: data }
+  return { sessionId, recap: data, rendered }
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────
@@ -152,6 +154,13 @@ describe('POST /api/questionnaire/answer', () => {
     expect(res.status).toBe(400)
     expect(res.body.error).toBe('Unknown option')
   })
+  it('logement sans aucune case cochée → 400 (au moins une réponse, min_selected)', async () => {
+    const res = await request(app)
+      .post('/api/questionnaire/answer')
+      .send({ session_id: sessionId, question_id: 'logement', value: [] })
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('Choisissez au moins une réponse.')
+  })
   // NOTE post-revue (Task 1, plan v3, décision 2026-07-11) : has_joint_account était la seule
   // question du catalogue avec un applicable_when non vide. Devenue universelle, il n'existe
   // plus aucune question conditionnelle à rendre « inapplicable » via l'API avec le catalogue
@@ -198,6 +207,13 @@ describe('parcours complet → récap → complete', () => {
     expect(byId['has_life_insurance']).toBe('Oui')
     expect(byId['organismes_contactes']).toBe('La banque')
     expect(byId['deceased_firstname']).toBe('Pierre')
+  })
+  it('la question logement est rendue avec min_selected: 1 ; les autres questions à cocher, sans minimum', async () => {
+    const { app } = makeApp()
+    const { rendered } = await runToRecap(app)
+    expect(rendered.logement.min_selected).toBe(1)
+    expect(rendered.aides_percues).not.toHaveProperty('min_selected')
+    expect(rendered.organismes_contactes).not.toHaveProperty('min_selected')
   })
   it('reask d’une question répondue → 200 ; non répondue → 400', async () => {
     const { app } = makeApp()
@@ -347,6 +363,19 @@ describe('PII : rédacteur Mistral (chantier 2a)', () => {
       expect(dump).not.toContain('EHPAD')
       expect(dump).not.toContain('Locataire de son logement')
     }
+  })
+})
+
+// Personnalisation v2 : logement est passé d'un choix unique à un choix multiple. Une session
+// ouverte avant ce passage peut encore porter une valeur scalaire : le récap doit l'afficher.
+describe('displayValue — valeur scalaire sur une question à cocher (sessions antérieures)', () => {
+  it('affiche le libellé de la valeur, pas « Aucun »', () => {
+    const logement = QUESTIONS_CATALOG.find((q: { id: string }) => q.id === 'logement')
+    expect(displayValue(logement, 'locataire', 'fr')).toBe('Locataire de son logement')
+    expect(displayValue(logement, 'locataire', 'en')).toBe('Renting their home')
+    expect(displayValue(logement, ['ehpad', 'proprietaire'], 'fr')).toBe('En EHPAD ou en résidence pour personnes âgées, Propriétaire de son logement')
+    expect(displayValue(logement, [], 'fr')).toBe('Aucun')
+    expect(displayValue(logement, undefined, 'fr')).toBe('Aucun')
   })
 })
 

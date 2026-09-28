@@ -58,6 +58,7 @@ function toRendered(spec, answers, text, lang) {
     aide: text.aide,
     type: spec.type,
     options: spec.options?.map((o) => ({ value: o.value, label: textIn(o.label, lang) })),
+    min_selected: spec.min_selected, // multiselect : minimum de cases (absent = réponse vide acceptée)
     obligatoire: spec.obligatoire,
     categorie: textIn(spec.categorie, lang),
     progress: progress(answers),
@@ -74,8 +75,11 @@ export function displayValue(spec, value, lang = 'fr') {
     case 'select':
       return textIn(spec.options.find((o) => o.value === value)?.label, lang) ?? String(value)
     case 'multiselect': {
-      if (!Array.isArray(value) || value.length === 0) return NONE_LABEL[lang] ?? NONE_LABEL.fr
-      return value.map((v) => textIn(spec.options.find((o) => o.value === v)?.label, lang) ?? v).join(', ')
+      // Sessions antérieures au passage en choix multiples (ex. logement) : une valeur scalaire
+      // est affichée comme une liste d'un élément, pas comme « Aucun ».
+      const list = Array.isArray(value) ? value : value == null ? [] : [value]
+      if (list.length === 0) return NONE_LABEL[lang] ?? NONE_LABEL.fr
+      return list.map((v) => textIn(spec.options.find((o) => o.value === v)?.label, lang) ?? v).join(', ')
     }
     default:
       return String(value)

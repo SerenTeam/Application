@@ -1101,12 +1101,12 @@ export const STEPS_CATALOG_EN: StepTemplate[] = [
   {
     id: 'logement-ehpad',
     title: 'Vacate the care home room and check the final invoice',
-    description: 'In an EHPAD (care home), after the death, the establishment may only charge limited amounts: arrange for personal belongings to be removed quickly and check the closing invoice. In an independent-living or serviced residence, these caps do not apply: refer to the contract or lease.',
+    description: 'In an EHPAD (care home), after the death, the establishment may only charge limited amounts: arrange for personal belongings to be removed quickly and check the closing invoice. In an independent-living or serviced residence, the 6-day cap does not apply: refer to the contract or lease.',
     theme: 'logement',
     urgency: 'week',
     urgency_label: 'Within the week',
     when_to_do: 'In the days following the death.',
-    why_to_do: 'In an EHPAD, once personal belongings have been removed, only accommodation services provided before the death and not yet paid can be invoiced. Until they are removed, the establishment may charge the core accommodation package for at most 6 days after the death, minus catering costs. Amounts paid in advance are refunded within 30 days of the death; the security deposit, minus any amounts owed, within 30 days of the exit inspection. These rules are specific to EHPADs.',
+    why_to_do: 'In an EHPAD, once personal belongings have been removed, only accommodation services provided before the death and not yet paid can be invoiced. Until they are removed, the establishment may charge the core accommodation package for at most 6 days after the death, minus catering costs. Amounts paid in advance are refunded within 30 days of the death; the security deposit, minus any amounts owed, within 30 days of the exit inspection. The 6-day cap is specific to EHPADs.',
     what_you_do: [
       'Agree with the management on a date to remove personal belongings and carry out the exit inspection',
       'In an EHPAD, as long as the belongings remain in the room, the core package may be charged, for at most 6 days after the death',
@@ -1123,7 +1123,7 @@ export const STEPS_CATALOG_EN: StepTemplate[] = [
   {
     id: 'aides-departement',
     title: 'Notify the département of the benefits paid to the deceased',
-    description: 'APA, social accommodation assistance (ASH) and, in most cases, PCH are paid by the département council (conseil départemental). Report the death to stop the payments: APA and PCH already received do not have to be repaid by the heirs.',
+    description: 'APA, social accommodation assistance (ASH) and, in most cases, PCH are paid by the département council (conseil départemental). Report the death to stop the payments. APA and PCH already received do not have to be repaid by the heirs.',
     theme: 'administratif',
     urgency: 'week',
     urgency_label: 'Within the week',

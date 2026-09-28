@@ -90,6 +90,7 @@ describe('questions-catalog', () => {
     expect(q, 'question aides_percues absente').toBeDefined()
     expect(q.type).toBe('multiselect')
     expect(q.applicable_when).toEqual({})
+    expect(q.min_selected, 'réponse vide acceptée : « Ne cochez rien si aucune ne correspond »').toBeUndefined()
     expect(q.options.map((o: { value: string }) => o.value)).toEqual(['apa', 'ash', 'aspa', 'handicap', 'aides_logement'])
     // Chaque texte est un objet { fr, en } réellement renseigné dans les deux langues.
     const texts = [
@@ -103,9 +104,20 @@ describe('questions-catalog', () => {
       }
     }
   })
-  it('logement : choix multiples, option ehpad proposée avant « hébergement chez un proche ou autre »', () => {
+  it('logement : choix multiples (au moins une case), option ehpad proposée avant « hébergement chez un proche ou autre »', () => {
     const q = QUESTIONS_CATALOG.find((x: { id: string }) => x.id === 'logement')
     expect(q.type).toBe('multiselect')
+    expect(q.min_selected).toBe(1)
     expect(q.options.map((o: { value: string }) => o.value)).toEqual(['locataire', 'proprietaire', 'ehpad', 'heberge_ou_autre'])
+  })
+  it('min_selected : uniquement sur une question à cocher, entier entre 1 et le nombre d’options', () => {
+    for (const q of QUESTIONS_CATALOG) {
+      if (q.min_selected === undefined) continue
+      expect(q.type, `${q.id} : min_selected hors question à cocher`).toBe('multiselect')
+      expect(
+        Number.isInteger(q.min_selected) && q.min_selected >= 1 && q.min_selected <= q.options.length,
+        `${q.id} : min_selected invalide (${q.min_selected})`
+      ).toBe(true)
+    }
   })
 })

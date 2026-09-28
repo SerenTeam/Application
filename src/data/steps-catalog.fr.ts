@@ -1101,12 +1101,12 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
   {
     id: 'logement-ehpad',
     title: 'Libérer la chambre de l\'EHPAD et vérifier la facture finale',
-    description: 'En EHPAD, après le décès, l\'établissement ne peut plus facturer que des sommes limitées : organisez rapidement le retrait des affaires personnelles et vérifiez la facture de clôture. En résidence autonomie ou en résidence services, ces plafonds ne s\'appliquent pas : reportez-vous au contrat ou au bail.',
+    description: 'En EHPAD, après le décès, l\'établissement ne peut plus facturer que des sommes limitées : organisez rapidement le retrait des affaires personnelles et vérifiez la facture de clôture. En résidence autonomie ou en résidence services, le plafond de 6 jours ne s\'applique pas : reportez-vous au contrat ou au bail.',
     theme: 'logement',
     urgency: 'week',
     urgency_label: 'Dans la semaine',
     when_to_do: 'Dans les jours qui suivent le décès.',
-    why_to_do: 'En EHPAD, une fois les objets personnels retirés, seules les prestations d\'hébergement délivrées avant le décès et non encore payées peuvent être facturées. Tant que les objets ne sont pas retirés, l\'établissement peut facturer le socle de prestations, au plus pendant 6 jours après le décès et déduction faite des frais de restauration. Les sommes payées d\'avance sont restituées dans les 30 jours suivant le décès ; le dépôt de garantie, déduction faite des sommes dues, dans les 30 jours suivant l\'état des lieux de sortie. Ces règles sont propres aux EHPAD.',
+    why_to_do: 'En EHPAD, une fois les objets personnels retirés, seules les prestations d\'hébergement délivrées avant le décès et non encore payées peuvent être facturées. Tant que les objets ne sont pas retirés, l\'établissement peut facturer le socle de prestations, au plus pendant 6 jours après le décès et déduction faite des frais de restauration. Les sommes payées d\'avance sont restituées dans les 30 jours suivant le décès ; le dépôt de garantie, déduction faite des sommes dues, dans les 30 jours suivant l\'état des lieux de sortie. Le plafond de 6 jours est propre aux EHPAD.',
     what_you_do: [
       'Convenir avec la direction d\'une date pour retirer les affaires personnelles et faire l\'état des lieux de sortie',
       'En EHPAD, tant que les affaires restent dans la chambre, le socle de prestations peut être facturé, 6 jours au plus après le décès',
@@ -1123,7 +1123,7 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
   {
     id: 'aides-departement',
     title: 'Prévenir le département des aides versées au défunt',
-    description: 'L\'APA, l\'aide sociale à l\'hébergement (ASH) et, le plus souvent, la PCH sont versées par le conseil départemental. Signalez-lui le décès pour arrêter les versements : l\'APA et la PCH déjà perçues n\'ont pas à être remboursées par les héritiers.',
+    description: 'L\'APA, l\'aide sociale à l\'hébergement (ASH) et, le plus souvent, la PCH sont versées par le conseil départemental. Signalez-lui le décès pour arrêter les versements. L\'APA et la PCH déjà perçues n\'ont pas à être remboursées par les héritiers.',
     theme: 'administratif',
     urgency: 'week',
     urgency_label: 'Dans la semaine',

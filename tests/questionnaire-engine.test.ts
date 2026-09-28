@@ -75,9 +75,10 @@ describe('validateAnswer', () => {
     expect(validateAnswer(spec('aides_percues'), []).ok).toBe(true)
     expect(validateAnswer(spec('aides_percues'), ['apl']).ok).toBe(false)
   })
-  it('logement (personnalisation v2) : choix multiples — EHPAD + propriétaire accepté, valeur scalaire rejetée', () => {
+  it('logement (personnalisation v2) : choix multiples — EHPAD + propriétaire accepté, valeur scalaire rejetée, au moins une case (min_selected)', () => {
     expect(validateAnswer(spec('logement'), ['ehpad', 'proprietaire']).ok).toBe(true)
     expect(validateAnswer(spec('logement'), 'ehpad').ok).toBe(false)
+    expect(validateAnswer(spec('logement'), [])).toEqual({ ok: false, error: 'selection_required' })
   })
   it('text : non vide, ≤ 200 caractères', () => {
     expect(validateAnswer(spec('deceased_firstname'), 'Pierre').ok).toBe(true)
@@ -101,6 +102,7 @@ describe('validateAnswer', () => {
     expect(validateAnswer(spec('has_life_insurance'), true).error).toBe('tristate_expected')
     expect(validateAnswer(spec('organismes_contactes'), ['banque', 'banque']).error).toBe('duplicates')
     expect(validateAnswer(spec('organismes_contactes'), ['pole_emploi']).error).toBe('unknown_option_in_selection')
+    expect(validateAnswer(spec('logement'), []).error).toBe('selection_required')
     expect(validateAnswer(spec('deceased_firstname'), '   ').error).toBe('text_required')
     expect(validateAnswer(spec('deceased_firstname'), 'x'.repeat(201)).error).toBe('text_too_long')
     expect(validateAnswer(spec('deceased_dod'), '2999-01-01').error).toBe('date_future')
