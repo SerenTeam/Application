@@ -13,6 +13,7 @@ import { isFreeRelationLabel, normalizeRelationLabel, relationLabelOptions } fro
 import {
   DOB_MIN,
   LINE_MAX,
+  dobNeedsSave,
   formatDobForDisplay,
   initialLetterProfileInput,
   saveLetterProfile,
@@ -28,9 +29,14 @@ import type { RelationV2 } from '@/types/questionnaire'
 
 /**
  * Champ « date de naissance du défunt » : affiché seulement quand l'appelant le fournit.
- * Contrat : `value` est la date actuellement enregistrée (une date inchangée n'est pas réécrite) ;
- * `save` LÈVE en cas d'échec ; `onSaved` n'est appelé qu'après le succès complet (profil, puis date
- * si elle a changé). Profil enregistré mais date en échec : message dédié sous le champ, pas d'onSaved.
+ * Contrat :
+ * - `value` est la date actuellement enregistrée : une date inchangée n'est pas réécrite ;
+ * - `save` LÈVE en cas d'échec. Le profil est enregistré d'abord, la date ensuite (si elle a changé) ;
+ *   un échec de la date a son propre message sous le champ ;
+ * - variante `panel` : `onSaved` est appelé dès que le profil est en base, même si la date échoue
+ *   ensuite — le parent affiche alors le bon profil (« Annuler » puis « Modifier » repartent de lui),
+ *   et le formulaire reste ouvert sur l'erreur de date ;
+ * - variante `screen` : `onSaved` signifie « terminé » et n'arrive qu'après le succès complet.
  */
 export interface DeceasedDobField {
   value: string | null
@@ -131,6 +137,10 @@ export function LetterProfileForm({
     const request = toggleFocusRef.current
     if (!request) return
     toggleFocusRef.current = null
+    // Enregistrement lent : la personne a pu passer à un autre champ entre-temps. Le focus n'est
+    // replacé que s'il est retombé sur <body> (bouton démonté par la bascule) : on ne le vole jamais.
+    const active = document.activeElement
+    if (active && active !== document.body) return
     if (request === 'edit-button') editButtonRef.current?.focus()
     else document.getElementById(fieldId(uid, 'first_name'))?.focus()
   }, [editing, uid])
@@ -175,7 +185,8 @@ export function LetterProfileForm({
       return next
     })
     setSaved(false)
-    setSaveError(null)
+    // L'échec de la date reste affiché : elle n'est toujours pas enregistrée. Seul son champ l'efface.
+    setSaveError((prev) => (prev === 'dob' ? prev : null))
   }
 
   const setDobValue = (value: string) => {
@@ -225,15 +236,23 @@ export function LetterProfileForm({
       setSaving(false)
       return
     }
-    // Date réécrite seulement si elle a changé. Son échec est signalé à part (le profil, lui, est
-    // enregistré) et retient onSaved : contrat de DeceasedDobField.
-    if (deceasedDob && (dob || null) !== (deceasedDob.value || null)) {
+    // Date réécrite seulement si elle a changé. Son échec est signalé à part : le profil, lui, est
+    // enregistré (contrat de DeceasedDobField).
+    if (deceasedDob && dobNeedsSave(dob, deceasedDob.value)) {
       try {
         await deceasedDob.save(dob || null)
       } catch (err) {
         Sentry.captureException(err)
         setSaveError('dob')
         setSaving(false)
+        // Le profil EST en base : en panel, le parent doit le savoir, sinon « Annuler » puis « Modifier »
+        // repartiraient de l'ancien profil (et le réenregistreraient). Le formulaire reste ouvert sur
+        // l'erreur de date, même s'il s'était ouvert faute de profil. En screen, onSaved vaut
+        // « terminé » : il attend le succès complet.
+        if (variant === 'panel') {
+          setEditRequested(true)
+          onSaved(row)
+        }
         return
       }
     }

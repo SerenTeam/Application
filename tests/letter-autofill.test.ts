@@ -77,6 +77,10 @@ describe('buildLetterAutofill', () => {
       deceased_dod: '2026-09-12',
     })
   })
+  it('relation « pacse » : la forme par défaut n’écrase jamais un lien déjà enregistré', () => {
+    const profile = { ...PROFILE, relationship: 'compagne' }
+    expect(buildLetterAutofill({ profile, dossier: null, answers: { relation: 'pacse' } }).userProfile.relation).toBe('compagne')
+  })
   it('lien saisi librement au 2a (« Fille ») : écrit « fille » dans les courriers', () => {
     const legacy = { ...PROFILE, relationship: 'Fille' }
     expect(buildLetterAutofill({ profile: legacy, dossier: null, answers: { relation: 'parent' } }).userProfile.relation).toBe('fille')

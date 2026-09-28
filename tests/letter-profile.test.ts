@@ -12,6 +12,7 @@ import {
   patchQuestionnaireAnswers,
   initialLetterProfileInput,
   formatDobForDisplay,
+  dobNeedsSave,
   type LetterProfileInput,
   type LetterProfileRow,
 } from '@/lib/letter-profile'
@@ -199,6 +200,27 @@ describe('initialLetterProfileInput — valeurs de départ du formulaire (montag
       city: '',
       relationship: 'partenaire de PACS',
     })
+  })
+  it('relation « pacse » : la forme par défaut n’écrase jamais un lien déjà enregistré', () => {
+    expect(initialLetterProfileInput({ ...V2_PROFILE, relationship: 'compagne' }, undefined, 'pacse').relationship).toBe('compagne')
+  })
+})
+
+describe('dobNeedsSave — date de naissance à réécrire ?', () => {
+  it('date inchangée : non', () => {
+    expect(dobNeedsSave('1941-03-14', '1941-03-14')).toBe(false)
+  })
+  it('vide, null et absent se valent : non', () => {
+    expect(dobNeedsSave('', null)).toBe(false)
+    expect(dobNeedsSave('', undefined)).toBe(false)
+    expect(dobNeedsSave('', '')).toBe(false)
+  })
+  it('date effacée (enregistrée, nouvelle vide) : oui', () => {
+    expect(dobNeedsSave('', '1941-03-14')).toBe(true)
+  })
+  it('date saisie ou modifiée : oui', () => {
+    expect(dobNeedsSave('1941-03-14', null)).toBe(true)
+    expect(dobNeedsSave('1941-03-15', '1941-03-14')).toBe(true)
   })
 })
 

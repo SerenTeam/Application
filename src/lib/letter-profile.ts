@@ -116,6 +116,14 @@ export function formatDobForDisplay(iso: string, lang: Lang): string {
   })
 }
 
+/**
+ * Date de naissance à réécrire ? Oui si elle diffère de la date enregistrée (`saved`), l'effacement
+ * compris ; vide, null et absent se valent (aucune date).
+ */
+export function dobNeedsSave(dob: string, saved: string | null | undefined): boolean {
+  return (dob || null) !== (saved || null)
+}
+
 /** Date du jour en LOCAL (pas toISOString, qui est en UTC — décale d'un jour dans les DOM/TOM). */
 export function todayLocalIsoDate(): string {
   const now = new Date()
