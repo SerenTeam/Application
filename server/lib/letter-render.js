@@ -81,9 +81,10 @@ export function renderTemplate(template, variables) {
   // figurer aussi littéralement dans `body`).
   const recipientLabel = substitute(template.recipient_label, keys, values)
 
+  // Textes insérés tels quels (fonction de remplacement) : un « $& » saisi n'est pas interprété.
   let body = template.body
-  body = body.replaceAll('{{recipient_label}}', recipientLabel)
-  body = body.replaceAll('{{subject}}', subject)
+  body = body.replaceAll('{{recipient_label}}', () => recipientLabel)
+  body = body.replaceAll('{{subject}}', () => subject)
   body = substitute(body, keys, values)
 
   // Miroir exact de `missingVariables` (useLetterGenerator) : le catalogue serveur ne distingue

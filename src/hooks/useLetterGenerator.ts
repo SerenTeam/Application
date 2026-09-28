@@ -167,9 +167,9 @@ export function useLetterGenerator(options: LetterGeneratorOptions) {
       resolvedRecipient = fillLetterPlaceholder(resolvedRecipient, v.key, val)
     }
 
-    // Replace placeholders in body
-    result = result.replaceAll('{{recipient_label}}', resolvedRecipient)
-    result = result.replaceAll('{{subject}}', resolvedSubject)
+    // Replace placeholders in body — textes insérés tels quels : un « $& » saisi n'est pas interprété
+    result = result.replaceAll('{{recipient_label}}', () => resolvedRecipient)
+    result = result.replaceAll('{{subject}}', () => resolvedSubject)
 
     for (const v of template.variables) {
       const val = formatLetterValue(values[v.key]) || `[${v.label.toUpperCase()}]`
