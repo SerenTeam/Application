@@ -1387,6 +1387,25 @@ tous. 15 questions vues au plus avec l'identité pré-remplie (test d'invariant)
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
+> **Note post-revue (Task 4, 2026-09-28)** — Commits : `eb4aaf5` (la tâche), `50453f3` (correctifs de revue) et un dernier petit commit de mineurs. Spec : conforme. Qualité : approuvée en re-revue. Suite à **827** tests. **Le plafond de 15 questions vues est désormais atteint exactement** : une nouvelle question universelle ferait échouer l'invariant.
+> - **Décision d'Arnaud (écart à la spec §6.1)** : `numerique-photos-documents` passe « Dans le mois » (`month`) et s'affiche AVANT `abonnements-services-en-ligne` : display_order 59/60 échangés, objets réordonnés à l'identique en FR/EN. Motif : OneDrive gèle les comptes inactifs après 1 an puis supprime les fichiers, et Google peut supprimer un compte inactif depuis 2 ans.
+> - **Arbitrage du contrôleur (M4)** : `logement-resiliation-telecom` et le filet `numerique-abonnements` passent au thème `abonnements`. Le courrier télécom apparaît ainsi sous le filtre « Abonnements », comme la presse et le sport.
+> - **Contenus corrigés, sources revérifiées** :
+>   - **Filet** : borné aux « abonnements devenus inutiles » sur 12 mois, renouvellements annuels compris. Il exclut l'assurance habitation, l'énergie, les crédits et le stockage en ligne non récupéré.
+>   - **Photos** : délais de suppression visibles, cas Apple sans contact légataire, rappel de l'art. 85 LIL (« sauf directives contraires du défunt »).
+>   - **Services en ligne** : 1ʳᵉ puce « récupérer avant de résilier un stockage ou de fermer un compte Amazon ». Pour Amazon, l'arrêt de Prime est distingué de la fermeture définitive.
+>   - **Télécom** : une puce visible donne les 10 jours (L224-39, L224-35) ; « sont à résilier ».
+>   - **Boîte e-mail** : « dans l'année », les boîtes Outlook.com étant gelées après 1 an.
+>   - **Libellés** : l'option téléphonie devient « Téléphone (fixe ou mobile) ou box internet » (écart au libellé de la spec §5.3). L'aide et les `writer_hints` disent « continuer sans rien cocher ». Les formules « continuent de courir » remplacent « restent prélevés ».
+>   - **Traçabilité** : URL des plateformes en commentaire, pour la relecture juridique.
+> - **Écart de titre** : l'étape sport s'intitule « Mettre fin à un abonnement sportif ou à une adhésion » (la spec §6.1 disait « Résilier l'abonnement sportif… »).
+> - **Tests ajoutés** : textes `{fr,en}` réellement vérifiés, exclusivité croisée des 8 cases, photos avant services dans la roadmap, plafond sans `deceased_lastname`.
+> - **Non appliqués, avec motif** :
+>   - M5 (regroupement des display_order) : facultatif ;
+>   - M8 (box ou boutique d'applications comme intermédiaire de résiliation) : non sourcé ;
+>   - M14 (recommandé avec AR) : Seren envoie en courrier simple.
+> - **Rappel** : `why_to_do` n'est affiché nulle part. Toute réserve juridique utile doit être dans la description ou les puces.
+
 ---
 
 ### Task 5 : Cinq courriers de résiliation / information, ville et numéro d'abonné
