@@ -4,6 +4,17 @@ import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { getStepsCatalog } from '@/data/steps-catalog'
 import { hasPendingPaperSendForCheckoutReturn } from '@/lib/paper-send-resume'
+import {
+  fetchDossierIdentity,
+  fetchLetterProfile,
+  patchQuestionnaireAnswers,
+  type DossierIdentity,
+  type LetterProfileRow,
+} from '@/lib/letter-profile'
+import { buildLetterAutofill } from '@/lib/letter-autofill'
+import { nullOnError } from '@/lib/sentry'
+import { LetterProfileContext, type LetterProfileContextValue } from '@/hooks/useLetterProfileContext'
+import type { RelationV2 } from '@/types/questionnaire'
 import { AppHeader, HeaderNavLink } from '@/components/layout/AppHeader'
 import { CheckoutReturnBanner } from '@/components/payments/CheckoutReturnBanner'
 import { useT } from '@/i18n/useT'
@@ -136,11 +147,14 @@ export function DashboardPage() {
   const [questionnaireId, setQuestionnaireId] = useState<string | null>(null)
   const [questionnaireAnswers, setQuestionnaireAnswers] = useState<Record<string, unknown>>({})
   // Miroir de `questionnaireAnswers`, tenu à jour à CHAQUE rendu (même patron que `tRef` ci-
-  // dessus) : lu par `handleDeceasedDepartmentResolved` pour construire l'écriture Supabase EN
-  // DEHORS de tout updater `setState` (React peut invoquer un updater deux fois en StrictMode
-  // pour vérifier sa pureté — une écriture réseau qui y vivrait partirait alors deux fois).
+  // dessus) : lu par `handleDeceasedDepartmentResolved` pour calculer les réponses à jour sans
+  // updater `setState` (l'écriture Supabase, elle, relit la base : patchQuestionnaireAnswers).
   const questionnaireAnswersRef = useRef(questionnaireAnswers)
   questionnaireAnswersRef.current = questionnaireAnswers
+  // Personnalisation v2 : profil courrier et identité du dossier PF, chargés AVANT le premier rendu
+  // de la roadmap (useLetterGenerator fige ses valeurs initiales au montage — spec §4.7).
+  const [letterProfile, setLetterProfile] = useState<LetterProfileRow | null>(null)
+  const [dossierIdentity, setDossierIdentity] = useState<DossierIdentity | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -191,6 +205,15 @@ export function DashboardPage() {
         }
       }
 
+      // Lectures indépendantes et non bloquantes : sans elles, les courriers demandent simplement
+      // les champs manquants, comme avant. Un échec est signalé à Sentry.
+      const [profileRow, identity] = await Promise.all([
+        nullOnError(fetchLetterProfile(supabase, user!.id)),
+        nullOnError(fetchDossierIdentity(supabase)),
+      ])
+      setLetterProfile(profileRow)
+      setDossierIdentity(identity)
+
       // Get steps for this roadmap
       const { data: steps, error: sErr } = await supabase
         .from('steps')
@@ -215,6 +238,18 @@ export function DashboardPage() {
 
   const phases = useMemo(() => buildPhases(dbSteps, t, lang), [dbSteps, t, lang])
   const progress = useMemo(() => buildProgress(dbSteps), [dbSteps])
+
+  const letterProfileCtx = useMemo<LetterProfileContextValue>(
+    () => ({
+      profile: letterProfile,
+      relation: questionnaireAnswers.relation as RelationV2 | undefined,
+      deceasedFirstName:
+        (questionnaireAnswers.deceased_firstname as string | undefined) ?? dossierIdentity?.deceased_first_name ?? undefined,
+      autofill: buildLetterAutofill({ profile: letterProfile, dossier: dossierIdentity, answers: questionnaireAnswers }),
+      onProfileSaved: setLetterProfile,
+    }),
+    [letterProfile, dossierIdentity, questionnaireAnswers]
+  )
 
   const totalSteps = dbSteps.length
   const completedCount = progress.completedSteps.length
@@ -284,9 +319,11 @@ export function DashboardPage() {
       const next = { ...questionnaireAnswersRef.current, deceased_department: department }
       setQuestionnaireAnswers(next)
       // Écriture Supabase HORS de l'updater setState ci-dessus (correctif revue finale) : un
-      // simple appel, jamais dupliqué par React.
+      // simple appel, jamais dupliqué par React. Personnalisation v2 : patch relu en base plutôt que
+      // l'instantané en mémoire, qui effacerait une date de naissance enregistrée depuis un autre
+      // onglet (Profil) ; un échec, silencieux jusqu'ici, est signalé à Sentry.
       if (questionnaireId) {
-        void supabase.from('questionnaires').update({ answers: next }).eq('id', questionnaireId)
+        void nullOnError(patchQuestionnaireAnswers(supabase, questionnaireId, { deceased_department: department }))
       }
     },
     [questionnaireId]
@@ -329,6 +366,7 @@ export function DashboardPage() {
       <div className="flex min-h-[calc(100vh-82px)]">
         <Sidebar activeView={activeView} onNavigate={handleNavigate} />
 
+        <LetterProfileContext.Provider value={letterProfileCtx}>
         <main className="flex-1 p-4 md:p-10 overflow-y-auto max-w-[1200px]">
           {/* Retour de Stripe Checkout — n'affiche qu'un état d'attente, ne débloque rien. */}
           <CheckoutReturnBanner />
@@ -340,6 +378,7 @@ export function DashboardPage() {
               prioritySteps={prioritySteps}
               onNavigate={handleNavigate}
               onScrollToStep={handleScrollToStep}
+              showProfileReminder={!letterProfile?.first_name}
             />
           )}
 
@@ -381,6 +420,7 @@ export function DashboardPage() {
             </div>
           )}
         </main>
+        </LetterProfileContext.Provider>
       </div>
     </div>
   )
@@ -394,6 +434,7 @@ interface DashboardOverviewProps {
   prioritySteps: RoadmapStep[]
   onNavigate: (view: DashboardView) => void
   onScrollToStep: (stepId: number) => void
+  showProfileReminder: boolean
 }
 
 function DashboardOverview({
@@ -402,11 +443,22 @@ function DashboardOverview({
   prioritySteps,
   onNavigate,
   onScrollToStep,
+  showProfileReminder,
 }: DashboardOverviewProps) {
   const t = useT()
   return (
     <div className="animate-fade-in">
       <ProgressHero completed={completedCount} total={totalSteps} />
+
+      {showProfileReminder && (
+        <div className="mt-8 rounded-card border border-border-card bg-white p-6 shadow-card-border">
+          <h3 className="font-display text-xl font-normal text-text">{t.letterProfile.reminderTitle}</h3>
+          <p className="mt-2 text-text-secondary">{t.letterProfile.reminderBody}</p>
+          <Button asChild className="mt-4">
+            <Link to="/profile">{t.letterProfile.reminderCta}</Link>
+          </Button>
+        </div>
+      )}
 
       <h3 className="mb-5 mt-10 font-display text-2xl font-normal text-text">
         {t.dashboardPage.priorityActionsTitle}

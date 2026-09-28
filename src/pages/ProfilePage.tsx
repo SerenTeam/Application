@@ -1,15 +1,61 @@
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { ChangePasswordForm } from '@/components/profile/ChangePasswordForm'
 import { ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { AppHeader, HeaderNavLink } from '@/components/layout/AppHeader'
 import { SectionHeading } from '@/components/ui/section-heading'
+import { LetterProfileForm } from '@/components/letter/LetterProfileForm'
+import { supabase } from '@/lib/supabase'
+import {
+  fetchDossierIdentity,
+  fetchLatestQuestionnaire,
+  fetchLetterProfile,
+  saveDeceasedDob,
+  type DossierIdentity,
+  type LetterProfileRow,
+} from '@/lib/letter-profile'
+import { nullOnError } from '@/lib/sentry'
+import type { RelationV2 } from '@/types/questionnaire'
 import { useT } from '@/i18n/useT'
 
 export function ProfilePage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const t = useT()
+  const [loaded, setLoaded] = useState(false)
+  const [profile, setProfile] = useState<LetterProfileRow | null>(null)
+  const [dossier, setDossier] = useState<DossierIdentity | null>(null)
+  const [questionnaire, setQuestionnaire] = useState<{ id: string; answers: Record<string, unknown> } | null>(null)
+
+  // Personnalisation v2 (spec §4.5) : le profil courrier se consulte et se modifie aussi ici.
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    void (async () => {
+      // Non bloquantes : un échec masque la donnée concernée et est signalé à Sentry.
+      const [p, d, q] = await Promise.all([
+        nullOnError(fetchLetterProfile(supabase, user.id)),
+        nullOnError(fetchDossierIdentity(supabase)),
+        nullOnError(fetchLatestQuestionnaire(supabase, user.id)),
+      ])
+      if (cancelled) return
+      setProfile(p)
+      setDossier(d)
+      setQuestionnaire(q)
+      setLoaded(true)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
+  const answers = questionnaire?.answers ?? {}
+  const deceasedFirstName = (answers.deceased_firstname as string | undefined) ?? dossier?.deceased_first_name ?? undefined
+  // Prénom : profil courrier, sinon dossier PF (spec §4.5) ; en dernier repli, la métadonnée du compte
+  // que cette page affichait jusqu'ici.
+  const firstName =
+    profile?.first_name ?? dossier?.family_first_name ?? (user?.user_metadata?.first_name as string | undefined) ?? null
 
   return (
     <div className="min-h-screen bg-bg">
@@ -27,18 +73,11 @@ export function ProfilePage() {
           {t.profile.back}
         </button>
 
-        <SectionHeading
-          as="h1"
-          className="mb-8 max-w-none"
-          title={t.profile.title}
-          lead={t.profile.subtitle}
-        />
+        <SectionHeading as="h1" className="mb-8 max-w-none" title={t.profile.title} lead={t.profile.subtitle} />
 
         {/* User info card */}
         <div className="mb-8 rounded-card border border-border-card bg-white p-10 shadow-card-border max-sm:p-7">
-          <h2 className="mb-4 font-display text-[1.5rem] font-normal text-text">
-            {t.profile.infoTitle}
-          </h2>
+          <h2 className="mb-4 font-display text-[1.5rem] font-normal text-text">{t.profile.infoTitle}</h2>
           <div className="space-y-4">
             <div>
               <p className="text-sm font-medium text-text-secondary">Email</p>
@@ -46,12 +85,40 @@ export function ProfilePage() {
             </div>
             <div>
               <p className="text-sm font-medium text-text-secondary">{t.profile.firstNameLabel}</p>
-              <p className="text-[1.05rem] text-text">
-                {user?.user_metadata?.first_name || t.profile.notProvided}
-              </p>
+              <p className="text-[1.05rem] text-text">{firstName || t.profile.notProvided}</p>
             </div>
           </div>
         </div>
+
+        {/* Personnalisation v2 : profil courrier */}
+        {user && loaded && (
+          <div className="mb-8 rounded-card border border-border-card bg-white p-10 shadow-card-border max-sm:p-7">
+            <h2 className="mb-2 font-display text-[1.5rem] font-normal text-text">{t.letterProfile.title}</h2>
+            {/* profileHint : l'aide générale renvoie « à votre profil », où l'on est déjà (note post-revue Task 8) */}
+            <p className="mb-6 text-sm text-text-muted">{t.letterProfile.profileHint}</p>
+            <LetterProfileForm
+              userId={user.id}
+              profile={profile}
+              showHeader={false}
+              defaults={{ firstName: dossier?.family_first_name ?? undefined, lastName: dossier?.family_last_name ?? undefined }}
+              relation={answers.relation as RelationV2 | undefined}
+              deceasedFirstName={deceasedFirstName}
+              deceasedDob={
+                questionnaire
+                  ? {
+                      value: (answers.deceased_dob as string | undefined) ?? null,
+                      max: (answers.deceased_dod as string | undefined) ?? null,
+                      save: async (dob) => {
+                        const next = await saveDeceasedDob(supabase, questionnaire.id, dob)
+                        setQuestionnaire({ id: questionnaire.id, answers: next })
+                      },
+                    }
+                  : undefined
+              }
+              onSaved={setProfile}
+            />
+          </div>
+        )}
 
         {/* SER-22: Change password form */}
         <ChangePasswordForm />

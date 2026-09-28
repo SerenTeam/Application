@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { useT } from '@/i18n/useT'
 import { fmt } from '@/i18n'
 import { useLetterGenerator } from '@/hooks/useLetterGenerator'
+import { useLetterProfileContext } from '@/hooks/useLetterProfileContext'
 import { getTemplateNetwork } from '@/data/letter-templates'
 import { shouldAutoResumePaperSend } from '@/lib/paper-send-resume'
 import { Button } from '@/components/ui/button'
@@ -273,6 +274,9 @@ function StepLetterSection({
   const [showLetter, setShowLetter] = useState(() => shouldAutoResumePaperSend(templateId, stepDbId))
   const [sentRefresh, setSentRefresh] = useState(0)
 
+  // Personnalisation v2 (spec §4.7) : identité, adresse, ville, lien et défunt viennent du profil
+  // courrier partagé par le tableau de bord ; hors contexte, repli sur les réponses (comportement 2a).
+  const letterProfileCtx = useLetterProfileContext()
   const {
     template,
     values,
@@ -283,13 +287,16 @@ function StepLetterSection({
     setVariable,
   } = useLetterGenerator({
     templateId,
-    questionnaireData: questionnaireData
-      ? {
-          deceased_firstname: questionnaireData.deceased_firstname,
-          deceased_lastname: questionnaireData.deceased_lastname,
-          deceased_dod: questionnaireData.deceased_dod,
-        }
-      : undefined,
+    userProfile: letterProfileCtx?.autofill.userProfile,
+    questionnaireData:
+      letterProfileCtx?.autofill.questionnaireData ??
+      (questionnaireData
+        ? {
+            deceased_firstname: questionnaireData.deceased_firstname,
+            deceased_lastname: questionnaireData.deceased_lastname,
+            deceased_dod: questionnaireData.deceased_dod,
+          }
+        : undefined),
   })
 
   if (!template) return null
