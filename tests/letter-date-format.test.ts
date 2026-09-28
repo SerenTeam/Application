@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { createElement as h } from 'react'
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest'
+import { createElement as h, useEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { useLetterGenerator } from '@/hooks/useLetterGenerator'
 import { formatLetterValue } from '@/data/letter-templates'
@@ -27,9 +27,9 @@ const IMPOTS_VALUES: Record<string, string> = {
 }
 
 // Hôte minimal pour react-dom en environnement node : le composant sonde ne rend aucun élément DOM.
+// Aucune attente à délai fixe : chaque étape attend (vi.waitFor) la condition qu'elle prépare.
 const fakeDocument = { addEventListener() {}, removeEventListener() {} }
 const container = { nodeType: 1, nodeName: 'DIV', tagName: 'DIV', namespaceURI: 'http://www.w3.org/1999/xhtml', ownerDocument: fakeDocument, textContent: '', addEventListener() {}, removeEventListener() {} }
-const flush = () => new Promise((resolve) => setTimeout(resolve, 20))
 
 describe('courriers — date ISO saisie rendue JJ/MM/AAAA', () => {
   let root: Root | null = null
@@ -45,17 +45,23 @@ describe('courriers — date ISO saisie rendue JJ/MM/AAAA', () => {
 
   it('client (aperçu useLetterGenerator) : « né(e) le 14/03/1946 », valeur stockée intacte', async () => {
     let generator: ReturnType<typeof useLetterGenerator> | null = null
+    let mounted = false
     function Probe() {
       generator = useLetterGenerator({ templateId: 'impots-notification' })
+      useEffect(() => {
+        mounted = true
+      }, [])
       return null
     }
     root = createRoot(container as unknown as Element)
     root.render(h(Probe))
-    await flush()
+    // Sonde montée : rendu validé et effets de montage passés (ceux du hook compris, déclarés avant).
+    await vi.waitFor(() => expect(mounted).toBe(true))
 
     // Saisie du champ date (valeur renvoyée par <input type="date">).
     generator!.setVariable('deceased_dob', '1946-03-14')
-    await flush()
+    // Valeur rendue : la sonde a reçu le générateur à jour (l'aperçu est un useMemo de ces valeurs).
+    await vi.waitFor(() => expect(generator!.values.deceased_dob).toBe('1946-03-14'))
 
     expect(generator!.resolvedLetter).toContain('né(e) le 14/03/1946')
     expect(generator!.resolvedLetter).not.toContain('1946-03-14')

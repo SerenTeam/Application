@@ -909,10 +909,9 @@ describe('POST /api/letters/send (papier) — garde 7 bis : reprise', () => {
     // `.then()` explicite : un Test supertest est paresseux, il ne part qu'une fois consommé —
     // sans cela la « requête concurrente » ne serait jamais émise.
     const first = request(app).post('/api/letters/send').send(basePayload()).then((r) => r)
-    for (let i = 0; i < 50 && sender.calls.length < 2; i++) {
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((resolve) => setTimeout(resolve, 5))
-    }
+    // Reprise n°1 arrivée chez le provider (où `hold` la retient) : attente de cette condition,
+    // plafonnée à 5 s. L'ancien plafond de 250 ms (50 × 5 ms) cédait sous charge.
+    await vi.waitFor(() => expect(sender.calls.length).toBeGreaterThanOrEqual(2), { timeout: 5000, interval: 5 })
     expect(sender.calls).toHaveLength(2) // la reprise n°1 est bien en vol
 
     // Reprise n°2 pendant que la n°1 est en vol : la ligne vient d'être claimée (updated_at
@@ -927,7 +926,9 @@ describe('POST /api/letters/send (papier) — garde 7 bis : reprise', () => {
     expect(firstRes.status).toBe(202)
     expect(sender.calls).toHaveLength(2) // la n°2 n'a jamais atteint le provider
     expect(store.rows).toHaveLength(1)
-  })
+    // Budget du test au-delà des 5 s de l'attente ci-dessus : sous charge extrême, c'est elle qui
+    // échoue (message explicite), pas le délai global du test.
+  }, 10_000)
 })
 
 // ── Garde 8 : débit du quota ──────────────────────────────────────────────────────────────────
