@@ -228,6 +228,19 @@ describe('invariant : étapes ↔ courriers', () => {
       expect(s.applicable_when.logement, `${s.id} propose ${s.letter_template_id}`).toEqual(['locataire'])
     }
   })
+  // Défaut préexistant de même famille, relevé le 2026-09-28 : le courrier banque-declaration-deces
+  // demande « le blocage des comptes » ; l'étape du compte joint, qui vise à continuer d'utiliser ce
+  // compte ou à le transférer, le proposait. Liste fermée : toute nouvelle étape qui voudrait
+  // proposer un courrier de blocage doit y être ajoutée sciemment.
+  it('un courrier qui demande « le blocage des comptes » n’est proposé que par les étapes qui déclarent le décès à une banque', () => {
+    const BANK_DEATH_NOTICE_STEPS = ['banque-declaration-principale', 'banque-autres-banques']
+    const blockingLetters = LETTER_TEMPLATES.filter((t) => t.body.includes('blocage des comptes')).map((t) => t.id)
+    expect(blockingLetters).toContain('banque-declaration-deces')
+    for (const s of STEPS_CATALOG) {
+      if (!s.letter_template_id || !blockingLetters.includes(s.letter_template_id)) continue
+      expect(BANK_DEATH_NOTICE_STEPS, `${s.id} propose ${s.letter_template_id}`).toContain(s.id)
+    }
+  })
   it('personnalisation v2 : les 5 nouvelles démarches proposent leur courrier', () => {
     const expected: Record<string, string> = {
       'abonnements-presse': 'resiliation-presse',

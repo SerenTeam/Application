@@ -143,7 +143,6 @@ export const STEPS_CATALOG_EN: StepTemplate[] = [
     applicable_when: {
       has_joint_account: true,
     },
-    letter_template_id: 'banque-declaration-deces',
     display_order: 7,
   },
 
