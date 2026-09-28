@@ -315,7 +315,7 @@ S=/private/tmp/claude-501/-Users-arnaudgay-Documents-git-Seren-Application/de650
 . "$S/bin/v2-env.sh"
 run-sql-checks "$INT" scripts/sql-scenarios-f1.sql scripts/sql-scenarios-v2.sql 2>&1 | grep -E '^== |ERROR|S15|SCENARIOS V2'
 ```
-Attendu : 6 lignes `NOTICE:  OK S15…`, les lignes `OK S13p … my_dossier_identity()`, puis `NOTICE:  SCENARIOS V2 : OK`, aucune `ERROR`.
+Attendu : 8 lignes `NOTICE:  OK S15…` (S15a, S15b, S15b2, S15c, S15d, S15d2, S15e, S15f — voir la note post-revue ci-dessous), les lignes `OK S13p … my_dossier_identity()`, puis `NOTICE:  SCENARIOS V2 : OK`, aucune `ERROR`.
 
 **Sinon, ne pas démarrer Docker ici** : le rejeu est fait par le contrôleur à la Task 11 Step 4 (il le consigne dans la note post-revue de cette tâche). Ne jamais utiliser `supabase link`, `--linked` ni `db push`.
 
@@ -331,6 +331,20 @@ authenticated, rôle exclusif PF) ; lint étendu, scénarios S15 + droits S13p.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
+
+> **Note post-revue (Task 1, 2026-09-28)** — Commits `0881e53` (tâche) puis `1709fb3` (correctifs de la revue qualité). Revue de spec : conforme. Revue qualité : 2 points importants et 6 mineurs corrigés, sans question produit.
+> - **Lint verrouillé.** Le test « 5 champs » laissait passer 5 mutants de la RPC, dont la suppression de la garde PF et celle du filtre `d.user_id = v_uid`. Il pose désormais des verrous exacts sur le corps normalisé : lecture de `auth.uid()`, garde PF placée avant la lecture, SELECT, filtre titulaire + statut, et la liste exhaustive des `return`. Preuve : 6 mutants passent au rouge.
+> - **S15 à 8 assertions.** Les ajouts :
+>   - S15d donne un vrai dossier à b004, gérant de la PF **suspendue** a003 : c'est la garde qui renvoie `null`, et non l'absence de dossier ;
+>   - S15d2 : une fois a003 résiliée, b004 redevient famille, comme avec `my_account()` ;
+>   - S15b2 : sonde symétrique de la famille B ;
+>   - S15a compare la date en `::date`, ce qui la rend robuste au `DateStyle`.
+> - **Prénom et nom non vides en base.** Le CHECK devient `char_length(btrim(...)) between 1 and 45`, comme `dossiers_names_check`.
+> - **En-têtes documentés.** Un dossier `direct`/`demo` peut renvoyer un objet à valeurs nulles, et les consommateurs sont cités.
+> - **Écarts de spec consignés**, avec la correction du §4.2 et du user step §9 prévue en Task 12 :
+>   - 2 fichiers de migration au lieu d'un ;
+>   - pas d'`order by` : l'index unique `dossiers_user_uidx` et `dossiers_state_check` garantissent au plus un dossier `active`/`closed` par compte ;
+>   - **rejeu SQL réel reporté à la Task 11 Step 4.**
 
 ---
 
@@ -3941,7 +3955,7 @@ echo "select count(*) from supabase_migrations.schema_migrations;" | psql-local 
 eval "$(supabase status -o env --workdir "$INT" 2>/dev/null | grep -E '^(API_URL|PUBLISHABLE_KEY)=')"
 HOOK_SUPABASE_KEY="$PUBLISHABLE_KEY" with-db-lock node "$INT/scripts/hook-scenarios-v2.mjs"
 ```
-Attendu : `OK S15a…S15f`, `OK S13p … my_dossier_identity()`, `NOTICE:  SCENARIOS V2 : OK`, aucune `ERROR` ; 20 migrations ; hook : 5 refus et 3 acceptations. Consigner le résultat dans la note post-revue de la Task 1.
+Attendu : 8 lignes `OK S15…` (S15a, S15b, S15b2, S15c, S15d, S15d2, S15e, S15f), `OK S13p … my_dossier_identity()`, `NOTICE:  SCENARIOS V2 : OK`, aucune `ERROR` ; 20 migrations ; hook : 5 refus et 3 acceptations. Consigner le résultat dans la note post-revue de la Task 1.
 
 - [ ] **Step 5 : données de démo (fictives) — dans un NOUVEAU shell, sans `v2-env.sh`**
 
