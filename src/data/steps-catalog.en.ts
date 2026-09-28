@@ -487,7 +487,7 @@ export const STEPS_CATALOG_EN: StepTemplate[] = [
     what_you_do: [
       'Review the last 12 months of statements: direct debits and card payments that recur every month or every year',
       'List each provider with its amount and contract reference',
-      'Cancel the subscriptions that are no longer needed, by a letter quoting the contract number with a copy of the death certificate; do not cancel home insurance, energy or a loan without first reading the steps dedicated to them',
+      'Cancel the subscriptions that are no longer needed, by a letter quoting the contract number with a copy of the death certificate; do not cancel home insurance, energy or a loan without first reading the steps dedicated to them, nor online storage (iCloud+, Google One…) before retrieving its photos and documents',
     ],
     responsable: 'vous',
     requires_notary: false,
@@ -1283,7 +1283,7 @@ export const STEPS_CATALOG_EN: StepTemplate[] = [
     what_you_do: [
       'Before cancelling online storage (iCloud+, Google One, OneDrive…) or closing an Amazon account, retrieve the photos and documents it contains',
       'Identify the paid services from the statements, including subscriptions taken out in app stores',
-      'Amazon: to stop only Prime, cancel it from the account; to close the account, follow the procedure described in Amazon\'s help in the event of a death (death certificate required; closing is permanent and removes access to content: photos, music, books)',
+      'Amazon: if you have access to the account, stop only Prime from the account; to close the account, follow the procedure described in Amazon\'s help in the event of a death (death certificate required; closing is permanent and removes access to content: photos, music, books)',
       'Microsoft: stop the payment method for subscriptions (Microsoft 365…); the account expires after 2 years of inactivity, but OneDrive files are frozen after 1 year',
       'Other services: contact their customer service, reporting the death, with a copy of the death certificate',
     ],

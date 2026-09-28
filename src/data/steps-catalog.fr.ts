@@ -487,7 +487,7 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
     what_you_do: [
       'Relire les relevés des 12 derniers mois : prélèvements et paiements par carte qui reviennent chaque mois ou chaque année',
       'Lister chaque prestataire avec son montant et sa référence de contrat',
-      'Résilier les abonnements devenus inutiles, par courrier rappelant le numéro de contrat avec une copie de l\'acte de décès ; ne pas résilier l\'assurance habitation, l\'énergie ou un crédit sans avoir lu les démarches qui leur sont consacrées',
+      'Résilier les abonnements devenus inutiles, par courrier rappelant le numéro de contrat avec une copie de l\'acte de décès ; ne pas résilier l\'assurance habitation, l\'énergie ou un crédit sans avoir lu les démarches qui leur sont consacrées, ni un stockage en ligne (iCloud+, Google One…) avant d\'en avoir récupéré les photos et documents',
     ],
     responsable: 'vous',
     requires_notary: false,
@@ -1196,6 +1196,9 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
   //            https://support.google.com/accounts/answer/12418290?hl=fr
   //   Microsoft : https://support.microsoft.com/fr-fr/account-billing/accessing-outlook-com-onedrive-and-other-microsoft-services-when-someone-has-died-ebbd2860-917e-4b39-9913-212362da6b2f
   //   Amazon : https://www.amazon.fr/gp/help/customer/display.html?nodeId=GUU8DRRE5NUHH8T5
+  //            Résiliation de Prime depuis le compte : https://www.amazon.fr/gp/help/customer/display.html?nodeId=GTJQ7QZY7QL2HK4Y
+  //            (« Arrêter votre abonnement à Amazon Prime », repérée par recherche le 2026-09-28 ; accès
+  //            direct refusé, HTTP 503 : contenu à vérifier à la relecture juridique)
   // Télécom (logement-resiliation-telecom) : code de la consommation, L224-39 (résiliation effective
   // au plus tard 10 jours après réception de la demande) et L224-35 (sommes versées d'avance restituées
   // au plus tard 10 jours après le paiement de la dernière facture).
@@ -1294,7 +1297,7 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
     what_you_do: [
       'Avant de résilier un stockage en ligne (iCloud+, Google One, OneDrive…) ou de fermer un compte Amazon, récupérer les photos et documents qu\'il contient',
       'Repérer les services payés sur les relevés, y compris les abonnements pris dans les boutiques d\'applications',
-      'Amazon : pour arrêter seulement Prime, le résilier depuis le compte ; pour fermer le compte, suivre la démarche prévue par l\'aide Amazon en cas de décès (acte de décès demandé ; la fermeture est définitive et supprime l\'accès aux contenus : photos, musique, livres)',
+      'Amazon : si vous avez accès au compte, arrêter seulement Prime depuis le compte ; pour fermer le compte, suivre la démarche prévue par l\'aide Amazon en cas de décès (acte de décès demandé ; la fermeture est définitive et supprime l\'accès aux contenus : photos, musique, livres)',
       'Microsoft : interrompre le moyen de paiement des abonnements (Microsoft 365…) ; le compte expire après 2 ans d\'inactivité, mais les fichiers OneDrive sont gelés dès 1 an',
       'Autres services : contacter leur service client en signalant le décès, avec une copie de l\'acte de décès',
     ],
