@@ -1894,6 +1894,23 @@ requis pour presse et télécom ; invariant étapes ↔ courriers dans les deux 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
+> **Note post-revue (Task 5, 2026-09-28)** — Commits : `31610b4` (la tâche), `46ffe48` (courriers), `9ad4f45` (AAH et PCH séparées), `a723dce` (avertissement masqué en reprise figée), puis un petit commit qui ajoute la puce AAH à `administratif-caf`. Spec : conforme. Qualité : approuvée en re-revue. Suite à **838** tests.
+> - **L. 224-35, revérifié deux fois sur Légifrance** (LEGIARTI000032226650) : « Toute somme versée d'avance par le consommateur […] lui est restituée, sous réserve du paiement des factures restant dues, au plus tard dans un délai de dix jours à compter du paiement de la dernière facture. » L. 224-39 porte le préavis de 10 jours au plus.
+> - **Décisions d'Arnaud (2026-09-28)** :
+>   1. **Pièce jointe : avertir sans bloquer.** Les 5 nouveaux modèles affirment « Vous trouverez ci-joint une copie de l'acte de décès » et portent le drapeau `encloses_death_certificate` (test ⇔). Sans pièce jointe, `PaperSendPanel` affiche `paperSend.enclosureWarning`, sauf si le canal est fermé ou la reprise figée. L'envoi reste possible.
+>   2. **Télécom** : « Numéro client ou numéro de ligne » (libellé client), « Numéro client ou de ligne : … » et « rattachés au numéro … (ligne mobile, box internet ou ligne fixe) ».
+>   3. **AAH et PCH séparées** (écart à la spec §5.2 et §6.1, qui disent encore `handicap`). L'option `aah` est une valeur neutre documentée, couverte par l'étape universelle `administratif-caf`, qui reçoit une puce AAH sourcée F12242. `pch` déclenche `aides-departement`.
+> - **Correctifs de revue** :
+>   - restitution des avances rendue neutre (« devront être restituées », et non au signataire : les sommes reviennent à la succession) ;
+>   - `recipient_label` « À l'attention du … — {{organisme_name}} » pour presse, télécom, sport et EHPAD, parité testée ;
+>   - date de naissance dans le courrier sport ;
+>   - variables d'un courrier papier toutes requises (testé) ;
+>   - libellés de champ propres à chaque courrier ;
+>   - « le cas échéant » pour le dépôt de garantie et pour le notaire ;
+>   - note sur le département du domicile précédent (L. 122-2 CASF, « en principe »).
+> - **Sortis en tâches séparées (défauts préexistants)** : la grammaire des 10 anciens courriers, et le courrier bailleur proposé aux propriétaires par l'étape syndic.
+> - **Backlog produit (M5)** : un seul envoi papier par étape, alors que presse, sport et télécom peuvent concerner plusieurs prestataires.
+
 ---
 
 ### Task 6 : Pré-remplissage du questionnaire depuis le dossier PF (serveur) + dates lisibles au récapitulatif
@@ -4094,9 +4111,9 @@ Parcours complet, données fictives, dans le navigateur intégré (un onglet par
 | 7 | Confirmer | écran « Dernière étape : vos coordonnées pour les courriers » : Camille / Roussel pré-remplis, pastilles « fils » / « fille » |
 | 8 | « fille », 18 rue des Tanneurs, 33000, Bordeaux, naissance 14/03/1941, « Enregistrer et voir mon parcours » | écran « Votre parcours est prêt » |
 | 9 | Tableau de bord | **pas** de carte de rappel ; roadmap : EHPAD, département (APA/ASH), récupération sur la succession, presse, téléphone, streaming, photos ; **pas** d'étape énergie |
-| 10 | Étape « Résilier les abonnements presse » → générer le courrier | seuls « Nom de l'organisme » et « Numéro d'abonné ou de client » sont à saisir ; l'aperçu contient « Camille Roussel », « fille de Bernard Roussel », l'adresse, « Bordeaux, le … » |
-| 11 | Panneau d'envoi papier de ce courrier | expéditeur déjà rempli (lecture seule + « Modifier ») |
-| 12 | Étape EHPAD → courrier | complet sauf le nom de l'établissement |
+| 10 | Étape « Résilier les abonnements presse » → générer le courrier | seuls « Titre du journal ou du magazine » et « Numéro d'abonné ou de client » sont à saisir ; l'aperçu contient « À l'attention du service abonnements — … », « Camille Roussel », « fille de Bernard Roussel », l'adresse, « Bordeaux, le … » |
+| 11 | Panneau d'envoi papier de ce courrier | expéditeur déjà rempli (lecture seule + « Modifier ») ; sans pièce jointe, avertissement « Ce courrier indique qu'une copie de l'acte de décès est jointe… » ; il disparaît une fois un acte de décès (PDF fictif) joint |
+| 12 | Étape EHPAD → courrier | complet sauf « Nom de l'établissement » |
 | 13 | Profil | carte « Vos coordonnées pour les courriers » ; prénom affiché (plus « Non renseigné ») |
 | 14 | Bascule EN (toggle) sur le tableau de bord puis retour FR | libellés traduits, courriers toujours en français |
 | 15 | Nouveau dossier famille, « Plus tard » sur l'écran de coordonnées | carte de rappel visible au tableau de bord ; courriers : champs identité/adresse à saisir |
