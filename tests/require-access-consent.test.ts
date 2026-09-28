@@ -39,15 +39,23 @@ vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u-1' }, sessi
 const fakeDocument = { addEventListener() {}, removeEventListener() {} }
 const container = { nodeType: 1, nodeName: 'DIV', tagName: 'DIV', namespaceURI: 'http://www.w3.org/1999/xhtml', ownerDocument: fakeDocument, textContent: '', addEventListener() {}, removeEventListener() {} }
 
-const flush = () => new Promise((resolve) => setTimeout(resolve, 20))
-
+// Aucune attente à délai fixe : chaque étape attend (vi.waitFor) la condition qu'elle prépare. Des
+// délais de 20 ms échouaient en suite complète : sous charge, le rendu et la lecture du compte
+// peuvent dépasser n'importe quel délai fixe.
 let pathname = ''
+// Chemins affichés, un par navigation : prouve qu'une redirection a bien eu lieu (et quand).
+let visited: string[] = []
 let questionnaireRendered = false
+let warmLoading = true
 let submitConsents: (() => Promise<void>) | null = null
 let skipConsents: (() => void) | null = null
 
 function LocationProbe() {
-  pathname = useLocation().pathname
+  const current = useLocation().pathname
+  pathname = current
+  useEffect(() => {
+    visited.push(current)
+  }, [current])
   return null
 }
 
@@ -73,7 +81,7 @@ function QuestionnaireStub() {
 }
 
 function Warm({ children }: { children?: ReactNode }) {
-  useAccount()
+  warmLoading = useAccount().loading
   return children ?? null
 }
 
@@ -93,13 +101,16 @@ describe('garde d’accès — sortie de /bienvenue après consentement', () => 
     root?.unmount()
     server.consentRequired = true
     questionnaireRendered = false
+    warmLoading = true
+    visited = []
     submitConsents = null
     skipConsents = null
     resetAccountCache()
     root = createRoot(container as unknown as Element)
-    // Préchauffage : GET /api/me initial (consentement requis) mis en cache de module.
+    // Préchauffage : GET /api/me initial (consentement requis) mis en cache de module. Il doit être
+    // TERMINÉ avant de monter les routes : sans cache, la garde rendrait son indicateur de chargement.
     root.render(h(Warm))
-    await flush()
+    await vi.waitFor(() => expect(warmLoading).toBe(false))
 
     root.render(
       h(MemoryRouter, { initialEntries: ['/bienvenue'] },
@@ -110,7 +121,12 @@ describe('garde d’accès — sortie de /bienvenue après consentement', () => 
         ),
       ),
     )
-    await flush()
+    // Arbre monté sur /bienvenue : la page de consentement a posé ses deux actions.
+    await vi.waitFor(() => {
+      expect(pathname).toBe('/bienvenue')
+      expect(submitConsents).not.toBeNull()
+      expect(skipConsents).not.toBeNull()
+    })
   }
 
   it('entre dans le questionnaire (/) au lieu de revenir sur /bienvenue', async () => {
@@ -119,10 +135,13 @@ describe('garde d’accès — sortie de /bienvenue après consentement', () => 
     expect(submitConsents).not.toBeNull()
 
     await submitConsents!()
-    await flush()
 
-    expect(pathname).toBe('/')
-    expect(questionnaireRendered).toBe(true)
+    // Navigation vers / rendue, questionnaire affiché. Avant le correctif, la garde réutilisée
+    // renvoyait sur /bienvenue sans jamais le rendre : la condition n'était jamais remplie.
+    await vi.waitFor(() => {
+      expect(pathname).toBe('/')
+      expect(questionnaireRendered).toBe(true)
+    })
   })
 
   // Non-régression sécurité du correctif : la garde remontée n'ouvre rien sans consentement.
@@ -132,8 +151,10 @@ describe('garde d’accès — sortie de /bienvenue après consentement', () => 
     expect(skipConsents).not.toBeNull()
 
     skipConsents!()
-    await flush()
-    await flush()
+
+    // Attendre que la redirection ait EU LIEU (/ affiché, puis renvoi sur /bienvenue) : l'absence
+    // du questionnaire n'est vérifiée qu'après, jamais au bout d'un délai.
+    await vi.waitFor(() => expect(visited.slice(-2)).toEqual(['/', '/bienvenue']))
 
     expect(pathname).toBe('/bienvenue')
     expect(questionnaireRendered).toBe(false)
