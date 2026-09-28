@@ -43,10 +43,12 @@ export function formatLetterValue(value) {
 
 // Miroir exact de `fillLetterPlaceholder` (src/data/letter-templates.ts, parité testée) : valeur
 // écrite telle quelle, « de » élidé devant elle quand elle l'exige (« fille d'Anne », règle dans
-// elision.js), en mot entier seulement.
+// elision.js), en mot entier seulement — même limite connue que côté client.
+const DE_BEFORE_PLACEHOLDER_RE = /(^|\s)de \{\{(\w+)\}\}/g
+
 export function fillLetterPlaceholder(text, key, value) {
   const elided = elidesDe(value)
-    ? text.replace(new RegExp(`(^|\\s)de \\{\\{${key}\\}\\}`, 'g'), (_, before) => `${before}d'${value}`)
+    ? text.replace(DE_BEFORE_PLACEHOLDER_RE, (match, before, found) => (found === key ? `${before}d'${value}` : match))
     : text
   return elided.replaceAll(`{{${key}}}`, () => value)
 }

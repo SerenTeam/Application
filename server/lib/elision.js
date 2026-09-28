@@ -1,20 +1,21 @@
 // Miroir exact de src/lib/elision.ts (parité testée dans tests/letter-elision.test.ts) : élision de
-// « de » devant un nom saisi, pour le corps regénéré à l'envoi papier (letter-render.js). Règle
+// « de » devant une valeur saisie, pour le corps regénéré à l'envoi papier (letter-render.js). Règle
 // retenue par Arnaud le 2026-09-28 : « d' » devant une voyelle (accentuée ou non, æ, œ), devant un y
 // suivi d'une consonne (Yves, Yvonne) et devant un h muet, reconnu par la liste ci-dessous ; « de »
 // partout ailleurs (h aspiré, y suivi d'une voyelle, consonne, valeur vide ou repli « [CLÉ] »).
 
 // Prénoms à h muet, sans accents ni majuscules — liste identique au client.
 export const MUTE_H_FIRST_NAMES = new Set([
-  'hadrien', 'hector', 'helena', 'helene', 'heloise', 'henri', 'henriette', 'hermine', 'herve', 'hilaire',
-  'hippolyte', 'honore', 'honorine', 'horace', 'hortense', 'hubert', 'hugo', 'huguette', 'hyacinthe',
+  'hadrien', 'hector', 'helena', 'helene', 'helie', 'heloise', 'henri', 'henriette', 'henry', 'hermance',
+  'hermine', 'hermione', 'herve', 'hilaire', 'hilarion', 'hippolyte', 'honorat', 'honore', 'honorine', 'horace',
+  'hortense', 'hubert', 'hugo', 'huguette', 'hyacinthe',
 ])
 
 const VOWELS = 'aeiouæœ'
 const Y_BEFORE_CONSONANT_RE = /^y[bcdfghjklmnpqrstvwxz]/
 
 function plain(value) {
-  return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 }
 
 export function elidesDe(value) {

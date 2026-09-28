@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { createElement as h, Fragment } from 'react'
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest'
+import { createElement as h, Fragment, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useLetterGenerator } from '@/hooks/useLetterGenerator'
 import { LETTER_TEMPLATES, fillLetterPlaceholder } from '@/data/letter-templates'
@@ -59,25 +59,31 @@ function expectNoDeBefore(text: string, name: string, label: string) {
 // Sonde client : le hook réel, rendu par react-dom sur un hôte minimal en environnement node (même
 // sonde que letter-date-format.test.ts), une instance par couple (modèle, prénom), toutes montées
 // dans une seule racine. Toutes les valeurs arrivent par le pré-remplissage, sauf les deux
-// variables jamais pré-remplies, saisies comme dans le formulaire.
+// variables jamais pré-remplies, saisies comme dans le formulaire. Aucune attente à délai fixe :
+// chaque étape attend (vi.waitFor) la condition qu'elle prépare — sous charge, 20 ms ne suffisaient
+// pas à monter les 105 sondes.
 type ClientRender = { subject: string; body: string; values: Record<string, string> }
 const CLIENT_NAMES = ['Anne', 'Hélène', 'Yves', 'Hugues', 'Yann', 'Jean', '']
 const globals = globalThis as Record<string, unknown>
 const fakeDocument = { addEventListener() {}, removeEventListener() {} }
 const container = { nodeType: 1, nodeName: 'DIV', tagName: 'DIV', namespaceURI: 'http://www.w3.org/1999/xhtml', ownerDocument: fakeDocument, textContent: '', addEventListener() {}, removeEventListener() {} }
-const flush = () => new Promise((resolve) => setTimeout(resolve, 20))
 const generators = new Map<string, ReturnType<typeof useLetterGenerator>>()
+const mounted = new Set<string>()
 const clientRenders = new Map<string, ClientRender>()
 
 function Probe({ templateId, deceasedFirstname }: { templateId: string; deceasedFirstname: string }) {
+  const key = `${templateId}|${deceasedFirstname}`
   generators.set(
-    `${templateId}|${deceasedFirstname}`,
+    key,
     useLetterGenerator({
       templateId,
       userProfile: { firstname: VALUES.user_firstname, lastname: VALUES.user_lastname, address: VALUES.user_address, relation: VALUES.user_relation, city: VALUES.city },
       questionnaireData: { deceased_firstname: deceasedFirstname, deceased_lastname: VALUES.deceased_lastname, deceased_dob: '1941-03-14', deceased_dod: '2026-09-12' },
     })
   )
+  useEffect(() => {
+    mounted.add(key)
+  }, [key])
   return null
 }
 
@@ -88,12 +94,23 @@ beforeAll(async () => {
     CLIENT_NAMES.map((name) => h(Probe, { key: `${id}|${name}`, templateId: id, deceasedFirstname: name }))
   )
   root.render(h(Fragment, null, probes))
-  await flush()
+  // Sondes montées : rendu validé et effets de montage passés (ceux du hook compris, déclarés avant).
+  await vi.waitFor(() => expect(mounted.size).toBe(probes.length), { timeout: 5000 })
   for (const generator of generators.values()) {
     generator.setVariable('organisme_name', VALUES.organisme_name)
     generator.setVariable('subscriber_number', VALUES.subscriber_number)
   }
-  await flush()
+  // Valeurs rendues : chaque sonde a reçu son générateur à jour (objet et courrier sont des useMemo
+  // de ces valeurs).
+  await vi.waitFor(
+    () => {
+      for (const generator of generators.values()) {
+        expect(generator.values.organisme_name).toBe(VALUES.organisme_name)
+        expect(generator.values.subscriber_number).toBe(VALUES.subscriber_number)
+      }
+    },
+    { timeout: 5000 }
+  )
   for (const [key, generator] of generators) {
     clientRenders.set(key, { subject: generator.resolvedSubject, body: generator.resolvedLetter, values: generator.values })
   }
@@ -142,6 +159,12 @@ const RULE_CASES: Array<[string, string]> = [
   ['Hubert', "d'Hubert"],
   ['Hervé', "d'Hervé"],
   ['Hortense', "d'Hortense"],
+  ['Henry', "d'Henry"],
+  ['Hermione', "d'Hermione"],
+  ['Hélie', "d'Hélie"],
+  ['Hermance', "d'Hermance"],
+  ['Honorat', "d'Honorat"],
+  ['Hilarion', "d'Hilarion"],
   ['Hugues', 'de Hugues'],
   ['Hassan', 'de Hassan'],
   ['Hans', 'de Hans'],
@@ -283,6 +306,7 @@ describe('substitution d’une variable : parité client ↔ serveur', () => {
     'succède {{v}}',
     'de {{v}}', // en tête de texte
     'le {{v}}', // seul « de » est concerné
+    'Service de {{organisme_name}}, fille de {{v}}', // seul le « de » de la variable substituée
   ]
   const VALUES_TO_TRY = ['Anne', 'Hélène', 'Yves', 'Hugues', 'Yann', 'Jean', '', '[V]', 'Anne $& $$', '$& Jean']
 
@@ -300,6 +324,10 @@ describe('substitution d’une variable : parité client ↔ serveur', () => {
     )
     expect(fillLetterPlaceholder('Monde {{v}} / succède {{v}} / le {{v}}', 'v', 'Anne')).toBe('Monde Anne / succède Anne / le Anne')
     expect(fillLetterPlaceholder('de {{v}}', 'v', 'Anne')).toBe("d'Anne")
+    // Le « de » placé devant une AUTRE variable attend la substitution de celle-ci, dans les deux miroirs.
+    for (const fill of [fillLetterPlaceholder, serverFillLetterPlaceholder]) {
+      expect(fill('Service de {{organisme_name}}, fille de {{v}}', 'v', 'Anne')).toBe("Service de {{organisme_name}}, fille d'Anne")
+    }
   })
 
   it('la valeur est écrite telle quelle, même si elle contient « $& » ou « $$ »', () => {
