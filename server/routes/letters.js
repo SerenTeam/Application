@@ -11,6 +11,7 @@ import * as Sentry from '@sentry/node'
 import { renderLetterPdf } from '../lib/letter-pdf.js'
 import { renderLetter } from '../lib/letter-render.js'
 import { validateAddress } from '../lib/paper-sender.js'
+import { envelopeNameOf } from '../lib/organisations.js'
 import { createUserRateLimiter } from '../lib/rate-limit.js'
 import { msg } from '../lib/messages.js'
 import { verifySvixSignature } from '../lib/svix-verify.js'
@@ -802,6 +803,8 @@ export function createLettersRouter({
   //    RÉGIONALES (department null, note post-revue Task 2) et l'utilisateur choisit la sienne
   //    par son nom de région — aucun mapping région↔départements n'est inventé ici.
   // L'adresse renvoyée n'est qu'une proposition : celle qui part est celle du corps de POST /send.
+  // `name` (nom officiel) sert à la liste déroulante ; `envelope_name` (≤ 45 caractères, cf.
+  // server/lib/organisations.js) est celui que le formulaire pré-remplit pour l'enveloppe.
   router.get('/organisations', requireAuth, requireActiveDossier, async (req, res) => {
     const lang = bodyLang(req)
     try {
@@ -817,7 +820,8 @@ export function createLettersRouter({
 
       const { data, error } = await query.order('name', { ascending: true })
       if (error) throw new Error(`Lecture de l'annuaire impossible : ${error.message}`)
-      return res.json({ success: true, organisations: data ?? [] })
+      const organisations = (data ?? []).map((org) => ({ ...org, envelope_name: envelopeNameOf(org.name) }))
+      return res.json({ success: true, organisations })
     } catch (error) {
       console.error('❌ letters/organisations :', error?.message ?? error)
       Sentry.captureException(error)

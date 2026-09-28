@@ -6,15 +6,7 @@ import { apiFetch } from '@/lib/api'
 import { useT } from '@/i18n/useT'
 import { fmt } from '@/i18n'
 import type { RecipientAddress } from '@/lib/paper-send-resume'
-
-interface Organisation {
-  id: string
-  name: string
-  address_line1: string
-  address_line2?: string | null
-  postal_code: string
-  city: string
-}
+import { LINE_MAX, recipientFromOrganisation, type Organisation } from '@/lib/paper-recipient'
 
 interface RecipientAddressFormProps {
   // null = destinataire propre à l'utilisateur (banque, assurance, employeur…) : jamais
@@ -31,7 +23,6 @@ interface RecipientAddressFormProps {
   frozen: boolean
 }
 
-const LINE_MAX = 45
 const POSTAL_CODE_RE = /^[0-9]{5}$/
 // Même motif que le CHECK SQL de organisations.department (migration Task 1) : 2 chiffres et
 // plus (métropole) ou 2A/2B (Corse) ou 3 chiffres (DROM/COM), jamais inventé côté serveur.
@@ -108,13 +99,7 @@ export function RecipientAddressForm({
     setSelectedOrgId(id)
     const org = orgs.find((o) => o.id === id)
     if (!org) return
-    onChange({
-      name: org.name,
-      address_line1: org.address_line1,
-      address_line2: org.address_line2 ?? undefined,
-      postal_code: org.postal_code,
-      city: org.city,
-    })
+    onChange(recipientFromOrganisation(org))
   }
 
   const set = (key: keyof RecipientAddress) => (e: React.ChangeEvent<HTMLInputElement>) => {

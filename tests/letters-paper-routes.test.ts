@@ -1220,6 +1220,23 @@ describe('GET /api/letters/organisations', () => {
     expect(res.body.organisations).toHaveLength(2)
   })
 
+  it('chaque organisme porte son nom d’enveloppe (≤ 45 car.) à côté du nom officiel (défaut du 2026-09-28)', async () => {
+    const backend = readyBackend()
+    const official = 'Caisse d\'assurance retraite et de la santé au travail (Carsat) - Midi-Pyrénées'
+    backend.organisations.push(
+      { id: 'carsat-midi-pyrenees', name: official, network: 'carsat', department: null, address_line1: '2 rue Georges-Vivent', address_line2: null, postal_code: '31065', city: 'Toulouse Cedex 9' },
+      { id: 'carsat-bretagne', name: 'CARSAT Bretagne', network: 'carsat', department: null, address_line1: '236 rue de Châteaugiron', address_line2: null, postal_code: '35030', city: 'Rennes' },
+    )
+    const { app } = makeApp({ backend })
+    const res = await request(app).get('/api/letters/organisations?network=carsat')
+    expect(res.status).toBe(200)
+    const byId = Object.fromEntries(res.body.organisations.map((o: Row) => [o.id, o]))
+    // Le nom officiel reste celui de la liste déroulante ; l'enveloppe reçoit la forme courte.
+    expect(byId['carsat-midi-pyrenees'].name).toBe(official)
+    expect(byId['carsat-midi-pyrenees'].envelope_name).toBe('Carsat Midi-Pyrénées')
+    expect(byId['carsat-bretagne'].envelope_name).toBe('CARSAT Bretagne')
+  })
+
   it('réseau inconnu : 400', async () => {
     const { app } = makeApp({ backend: readyBackend() })
     expect((await request(app).get('/api/letters/organisations?network=edf')).status).toBe(400)
