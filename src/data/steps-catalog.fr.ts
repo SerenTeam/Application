@@ -252,6 +252,7 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
       'Se connecter sur caf.fr ou envoyer un courrier au centre CAF',
       'Signaler le décès en fournissant l\'acte de décès',
       'Vérifier si vous êtes éligible à de nouvelles aides (parent isolé, etc.)',
+      'Si le défunt percevait l\'AAH : signaler aussi le décès à ce titre (à la MSA pour le régime agricole) ; les sommes perçues de son vivant n\'ont pas à être remboursées',
     ],
     responsable: 'vous',
     requires_notary: false,

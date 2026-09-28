@@ -252,6 +252,7 @@ export const STEPS_CATALOG_EN: StepTemplate[] = [
       'Log in to caf.fr or send a letter to your CAF office',
       'Report the death by providing the death certificate',
       'Check whether you are eligible for new benefits (single parent, etc.)',
+      'If the deceased received AAH: also report the death for it (to the MSA for the agricultural scheme); amounts received during their lifetime do not have to be repaid',
     ],
     responsable: 'vous',
     requires_notary: false,
