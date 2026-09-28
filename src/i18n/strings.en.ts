@@ -235,6 +235,7 @@ export const STRINGS_EN: Strings = {
       logement: 'Housing',
       succession: 'Estate',
       numerique: 'Digital',
+      abonnements: 'Subscriptions',
       fiscal: 'Tax',
     },
     loadErrorTitle: 'Loading error',

@@ -7,14 +7,14 @@ const CONTRACT_KEYS = [
   'relation', 'deceased_firstname', 'deceased_lastname', 'deceased_dod', 'deceased_department',
   'statut_professionnel', 'logement', 'enfants', 'has_notary', 'has_life_insurance',
   'has_joint_account', 'has_vehicle', 'has_credits', 'employait_aide_domicile',
-  'contrat_obseques', 'aides_percues', 'organismes_contactes',
+  'contrat_obseques', 'aides_percues', 'abonnements', 'organismes_contactes',
 ]
 
 describe('questions-catalog', () => {
-  it('17 questions, ids uniques, tous dans le contrat', () => {
+  it('18 questions, ids uniques, tous dans le contrat', () => {
     const ids = QUESTIONS_CATALOG.map((q: { id: string }) => q.id)
-    expect(ids).toHaveLength(17)
-    expect(new Set(ids).size).toBe(17)
+    expect(ids).toHaveLength(18)
+    expect(new Set(ids).size).toBe(18)
     for (const id of ids) expect(CONTRACT_KEYS).toContain(id)
   })
   it('orders uniques', () => {
@@ -92,6 +92,27 @@ describe('questions-catalog', () => {
     expect(q.applicable_when).toEqual({})
     expect(q.min_selected, 'réponse vide acceptée : « Ne cochez rien si aucune ne correspond »').toBeUndefined()
     expect(q.options.map((o: { value: string }) => o.value)).toEqual(['apa', 'ash', 'aspa', 'handicap', 'aides_logement'])
+    // Chaque texte est un objet { fr, en } réellement renseigné dans les deux langues.
+    const texts = [
+      q.fallback_text.question, q.fallback_text.aide, q.writer_hints, q.categorie,
+      ...q.options.map((o: { label: unknown }) => o.label),
+    ]
+    for (const field of texts) {
+      expect(field).toEqual({ fr: expect.any(String), en: expect.any(String) })
+      for (const lang of ['fr', 'en'] as const) {
+        expect(textIn(field, lang).trim().length, `${JSON.stringify(field)} (${lang})`).toBeGreaterThan(0)
+      }
+    }
+  })
+  it('abonnements : multiselect universel, 8 choix, textes {fr,en}', () => {
+    const q = QUESTIONS_CATALOG.find((x: { id: string }) => x.id === 'abonnements')
+    expect(q, 'question abonnements absente').toBeDefined()
+    expect(q.type).toBe('multiselect')
+    expect(q.applicable_when).toEqual({})
+    expect(q.min_selected, 'réponse vide acceptée : aucun abonnement connu').toBeUndefined()
+    expect(q.options.map((o: { value: string }) => o.value)).toEqual([
+      'presse', 'telephonie', 'sport_loisirs', 'streaming', 'services_en_ligne', 'reseaux_sociaux', 'email', 'photos_documents',
+    ])
     // Chaque texte est un objet { fr, en } réellement renseigné dans les deux langues.
     const texts = [
       q.fallback_text.question, q.fallback_text.aide, q.writer_hints, q.categorie,

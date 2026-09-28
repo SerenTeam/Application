@@ -8,16 +8,16 @@ type Answers = Record<string, unknown>
 const spec = (id: string) => QUESTIONS_CATALOG.find((q: { id: string }) => q.id === id)!
 
 /** Répond automatiquement à toutes les questions avec des valeurs types. */
-function runProfile(fixed: Answers): { sequence: string[]; answers: Answers } {
+function runProfile(fixed: Answers, initial: Answers = {}): { sequence: string[]; answers: Answers } {
   const canned: Answers = {
     relation: 'parent', deceased_firstname: 'Pierre', deceased_lastname: 'Dupont',
     deceased_dod: '2026-04-10', deceased_department: '75', statut_professionnel: 'retraite', logement: ['proprietaire'],
     enfants: 'aucun', has_notary: false, has_life_insurance: 'ne_sait_pas',
     has_joint_account: true, has_vehicle: false, has_credits: false,
-    employait_aide_domicile: false, aides_percues: [], contrat_obseques: 'non', organismes_contactes: [],
+    employait_aide_domicile: false, aides_percues: [], contrat_obseques: 'non', abonnements: [], organismes_contactes: [],
     ...fixed,
   }
-  let answers: Answers = {}
+  let answers: Answers = { ...initial }
   const sequence: string[] = []
   let q = nextQuestion(answers)
   while (q !== null) {
@@ -30,17 +30,17 @@ function runProfile(fixed: Answers): { sequence: string[]; answers: Answers } {
 }
 
 describe('nextQuestion — séquences par profil', () => {
-  it('conjoint marié : 17 questions, compte joint inclus, ordre croissant', () => {
+  it('conjoint marié : 18 questions, compte joint inclus, ordre croissant', () => {
     const { sequence } = runProfile({ relation: 'conjoint_marie' })
-    expect(sequence).toHaveLength(17)
+    expect(sequence).toHaveLength(18)
     expect(sequence).toContain('has_joint_account')
     expect(sequence).toContain('deceased_department')
     expect(sequence[0]).toBe('relation')
     expect(sequence[sequence.length - 1]).toBe('organismes_contactes')
   })
-  it('enfant du défunt : 17 questions, compte joint désormais posé (décision 2026-07-11)', () => {
+  it('enfant du défunt : 18 questions, compte joint désormais posé (décision 2026-07-11)', () => {
     const { sequence } = runProfile({ relation: 'enfant' })
-    expect(sequence).toHaveLength(17)
+    expect(sequence).toHaveLength(18)
     expect(sequence).toContain('has_joint_account')
   })
   it('null quand tout est répondu', () => {
@@ -195,10 +195,22 @@ describe('progress', () => {
     let answers: Answers = {}
     const p0 = progress(answers)
     expect(p0.current).toBe(0)
-    expect(p0.total).toBe(17)
+    expect(p0.total).toBe(18)
     answers = setAnswer(answers, spec('relation'), 'conjoint_marie')
     const p1 = progress(answers)
     expect(p1.current).toBe(1)
-    expect(p1.total).toBe(17) // branche conjoint ouverte
+    expect(p1.total).toBe(18) // branche conjoint ouverte
+  })
+})
+
+describe('plafond UX (spec personnalisation v2 §5.1)', () => {
+  it('identité du défunt pré-remplie par le dossier PF : aucun profil ne voit plus de 15 questions', () => {
+    const prefilled = { deceased_firstname: 'Pierre', deceased_lastname: 'Dupont', deceased_dod: '2026-04-10' }
+    for (const relation of ['conjoint_marie', 'pacse', 'concubin', 'parent', 'enfant', 'frere_soeur', 'autre']) {
+      const { sequence } = runProfile({ relation }, prefilled)
+      expect(sequence.length, relation).toBeLessThanOrEqual(15)
+      expect(sequence).not.toContain('deceased_firstname')
+      expect(sequence).not.toContain('deceased_dod')
+    }
   })
 })

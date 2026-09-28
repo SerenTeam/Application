@@ -9,7 +9,7 @@ const base: QuestionnaireAnswersV2 = {
   enfants: 'aucun', has_notary: true, has_life_insurance: 'non',
   has_vehicle: false, has_credits: false, employait_aide_domicile: false,
   aides_percues: [],
-  contrat_obseques: 'non', organismes_contactes: [],
+  contrat_obseques: 'non', abonnements: [], organismes_contactes: [],
 }
 const ids = (a: QuestionnaireAnswersV2) => generateRoadmap(a).map((s) => s.id)
 
@@ -84,6 +84,7 @@ describe('atteignabilité', () => {
       has_life_insurance: 'oui', has_joint_account: true, has_vehicle: true,
       has_credits: true, employait_aide_domicile: true, contrat_obseques: 'ne_sait_pas',
       aides_percues: ['apa', 'ash', 'aspa', 'handicap', 'aides_logement'],
+      abonnements: ['presse', 'telephonie', 'sport_loisirs', 'streaming', 'services_en_ligne', 'reseaux_sociaux', 'email', 'photos_documents'],
     }
     const reached = new Set([
       ...ids(maximal),
@@ -156,5 +157,27 @@ describe('personnalisation v2 — EHPAD et aides perçues', () => {
   it('aide au logement : étape pré-cochée si la CAF a déjà été contactée', () => {
     const r = generateRoadmap({ ...base, aides_percues: ['aides_logement'], organismes_contactes: ['caf'] })
     expect(r.find((s) => s.id === 'aides-logement')?.initial_status).toBe('done')
+  })
+})
+
+describe('personnalisation v2 — abonnements et comptes', () => {
+  it('chaque case cochée ajoute sa démarche, et seulement elle', () => {
+    const CASES: Array<[string, string]> = [
+      ['presse', 'abonnements-presse'],
+      ['telephonie', 'logement-resiliation-telecom'],
+      ['sport_loisirs', 'abonnements-sport-association'],
+      ['streaming', 'abonnements-streaming'],
+      ['services_en_ligne', 'abonnements-services-en-ligne'],
+      ['reseaux_sociaux', 'numerique-reseaux-sociaux'],
+      ['email', 'numerique-boite-email'],
+      ['photos_documents', 'numerique-photos-documents'],
+    ]
+    for (const [value, stepId] of CASES) {
+      expect(ids({ ...base, abonnements: [value] as QuestionnaireAnswersV2['abonnements'] }), value).toContain(stepId)
+      expect(ids(base), `${stepId} sans case cochée`).not.toContain(stepId)
+    }
+  })
+  it('le filet « repérer les prélèvements encore actifs » reste proposé à tous', () => {
+    expect(ids(base)).toContain('numerique-abonnements')
   })
 })

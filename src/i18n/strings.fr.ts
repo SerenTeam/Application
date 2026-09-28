@@ -235,6 +235,7 @@ export const STRINGS_FR = {
       logement: 'Logement',
       succession: 'Succession',
       numerique: 'Numérique',
+      abonnements: 'Abonnements',
       fiscal: 'Fiscal',
     },
     loadErrorTitle: 'Erreur de chargement',

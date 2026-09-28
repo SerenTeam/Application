@@ -18,6 +18,11 @@ export type Enfants = 'aucun' | 'majeurs' | 'mineurs'
 // Personnalisation v2 : aides que percevait le défunt (question à cocher — réponse vide = aucune).
 export type AidePercue = 'apa' | 'ash' | 'aspa' | 'handicap' | 'aides_logement'
 
+// Personnalisation v2 : abonnements et comptes du défunt (question à cocher — réponse vide = aucun connu).
+export type Abonnement =
+  | 'presse' | 'telephonie' | 'sport_loisirs' | 'streaming'
+  | 'services_en_ligne' | 'reseaux_sociaux' | 'email' | 'photos_documents'
+
 export type OrganismeContacte =
   | 'banque' | 'assurance' | 'caf' | 'retraite'
   | 'employeur' | 'mutuelle' | 'cpam' | 'impots'
@@ -46,6 +51,7 @@ export interface QuestionnaireAnswersV2 {
   employait_aide_domicile: boolean
   contrat_obseques: TriState
   aides_percues: AidePercue[]
+  abonnements: Abonnement[]
   organismes_contactes: OrganismeContacte[]
 }
 
@@ -64,6 +70,7 @@ export interface ApplicableWhenV2 {
   has_credits?: boolean
   employait_aide_domicile?: boolean
   aides_percues?: AidePercue[]
+  abonnements?: Abonnement[]
 }
 
 // Garde de compilation : toute clé d'ApplicableWhenV2 doit exister dans le contrat.

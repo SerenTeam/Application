@@ -12,7 +12,7 @@ import { useT } from '@/i18n/useT'
 import { fmt } from '@/i18n'
 import { AppHeader, HeaderNavLink } from '@/components/layout/AppHeader'
 
-type ThemeFilter = 'all' | 'banque' | 'assurance' | 'administratif' | 'logement' | 'succession' | 'numerique' | 'fiscal'
+type ThemeFilter = 'all' | 'banque' | 'assurance' | 'administratif' | 'logement' | 'succession' | 'numerique' | 'abonnements' | 'fiscal'
 type StatusFilter = 'all' | 'sent' | 'not_sent'
 type SortOrder = 'newest' | 'oldest'
 

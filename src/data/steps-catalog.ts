@@ -7,7 +7,7 @@ export interface StepTemplate {
   id: string
   title: string
   description: string
-  theme: 'banque' | 'numerique' | 'obseques' | 'succession' | 'administratif' | 'assurance' | 'logement' | 'fiscal'
+  theme: 'banque' | 'numerique' | 'obseques' | 'succession' | 'administratif' | 'assurance' | 'logement' | 'fiscal' | 'abonnements'
   urgency: 'urgent' | 'week' | 'month' | 'later'
   urgency_label: string
   when_to_do: string

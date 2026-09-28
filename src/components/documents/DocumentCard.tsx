@@ -15,6 +15,7 @@ import {
   Home,
   Scale,
   Laptop,
+  Newspaper,
   Receipt,
   FileText,
   type LucideIcon,
@@ -31,6 +32,7 @@ const THEME_ICONS: Record<string, LucideIcon> = {
   logement: Home,
   succession: Scale,
   numerique: Laptop,
+  abonnements: Newspaper,
   fiscal: Receipt,
 }
 

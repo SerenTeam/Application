@@ -66,7 +66,8 @@ const CANNED: Record<string, unknown> = {
   deceased_dod: '2026-04-10', deceased_department: '75', statut_professionnel: 'salarie', logement: ['locataire'],
   enfants: 'aucun', has_notary: false, has_life_insurance: 'oui',
   has_joint_account: true, has_vehicle: false, has_credits: false,
-  employait_aide_domicile: false, aides_percues: ['apa', 'ash'], contrat_obseques: 'non', organismes_contactes: ['banque'],
+  employait_aide_domicile: false, aides_percues: ['apa', 'ash'], contrat_obseques: 'non',
+  abonnements: ['presse', 'telephonie'], organismes_contactes: ['banque'],
 }
 
 async function runToRecap(app: express.Express) {
@@ -100,7 +101,7 @@ describe('POST /api/questionnaire/start', () => {
     expect(q.options[0]).toEqual({ value: 'conjoint_marie', label: 'Mon époux / mon épouse' })
     expect(q.fallback_text).toBeUndefined()
     expect(q.writer_hints).toBeUndefined()
-    expect(q.progress).toEqual({ current: 0, total: 17 })
+    expect(q.progress).toEqual({ current: 0, total: 18 })
   })
   it('start avec lang:en → session en anglais, textes EN, resume conserve la langue', async () => {
     const { app } = makeApp()
@@ -135,7 +136,7 @@ describe('POST /api/questionnaire/answer', () => {
       .send({ session_id: sessionId, question_id: 'relation', value: 'conjoint_marie' })
     expect(res.status).toBe(200)
     expect(res.body.data.question_id).toBe('deceased_firstname')
-    expect(res.body.data.progress).toEqual({ current: 1, total: 17 }) // branche conjoint ouverte
+    expect(res.body.data.progress).toEqual({ current: 1, total: 18 }) // branche conjoint ouverte
     expect(sessions.get(sessionId)?.answers.relation).toBe('conjoint_marie') // persisté via saveAnswers, pas par aliasing
   })
   it('valeur hors options → 400 avec message du moteur (traduit FR)', async () => {
