@@ -475,6 +475,15 @@ tableau matche dès qu'une valeur est commune. Parité étendue + sémantique ex
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
+> **Note post-revue (Task 2, 2026-09-28)** — Commits `0748d4e` (tâche) puis `6be5483` (correctifs mineurs de la revue qualité). Revue de spec conforme ; revue qualité approuvée sans point critique ni important, puis approuvée en re-revue.
+> - **Comptes de tests.** La référence réelle est 798 : la Task 1 a ajouté 2 tests. La suite passe donc à 805 après la tâche (le plan annonçait 803), puis à **807** avec les correctifs.
+> - **Les 4 correctifs appliqués** :
+>   - le commentaire d'`ApplicableWhenV2` décrit la nouvelle sémantique (`src/types/questionnaire.ts` — fichier hors liste de la tâche, écart justifié) ;
+>   - un test fixe le ET entre clés sur les deux matchers ;
+>   - un test moteur couvre une question conditionnée par une réponse à cocher (catalogue synthétique mocké : `nextQuestion`, purge, `progress`) ;
+>   - l'invariant de forme impose qu'une condition scalaire soit un booléen portant sur une question `boolean`.
+> - **Vérification par mutation** : chaque nouveau test fait échouer la régression qu'il vise.
+
 ---
 
 ### Task 3 : Question « aides perçues », option EHPAD et leurs étapes
