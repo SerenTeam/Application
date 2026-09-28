@@ -52,10 +52,7 @@ export function ProfilePage() {
 
   const answers = questionnaire?.answers ?? {}
   const deceasedFirstName = (answers.deceased_firstname as string | undefined) ?? dossier?.deceased_first_name ?? undefined
-  // Prénom : profil courrier, sinon dossier PF (spec §4.5) ; en dernier repli, la métadonnée du compte
-  // que cette page affichait jusqu'ici.
-  const firstName =
-    profile?.first_name ?? dossier?.family_first_name ?? (user?.user_metadata?.first_name as string | undefined) ?? null
+  const firstName = profile?.first_name ?? dossier?.family_first_name ?? null
 
   return (
     <div className="min-h-screen bg-bg">
