@@ -6,6 +6,8 @@
 -- Fichier séparé de la RPC my_dossier_identity (20260928121000) : le lint des migrations v2
 -- interdit à ses fichiers toute mention d'une table de contenu famille, dont sender_profiles.
 -- RLS inchangée (policy owner du chantier 2a) ; mêmes bornes de 45 caractères que les lignes d'adresse.
+-- Comme dossiers_names_check : la chaîne vide ou blanche est refusée (NULL reste accepté — un CHECK
+-- sur une colonne NULL réussit toujours, donc les profils sans prénom/nom ne sont pas bloqués).
 alter table public.sender_profiles
-  add column if not exists first_name text check (char_length(first_name) <= 45),
-  add column if not exists last_name  text check (char_length(last_name) <= 45);
+  add column if not exists first_name text check (char_length(btrim(first_name)) between 1 and 45),
+  add column if not exists last_name  text check (char_length(btrim(last_name)) between 1 and 45);

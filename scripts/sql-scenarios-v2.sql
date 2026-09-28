@@ -1254,7 +1254,8 @@ end $$;
 rollback;
 
 -- ════════════════════════════════════════════════════════════════════════════════════════
--- S13p — droits des RPC PF, admin (L4c) et F1 (L1b) : les 8 fonctions sont TOUJOURS contrôlées.
+-- S13p — droits des RPC PF, admin (L4c), F1 (L1b) et famille (my_dossier_identity, personnalisation v2) :
+-- les 8 fonctions sont TOUJOURS contrôlées.
 -- Revue L4c, défaut m4 : le « continue » silencieux est remplacé par une assertion de présence, si
 -- bien qu'une migration manquante devient un échec rouge et non une couverture évaporée.
 -- ════════════════════════════════════════════════════════════════════════════════════════
@@ -1299,11 +1300,22 @@ begin
   perform scenario_v2.ok('S15a famille : son dossier et seulement le sien',
     r->>'family_first_name' = 'Camille' and r->>'family_last_name' = 'Roussel'
     and r->>'deceased_first_name' = 'Bernard' and r->>'deceased_last_name' = 'Roussel'
-    and r->>'deceased_death_date' = (current_date - 5)::text, r::text);
+    and (r->>'deceased_death_date')::date = current_date - 5, r::text);
   perform scenario_v2.ok('S15b 5 clés exactes, ni e-mail, ni montant, ni jeton, ni autre famille',
     (select array_agg(k order by k) from jsonb_object_keys(r) as k)
       = array['deceased_death_date', 'deceased_first_name', 'deceased_last_name', 'family_first_name', 'family_last_name']
     and r::text !~ '(@scenario|invite_token|price_ttc|commission_ttc|Roy)', r::text);
+end $$;
+
+reset role;
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b007', 'fam2@scenario.seren-test.fr');
+set local role authenticated;
+do $$
+declare r jsonb := public.my_dossier_identity();
+begin
+  perform scenario_v2.ok('S15b2 sonde symétrique — famille 2 : son dossier, jamais celui de la famille 1',
+    r->>'family_last_name' = 'Roy' and r->>'deceased_first_name' = 'Luc'
+    and r::text !~ '(Roussel|Camille|Bernard)', r::text);
 end $$;
 
 reset role;
@@ -1314,10 +1326,23 @@ do $$ begin
 end $$;
 
 reset role;
-select scenario_v2.claims('00000000-0000-4000-8000-00000000b001', 'pfx.manager@scenario.seren-test.fr');
+insert into public.dossiers (partner_id, source, status, user_id, family_first_name, family_last_name, family_email,
+                             deceased_first_name, deceased_last_name, deceased_death_date,
+                             price_ttc_cents, commission_ttc_cents, activated_at) values
+  ('00000000-0000-4000-8000-00000000a002', 'partner', 'active', '00000000-0000-4000-8000-00000000b004', 'Hugo', 'Petit',
+   'pfs.family@scenario.seren-test.fr', 'Rene', 'Petit', current_date - 7, 29000, 7000, now());
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b004', 'pfs.manager@scenario.seren-test.fr');
 set local role authenticated;
 do $$ begin
-  perform scenario_v2.ok('S15d compte PF → null (rôle exclusif, comme my_account)', public.my_dossier_identity() is null);
+  perform scenario_v2.ok('S15d compte PF (même suspendue) avec un dossier → null : rôle exclusif', public.my_dossier_identity() is null);
+end $$;
+
+reset role;
+update public.partners set status = 'terminated' where id = '00000000-0000-4000-8000-00000000a003';
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b004', 'pfs.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$ begin
+  perform scenario_v2.ok('S15d2 PF résiliée → redevient famille, comme my_account', public.my_dossier_identity()->>'family_last_name' = 'Petit');
 end $$;
 
 reset role;
