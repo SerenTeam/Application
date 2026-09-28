@@ -875,6 +875,24 @@ jamais transmises au rédacteur Mistral (données de santé).
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
+> **Note post-revue (Task 3, 2026-09-28)** — Commits : `390521c` (la tâche), `42a4e1f` (correctifs de revue et décisions d'Arnaud), `d3adee5` (correctifs de re-revue). Spec : conforme. Qualité : approuvée après 2 re-revues. Suite à **822** tests.
+> - **Décisions d'Arnaud (2026-09-28)** :
+>   1. **Libellé large conservé** : « En EHPAD ou en résidence pour personnes âgées ». L'étape précise que **seul le plafond de 6 jours (R. 314-149) est propre aux EHPAD**, selon la réponse ministérielle Sénat 2024-01913 du 19/03/2026. En résidence autonomie ou services, elle renvoie au contrat ou au bail.
+>   2. **La question `logement` passe en CHOIX MULTIPLES** (`multiselect`, `min_selected: 1`). EHPAD et propriétaire se cochent ensemble : aucune étape perdue. Le contrat devient `logement: Logement[]`. Les matchers acceptent aussi l'ancienne forme scalaire, que `displayValue` et `QuestionCard` normalisent.
+>   3. **Deux étapes réservées aux locataires et propriétaires** : `logement-prevenir-syndic` et `logement-ne-pas-resilier-trop-tot`.
+> - **Défaut prudent du contrôleur, réversible** : `logement` rejoint `WRITER_EXCLUDED_IDS`, parce que la valeur EHPAD révèle une perte d'autonomie.
+> - **Contenus corrigés, sources revérifiées** :
+>   - ASPA : report de récupération sur la part du conjoint, du partenaire de PACS ou du concubin (D815-7).
+>   - Aide au logement : versée à terme échu, l'aide du mois du décès reste acquise (R823-8, R823-12). Source R823-12, et `organisme_key: 'caf'`.
+>   - `why_to_do` n'étant jamais affiché, les réassurances sont remontées dans la description et les puces (APA et PCH non récupérables, dépôt de garantie « déduction faite des sommes dues »).
+>   - La récupération sur la succession passe en `week`, « Avant d'accepter la succession ».
+>   - Libellés ASH et ALF corrigés.
+>   - `writer_hints` complétés.
+>   - En-tête du bloc EN en français.
+> - **Seuil ASPA** : 108 585,14 € (circulaire Cnav 2025-29) fait foi. La fiche F16871 affiche 108 586,14 €, coquille apparente. Le chiffre se périme chaque 1er janvier.
+> - **Message de commit `390521c`** : il dit « clore le contrat de séjour », mais les contenus l'évitent volontairement. Le message est laissé tel quel (historique non réécrit).
+> - **À vérifier à la recette Task 11** : le grisage du bouton « Continuer », qui n'a pas de test de composant. Il doit être actif dès une case cochée pour le logement, et actif à vide pour les aides et les organismes.
+
 ---
 
 ### Task 4 : Question « abonnements et comptes », étapes d'abonnements et thème `abonnements`
@@ -4051,8 +4069,8 @@ Parcours complet, données fictives, dans le navigateur intégré (un onglet par
 | 1 | `/login` gérant (`$S/demo-accounts.env`), `/partenaire`, « Ouvrir un dossier famille » : Camille Roussel, `camille.roussel@famille.example`, défunt Bernard Roussel, décès à J-5 | dossier créé ; « Copier le lien d'activation (préproduction) » donne `http://localhost:5173/activation#t=…` |
 | 2 | Déconnexion, lien d'activation, mot de passe, 3 consentements | arrivée sur l'accueil du questionnaire |
 | 3 | Démarrer : relation « Mon père ou ma mère » | la question suivante est le **département** (identité non redemandée) |
-| 4 | Département 33, retraite, logement **« En EHPAD… »**, enfants majeurs, notaire non, assurance vie « Je ne sais pas », compte joint non, véhicule non, crédits non, aide à domicile non | options EHPAD présente |
-| 5 | **Aides** : APA + ASH ; contrat obsèques non ; **abonnements** : presse, téléphone, streaming, réseaux sociaux, photos ; organismes : aucun | 15 questions vues au total |
+| 4 | Département 33, retraite ; logement (choix multiples) : d'abord ne rien cocher, puis cocher **« En EHPAD… »** seul ; enfants majeurs, notaire non, assurance vie « Je ne sais pas », compte joint non, véhicule non, crédits non, aide à domicile non | option EHPAD présente ; « Continuer » **grisé** tant qu'aucune case de logement n'est cochée, actif dès la 1ʳᵉ case |
+| 5 | **Aides** : APA + ASH ; contrat obsèques non ; **abonnements** : presse, téléphone, streaming, réseaux sociaux, photos ; organismes : aucun | 15 questions vues au total ; pour les aides, les abonnements et les organismes, « Continuer » reste **actif** sans case cochée |
 | 6 | Récapitulatif | prénom « Bernard », nom « Roussel », date « JJ/MM/AAAA » ; relance « Modifier » possible |
 | 7 | Confirmer | écran « Dernière étape : vos coordonnées pour les courriers » : Camille / Roussel pré-remplis, pastilles « fils » / « fille » |
 | 8 | « fille », 18 rue des Tanneurs, 33000, Bordeaux, naissance 14/03/1941, « Enregistrer et voir mon parcours » | écran « Votre parcours est prêt » |
