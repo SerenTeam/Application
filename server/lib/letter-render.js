@@ -10,6 +10,7 @@
 // variable (juste des clés), donc le repli affiche `[CLÉ EN MAJUSCULES]` — même mécanique
 // (jamais de `{{...}}` laissé tel quel), texte de repli adapté à l'absence de métadonnée.
 import { getLetterTemplate } from './letter-templates.js'
+import { elidesDe } from './elision.js'
 
 const MUSTACHE_RE = /\{\{[a-zA-Z0-9_]+\}\}/
 
@@ -40,10 +41,20 @@ export function formatLetterValue(value) {
   return match ? `${match[3]}/${match[2]}/${match[1]}` : value
 }
 
+// Miroir exact de `fillLetterPlaceholder` (src/data/letter-templates.ts, parité testée) : valeur
+// écrite telle quelle, « de » élidé devant elle quand elle l'exige (« fille d'Anne », règle dans
+// elision.js), en mot entier seulement.
+export function fillLetterPlaceholder(text, key, value) {
+  const elided = elidesDe(value)
+    ? text.replace(new RegExp(`(^|\\s)de \\{\\{${key}\\}\\}`, 'g'), (_, before) => `${before}d'${value}`)
+    : text
+  return elided.replaceAll(`{{${key}}}`, () => value)
+}
+
 function substitute(text, keys, values) {
   let result = text
   for (const key of keys) {
-    result = result.replaceAll(`{{${key}}}`, resolveValue(key, values))
+    result = fillLetterPlaceholder(result, key, resolveValue(key, values))
   }
   return result
 }

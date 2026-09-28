@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { formatLetterValue, getLetterTemplate, type LetterTemplate } from '@/data/letter-templates'
+import { fillLetterPlaceholder, formatLetterValue, getLetterTemplate, type LetterTemplate } from '@/data/letter-templates'
 
 export interface LetterGeneratorOptions {
   templateId: string
@@ -150,7 +150,7 @@ export function useLetterGenerator(options: LetterGeneratorOptions) {
     let subject = template.subject
     for (const v of template.variables) {
       const val = formatLetterValue(values[v.key]) || `[${v.label.toUpperCase()}]`
-      subject = subject.replaceAll(`{{${v.key}}}`, val)
+      subject = fillLetterPlaceholder(subject, v.key, val)
     }
     return subject
   }, [template, values])
@@ -164,7 +164,7 @@ export function useLetterGenerator(options: LetterGeneratorOptions) {
     let resolvedRecipient = template.recipient_label
     for (const v of template.variables) {
       const val = formatLetterValue(values[v.key]) || `[${v.label.toUpperCase()}]`
-      resolvedRecipient = resolvedRecipient.replaceAll(`{{${v.key}}}`, val)
+      resolvedRecipient = fillLetterPlaceholder(resolvedRecipient, v.key, val)
     }
 
     // Replace placeholders in body
@@ -173,7 +173,7 @@ export function useLetterGenerator(options: LetterGeneratorOptions) {
 
     for (const v of template.variables) {
       const val = formatLetterValue(values[v.key]) || `[${v.label.toUpperCase()}]`
-      result = result.replaceAll(`{{${v.key}}}`, val)
+      result = fillLetterPlaceholder(result, v.key, val)
     }
 
     return result
