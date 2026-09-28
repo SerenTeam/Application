@@ -5,8 +5,10 @@ import path from 'node:path'
 // 321 organismes DILA) pour les tests : les fixtures écrites à la main (« CPAM de Paris »,
 // « CARSAT Bretagne ») avaient masqué que les noms officiels dépassent les 45 caractères d'une
 // ligne d'enveloppe. Aucun accès réseau ni base : le fichier de migration est la source.
+// Limite : seul ce fichier est lu. Une migration ultérieure qui modifierait l'annuaire devra
+// être ajoutée ici — les gardes « 321 organismes » des tests ne le détecteraient pas.
 
-export interface SeedOrganisation {
+export type SeedOrganisation = {
   id: string
   name: string
   kind: string

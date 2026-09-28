@@ -803,8 +803,9 @@ export function createLettersRouter({
   //    RÉGIONALES (department null, note post-revue Task 2) et l'utilisateur choisit la sienne
   //    par son nom de région — aucun mapping région↔départements n'est inventé ici.
   // L'adresse renvoyée n'est qu'une proposition : celle qui part est celle du corps de POST /send.
-  // `name` (nom officiel) sert à la liste déroulante ; `envelope_name` (≤ 45 caractères, cf.
-  // server/lib/organisations.js) est celui que le formulaire pré-remplit pour l'enveloppe.
+  // `name` (nom officiel) sert à la liste déroulante ; `envelope_name` est celui que le formulaire
+  // pré-remplit pour l'enveloppe : ≤ 45 caractères dès qu'une forme courte existe, sinon le nom
+  // officiel tel quel, que la garde 4 refusera (server/lib/organisations.js).
   router.get('/organisations', requireAuth, requireActiveDossier, async (req, res) => {
     const lang = bodyLang(req)
     try {

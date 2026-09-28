@@ -106,6 +106,8 @@ export function RecipientAddressForm({
     onChange({ ...value, [key]: e.target.value })
   }
 
+  const nameTooLong = lineTooLong(value.name)
+
   return (
     <div className="space-y-3 rounded-xl border border-border-soft bg-surface p-3">
       <h4 className="font-body text-sm font-medium text-text">{t.paperSend.recipientTitle}</h4>
@@ -173,11 +175,26 @@ export function RecipientAddressForm({
           <Label htmlFor={`${uid}-name`} className="text-sm">
             {t.paperSend.recipientNameLabel}
           </Label>
-          <Input id={`${uid}-name`} value={value.name} maxLength={LINE_MAX} onChange={set('name')} disabled={frozen} />
-          <p className="text-xs text-text-muted">{fmt(t.paperSend.lineCounter, { count: value.name.length })}</p>
           {/* Filet de sécurité (défaut du 2026-09-28) : `maxLength` ne borne que la frappe, pas une
-              valeur posée par le code — un nom trop long bloquerait sinon l'envoi sans explication. */}
-          {lineTooLong(value.name) && <p className="text-xs text-warning">{t.paperSend.recipientNameTooLong}</p>}
+              valeur posée par le code — un nom trop long bloquerait sinon l'envoi sans explication.
+              Compteur et message sont reliés au champ pour les lecteurs d'écran. */}
+          <Input
+            id={`${uid}-name`}
+            value={value.name}
+            maxLength={LINE_MAX}
+            onChange={set('name')}
+            disabled={frozen}
+            aria-invalid={nameTooLong || undefined}
+            aria-describedby={nameTooLong ? `${uid}-name-counter ${uid}-name-too-long` : `${uid}-name-counter`}
+          />
+          <p id={`${uid}-name-counter`} className="text-xs text-text-muted">
+            {fmt(t.paperSend.lineCounter, { count: value.name.length })}
+          </p>
+          {nameTooLong && (
+            <p id={`${uid}-name-too-long`} className="text-xs text-warning">
+              {t.paperSend.recipientNameTooLong}
+            </p>
+          )}
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor={`${uid}-address1`} className="text-sm">

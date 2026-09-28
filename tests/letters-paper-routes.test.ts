@@ -14,6 +14,10 @@ import { createLettersRouter } from '../server/routes/letters.js'
 import { LETTER_CHANNELS } from '../server/lib/letter-channels.js'
 // @ts-expect-error — module JS serveur
 import { createRequireActiveDossier } from '../server/lib/require-active-dossier.js'
+// @ts-expect-error — module JS serveur
+import { validateAddress } from '../server/lib/paper-sender.js'
+import { recipientFromOrganisation, recipientValid, type Organisation } from '@/lib/paper-recipient'
+import { loadOrganisationsSeed } from './helpers/organisations-seed'
 
 // Gate passe-plat EXPLICITE (A5 : le défaut des factories est fail-closed).
 const PASS = (_req: express.Request, _res: express.Response, next: express.NextFunction) => next()
@@ -1235,6 +1239,33 @@ describe('GET /api/letters/organisations', () => {
     expect(byId['carsat-midi-pyrenees'].name).toBe(official)
     expect(byId['carsat-midi-pyrenees'].envelope_name).toBe('Carsat Midi-Pyrénées')
     expect(byId['carsat-bretagne'].envelope_name).toBe('CARSAT Bretagne')
+  })
+
+  it('les 321 organismes réels du seed, servis par la route, pré-remplissent une enveloppe valide', async () => {
+    const backend = readyBackend()
+    backend.organisations.push(...loadOrganisationsSeed())
+    const { app } = makeApp({ backend })
+    const served: Organisation[] = []
+    for (const network of ['caf', 'cpam', 'carsat', 'impots']) {
+      const res = await request(app).get(`/api/letters/organisations?network=${network}`)
+      expect(res.status).toBe(200)
+      served.push(...res.body.organisations)
+    }
+    expect(served).toHaveLength(321)
+    // Chaîne réelle : réponse de la route → pré-remplissage du formulaire → garde 4 du serveur
+    // ET bouton « Envoyer » côté client.
+    const refused = served
+      .filter((org) => {
+        const recipient = recipientFromOrganisation(org)
+        try {
+          validateAddress(recipient, 'recipient')
+        } catch {
+          return true
+        }
+        return !recipientValid(recipient)
+      })
+      .map((org) => org.id)
+    expect(refused).toEqual([])
   })
 
   it('réseau inconnu : 400', async () => {

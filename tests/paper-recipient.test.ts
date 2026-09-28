@@ -11,8 +11,9 @@ import { loadOrganisationsSeed } from './helpers/organisations-seed'
 // recopiait son nom officiel DILA dans la ligne « nom » de l'enveloppe, alors qu'une ligne
 // d'enveloppe est limitée à 45 caractères (refuser, jamais tronquer — §M du plan 2a). 312 noms
 // sur 321 dépassent : le bouton « Envoyer » restait grisé, sans aucun message. Ces tests
-// rejouent le pré-remplissage sur les 321 organismes RÉELS du seed, tels que GET
-// /api/letters/organisations les renvoie au formulaire (nom d'enveloppe calculé par le serveur).
+// rejouent le pré-remplissage sur les 321 organismes RÉELS du seed, avec le nom d'enveloppe
+// calculé par la fonction serveur (envelopeNameOf). Le passage par la route elle-même est
+// vérifié dans tests/letters-paper-routes.test.ts.
 
 const SEED = loadOrganisationsSeed()
 const DIRECTORY: Organisation[] = SEED.map((org) => ({
@@ -61,6 +62,14 @@ describe('annuaire → adresse de l’enveloppe (pré-remplissage du destinatair
     expect(recipient.name).toBe('Carsat Bourgogne-Franche-Comté')
     expect(refusedByServer(recipient)).toBeNull()
     expect(recipientValid(recipient)).toBe(true)
+  })
+
+  it('réponse sans envelope_name (serveur antérieur, rollback) : repli sur le nom officiel, signalé, sans plantage', () => {
+    const org = DIRECTORY.find((o) => o.id === 'carsat-midi-pyrenees')!
+    const recipient = recipientFromOrganisation({ ...org, envelope_name: undefined })
+    expect(recipient.name).toBe(org.name)
+    expect(lineTooLong(recipient.name)).toBe(true)
+    expect(recipientValid(recipient)).toBe(false)
   })
 })
 

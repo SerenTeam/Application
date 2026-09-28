@@ -13,7 +13,9 @@ export interface Organisation {
   // Nom officiel DILA (jusqu'à 88 caractères) : libellé de la liste déroulante seulement.
   name: string
   // Nom calculé par le serveur pour tenir sur une ligne d'enveloppe (server/lib/organisations.js).
-  envelope_name: string
+  // Absent d'un serveur antérieur au correctif (rollback avec un onglet resté ouvert) : repli sur
+  // le nom officiel, que le compteur et le message signalent — jamais un plantage du rendu.
+  envelope_name?: string
   address_line1: string
   address_line2?: string | null
   postal_code: string
@@ -23,7 +25,7 @@ export interface Organisation {
 /** Adresse proposée par l'annuaire pour un organisme — modifiable ensuite par la famille. */
 export function recipientFromOrganisation(org: Organisation): RecipientAddress {
   return {
-    name: org.envelope_name,
+    name: org.envelope_name ?? org.name,
     address_line1: org.address_line1,
     address_line2: org.address_line2 ?? undefined,
     postal_code: org.postal_code,

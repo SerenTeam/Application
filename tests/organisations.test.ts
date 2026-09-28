@@ -52,8 +52,17 @@ describe('envelopeNameOf — nom d’enveloppe d’un organisme', () => {
     expect(envelopeNameOf(name)).toBe(name)
   })
 
+  it('sigle vide ou territoire réduit à un tiret : nom officiel rendu tel quel, jamais « CPAM » seul', () => {
+    const dashOnly = 'Caisse primaire d\'assurance maladie des Hauts-de-France (CPAM) -'
+    const blankAcronym = 'Caisse primaire d\'assurance maladie ( ) de la Gironde et environs'
+    expect(envelopeNameOf(dashOnly)).toBe(dashOnly)
+    expect(envelopeNameOf(blankAcronym)).toBe(blankAcronym)
+  })
+
   it('les 321 organismes du seed ont un nom d’enveloppe de 1 à 45 caractères', () => {
-    const offenders = loadOrganisationsSeed()
+    const seed = loadOrganisationsSeed()
+    expect(seed).toHaveLength(321) // garde contre un test vide
+    const offenders = seed
       .map((org) => [org.id, envelopeNameOf(org.name)] as const)
       .filter(([, name]) => name.length === 0 || name.length > 45)
     expect(offenders).toEqual([])
