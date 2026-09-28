@@ -1,9 +1,10 @@
-// Élision de « de » devant une valeur saisie (prénom du défunt dans les courriers et dans l'interface
-// FR) : « fille d'Anne Martin », jamais « fille de Anne Martin ». Règle retenue par Arnaud le 2026-09-28 :
-// « d' » devant une voyelle (accentuée ou non, æ, œ), devant un y suivi d'une consonne (Yves, Yvonne :
-// le y s'y prononce i) et devant un h muet, reconnu par la liste ci-dessous ; « de » partout ailleurs :
-// h aspiré (Hugues, Hassan, Hans), y suivi d'une voyelle (Yann, Yasmine), consonne, valeur vide ou
-// repli « [PRÉNOM DU DÉFUNT] ». La valeur est lue telle quelle : une espace en tête empêche l'élision.
+// Élision de « de » devant une valeur saisie (prénom du défunt dans les courriers, dans l'aperçu
+// qui les cite, en FR comme en EN, et dans l'interface FR) : « fille d'Anne Martin », jamais
+// « fille de Anne Martin ». Règle retenue par Arnaud le 2026-09-28 : « d' » devant une voyelle
+// (accentuée ou non, æ, œ), devant un y suivi d'une consonne (Yves, Yvonne : le y s'y prononce i)
+// et devant un h muet, reconnu par la liste ci-dessous ; « de » partout ailleurs : h aspiré
+// (Hugues, Hassan, Hans), y suivi d'une voyelle (Yann, Yasmine), consonne, valeur vide ou repli
+// « [PRÉNOM DU DÉFUNT] ». La valeur est lue telle quelle : une espace en tête empêche l'élision.
 // Dans un modèle, la règle vaut pour toute valeur placée après « de », pas seulement le prénom (un
 // libellé « … de {{organisme_name}} » donne « d'AXA ») ; la liste des h muets ne connaît que des
 // prénoms : un organisme en h garde « de ».
@@ -14,7 +15,7 @@
 export const MUTE_H_FIRST_NAMES: ReadonlySet<string> = new Set([
   'hadrien', 'hector', 'helena', 'helene', 'helie', 'heloise', 'henri', 'henriette', 'henry', 'hermance',
   'hermine', 'hermione', 'herve', 'hilaire', 'hilarion', 'hippolyte', 'honorat', 'honore', 'honorine', 'horace',
-  'hortense', 'hubert', 'hugo', 'huguette', 'hyacinthe',
+  'hortense', 'hubert', 'hugo', 'huguette', 'humbert', 'hyacinthe',
 ])
 
 const VOWELS = 'aeiouæœ'

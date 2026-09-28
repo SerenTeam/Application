@@ -57,22 +57,30 @@ function expectNoDeBefore(text: string, name: string, label: string) {
 }
 
 // Sonde client : le hook réel, rendu par react-dom sur un hôte minimal en environnement node (même
-// sonde que letter-date-format.test.ts), une instance par couple (modèle, prénom), toutes montées
-// dans une seule racine. Toutes les valeurs arrivent par le pré-remplissage, sauf les deux
+// sonde que letter-date-format.test.ts), une instance par cas (modèle, prénom, organisme), toutes
+// montées dans une seule racine. Toutes les valeurs arrivent par le pré-remplissage, sauf les deux
 // variables jamais pré-remplies, saisies comme dans le formulaire. Aucune attente à délai fixe :
 // chaque étape attend (vi.waitFor) la condition qu'elle prépare — sous charge, 20 ms ne suffisaient
-// pas à monter les 105 sondes.
+// pas à monter les sondes.
 type ClientRender = { subject: string; body: string; values: Record<string, string> }
-const CLIENT_NAMES = ['Anne', 'Hélène', 'Yves', 'Hugues', 'Yann', 'Jean', '']
+// « AXA » (voyelle) exerce l'élision d'un « de » placé devant {{organisme_name}}, là où un modèle en a.
+const CLIENT_CASES = [
+  ...['Anne', 'Hélène', 'Yves', 'Hugues', 'Yann', 'Jean', ''].map((name) => ({ name, organisme: VALUES.organisme_name })),
+  { name: 'Anne', organisme: 'AXA' },
+  { name: 'Jean', organisme: 'AXA' },
+]
+const probeKey = (templateId: string, name: string, organisme: string) => `${templateId}|${name}|${organisme}`
 const globals = globalThis as Record<string, unknown>
 const fakeDocument = { addEventListener() {}, removeEventListener() {} }
 const container = { nodeType: 1, nodeName: 'DIV', tagName: 'DIV', namespaceURI: 'http://www.w3.org/1999/xhtml', ownerDocument: fakeDocument, textContent: '', addEventListener() {}, removeEventListener() {} }
 const generators = new Map<string, ReturnType<typeof useLetterGenerator>>()
+const organismeOf = new Map<string, string>()
 const mounted = new Set<string>()
 const clientRenders = new Map<string, ClientRender>()
 
-function Probe({ templateId, deceasedFirstname }: { templateId: string; deceasedFirstname: string }) {
-  const key = `${templateId}|${deceasedFirstname}`
+function Probe({ templateId, deceasedFirstname, organisme }: { templateId: string; deceasedFirstname: string; organisme: string }) {
+  const key = probeKey(templateId, deceasedFirstname, organisme)
+  organismeOf.set(key, organisme)
   generators.set(
     key,
     useLetterGenerator({
@@ -91,21 +99,23 @@ beforeAll(async () => {
   globals.window = { HTMLIFrameElement: class {} }
   const root = createRoot(container as unknown as Element)
   const probes = LETTER_TEMPLATES.flatMap(({ id }) =>
-    CLIENT_NAMES.map((name) => h(Probe, { key: `${id}|${name}`, templateId: id, deceasedFirstname: name }))
+    CLIENT_CASES.map(({ name, organisme }) =>
+      h(Probe, { key: probeKey(id, name, organisme), templateId: id, deceasedFirstname: name, organisme })
+    )
   )
   root.render(h(Fragment, null, probes))
   // Sondes montées : rendu validé et effets de montage passés (ceux du hook compris, déclarés avant).
   await vi.waitFor(() => expect(mounted.size).toBe(probes.length), { timeout: 5000 })
-  for (const generator of generators.values()) {
-    generator.setVariable('organisme_name', VALUES.organisme_name)
+  for (const [key, generator] of generators) {
+    generator.setVariable('organisme_name', organismeOf.get(key)!)
     generator.setVariable('subscriber_number', VALUES.subscriber_number)
   }
   // Valeurs rendues : chaque sonde a reçu son générateur à jour (objet et courrier sont des useMemo
   // de ces valeurs).
   await vi.waitFor(
     () => {
-      for (const generator of generators.values()) {
-        expect(generator.values.organisme_name).toBe(VALUES.organisme_name)
+      for (const [key, generator] of generators) {
+        expect(generator.values.organisme_name).toBe(organismeOf.get(key))
         expect(generator.values.subscriber_number).toBe(VALUES.subscriber_number)
       }
     },
@@ -120,9 +130,9 @@ afterAll(() => {
   delete globals.window
 })
 
-function renderClient(templateId: string, deceasedFirstname: string): ClientRender {
-  const rendered = clientRenders.get(`${templateId}|${deceasedFirstname}`)
-  if (!rendered) throw new Error(`rendu client absent : ${templateId}, ${JSON.stringify(deceasedFirstname)}`)
+function renderClient(templateId: string, deceasedFirstname: string, organisme = VALUES.organisme_name): ClientRender {
+  const rendered = clientRenders.get(probeKey(templateId, deceasedFirstname, organisme))
+  if (!rendered) throw new Error(`rendu client absent : ${templateId}, ${JSON.stringify(deceasedFirstname)}, ${organisme}`)
   return rendered
 }
 
@@ -165,6 +175,7 @@ const RULE_CASES: Array<[string, string]> = [
   ['Hermance', "d'Hermance"],
   ['Honorat', "d'Honorat"],
   ['Hilarion', "d'Hilarion"],
+  ['Humbert', "d'Humbert"],
   ['Hugues', 'de Hugues'],
   ['Hassan', 'de Hassan'],
   ['Hans', 'de Hans'],
@@ -286,13 +297,15 @@ describe('courriers — « d’ » ou « de » selon le prénom, dans le corps e
   // Les deux miroirs doivent rester strictement identiques : le courrier papier part avec le corps
   // regénéré par le serveur, alors que la famille a validé l'aperçu du client.
   it('parité du rendu complet : les valeurs du client, rendues par le serveur, donnent le même objet et le même corps', () => {
+    const cases = [...CASES.map(([name]) => ({ name, organisme: VALUES.organisme_name })), ...CLIENT_CASES.filter((c) => c.organisme === 'AXA')]
     for (const { id } of LETTER_TEMPLATES) {
-      for (const [name] of CASES) {
-        const client = renderClient(id, name)
+      for (const { name, organisme } of cases) {
+        const client = renderClient(id, name, organisme)
         const server = renderLetter(id, client.values)
-        expect(server.missingVariables, `${id}, ${name}`).toEqual([])
-        expect(server.subject, `${id}, ${name}`).toBe(client.subject)
-        expect(server.body, `${id}, ${name}`).toBe(client.body)
+        const label = `${id}, ${name}, ${organisme}`
+        expect(server.missingVariables, label).toEqual([])
+        expect(server.subject, label).toBe(client.subject)
+        expect(server.body, label).toBe(client.body)
       }
     }
   })

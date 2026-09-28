@@ -8,7 +8,7 @@
 export const MUTE_H_FIRST_NAMES = new Set([
   'hadrien', 'hector', 'helena', 'helene', 'helie', 'heloise', 'henri', 'henriette', 'henry', 'hermance',
   'hermine', 'hermione', 'herve', 'hilaire', 'hilarion', 'hippolyte', 'honorat', 'honore', 'honorine', 'horace',
-  'hortense', 'hubert', 'hugo', 'huguette', 'hyacinthe',
+  'hortense', 'hubert', 'hugo', 'huguette', 'humbert', 'hyacinthe',
 ])
 
 const VOWELS = 'aeiouæœ'
