@@ -27,9 +27,16 @@ export const ACTIVE_ACCOUNT = {
   consent: { version: '2026-09-beta-1', required: false, accepted_at: '2026-09-16T10:01:00Z' },
 }
 
+// Client au jeton utilisateur, PARTAGÉ par tous les tests de ce fichier (mini() et makeAllRouters()).
+// my_dossier_identity() (personnalisation v2, Task 6) est la seule RPC réellement exercée dessus ici :
+// my_account(), la RPC par défaut du gate, est toujours substituée par le loadAccount de gateWith()
+// ci-dessous et n'est donc jamais appelée sur ce client. Répondre « aucun dossier » est neutre pour
+// le gate (loadAccount ignore le client qu'on lui passe) : aucune décision 200/403/500 n'en dépend.
+const USER_CLIENT = { marker: 'user-client', rpc: async () => ({ data: null, error: null }) }
+
 const requireAuth = (req: Req, _res: express.Response, next: express.NextFunction) => {
   req.user = { id: 'user-1' }
-  req.supabaseClient = { marker: 'user-client' }
+  req.supabaseClient = USER_CLIENT
   next()
 }
 
@@ -60,7 +67,7 @@ describe('createRequireActiveDossier', () => {
   it('lit avec le client AU TOKEN utilisateur (req.supabaseClient)', async () => {
     const { gate, loadAccount } = gateWith({ data: ACTIVE_ACCOUNT, error: null })
     await request(mini(gate)).post('/x').send({})
-    expect(loadAccount).toHaveBeenCalledWith({ marker: 'user-client' })
+    expect(loadAccount).toHaveBeenCalledWith(USER_CLIENT)
   })
   it('RPC en erreur ({ error }) : 500 ACCOUNT_ERROR + Sentry, jamais next()', async () => {
     const { gate } = gateWith({ data: null, error: { message: 'boom', code: 'XX000' } })
