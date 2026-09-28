@@ -2230,6 +2230,25 @@ de décès du défunt dans la session : le moteur saute ces questions, le récap
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
+> **Note post-revue (Task 6, 2026-09-28)** — Commits : `7e8f6fe` (la tâche), `49b7306` (faux client `rpc` dans `tests/active-dossier-gate.test.ts`, seul écart de la revue de spec), `d8250b0` (correctifs de revue qualité), puis un petit commit de finitions. Qualité : approuvée en re-revue ; 8 mutations sur 9 attrapées, la 9ᵉ (ordre sauvegarde → rendu) est verrouillée par un test dans le dernier commit. Suite à **858** tests, un peu plus après les finitions.
+> - **Date du récapitulatif** :
+>   - FR : `JJ/MM/AAAA` via `formatLetterValue`, exportée de `server/lib/letter-render.js` (plus de regex dupliquée) ;
+>   - EN : « 5 March 2026 » (écart au plan, qui prévoyait JJ/MM/AAAA partout : en locale US, « 05/03 » se lit comme le 3 mai, sur la date qui fixe les délais légaux).
+> - **RPC d'identité** :
+>   - lecture bornée à **2 s** (`Promise.race`, minuteur libéré ; la requête HTTP n'est pas annulée, sans conséquence pour une lecture) ;
+>   - Sentry et le journal ne reçoivent que `my_dossier_identity_failed:<code>` (ou `…_timeout`), jamais le texte Postgres brut.
+> - **Prénom normalisé** (blancs → espace) avant injection dans le prompt du rédacteur. Il vient désormais d'un tiers, la PF. Défense en profondeur, `FEATURE_LLM` étant coupé par défaut.
+> - **Tests renforcés** :
+>   - faux stores qui clonent la session (la persistance est enfin prouvée) ;
+>   - invariant PII sur les contextes du rédacteur : prénom seul, jamais le nom, les noms de la famille ni la date ;
+>   - Sentry mocké sans PII, les 5 champs nuls, dépassement de délai, `/start` en 500 si `saveAnswers` échoue, aucune écriture sans dossier ;
+>   - `rpc` strict dans le test du gate.
+> - **Écartés** :
+>   - la parallélisation `createSession`/RPC ;
+>   - l'insertion directe des réponses dans la session.
+>
+>   Motif : sur un `/start` limité à 10 par heure, le gain de latence est négligeable.
+
 ---
 
 ### Task 7 : Logique client pure — libellés de lien, profil courrier, pré-remplissage, générateur
