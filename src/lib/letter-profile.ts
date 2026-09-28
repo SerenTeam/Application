@@ -1,4 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Lang } from '@/i18n'
+import type { RelationV2 } from '@/types/questionnaire'
+import { defaultRelationLabel, normalizeRelationLabel } from '@/lib/relation-labels'
 
 // Profil courrier (personnalisation v2, spec docs/design-personnalisation-v2.md §4) : identité et
 // adresse de la famille, saisies une fois, lues par le pré-remplissage des courriers ET par l'envoi
@@ -34,6 +37,12 @@ export interface LetterProfileInput {
   relationship: string
 }
 
+/** Pré-remplissage quand aucun profil n'existe encore (noms saisis par la PF). */
+export interface LetterProfileDefaults {
+  firstName?: string
+  lastName?: string
+}
+
 /** Identité saisie par la PF, relue par my_dossier_identity() (migration 20260928121000). */
 export interface DossierIdentity {
   family_first_name: string | null
@@ -64,14 +73,51 @@ export function fullNameOf(input: Pick<LetterProfileInput, 'first_name' | 'last_
   return `${input.first_name.trim()} ${input.last_name.trim()}`.trim()
 }
 
+/**
+ * Valeurs de départ du formulaire du profil courrier (au montage, puis à chaque « Modifier ») : le
+ * profil enregistré prime ; à défaut (aucun profil, ou profil du 2a sans prénom ni nom séparés), les
+ * noms du dossier PF. Le lien saisi librement au 2a (« Fille ») est ramené à la forme proposée
+ * équivalente ; sans lien enregistré, la forme unique (PACS) est choisie d'office.
+ */
+export function initialLetterProfileInput(
+  profile: LetterProfileRow | null,
+  defaults: LetterProfileDefaults | undefined,
+  relation: RelationV2 | undefined
+): LetterProfileInput {
+  return {
+    first_name: profile?.first_name ?? defaults?.firstName ?? '',
+    last_name: profile?.last_name ?? defaults?.lastName ?? '',
+    address_line1: profile?.address_line1 ?? '',
+    address_line2: profile?.address_line2 ?? '',
+    postal_code: profile?.postal_code ?? '',
+    city: profile?.city ?? '',
+    relationship: normalizeRelationLabel(relation, profile?.relationship ?? '') || defaultRelationLabel(relation),
+  }
+}
+
 function isRealIsoDate(value: string): boolean {
   if (!ISO_DATE_RE.test(value)) return false
   const t = Date.parse(value)
   return !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === value
 }
 
+/**
+ * Date de naissance (AAAA-MM-JJ) affichée dans l'interface, dans sa langue : « 14 mars 1941 » /
+ * « 14 March 1941 ». Une date seule vaut minuit UTC : formatée en UTC, sinon la veille dans les
+ * fuseaux négatifs (Antilles, Guyane). Valeur vide ou invalide : chaîne vide, jamais « Invalid Date ».
+ */
+export function formatDobForDisplay(iso: string, lang: Lang): string {
+  if (!isRealIsoDate(iso)) return ''
+  return new Date(iso).toLocaleDateString(lang === 'en' ? 'en-GB' : 'fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
 /** Date du jour en LOCAL (pas toISOString, qui est en UTC — décale d'un jour dans les DOM/TOM). */
-function todayLocalIsoDate(): string {
+export function todayLocalIsoDate(): string {
   const now = new Date()
   const month = String(now.getMonth() + 1).padStart(2, '0')
   const day = String(now.getDate()).padStart(2, '0')

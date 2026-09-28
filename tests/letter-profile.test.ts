@@ -10,7 +10,10 @@ import {
   fetchLatestQuestionnaire,
   saveDeceasedDob,
   patchQuestionnaireAnswers,
+  initialLetterProfileInput,
+  formatDobForDisplay,
   type LetterProfileInput,
+  type LetterProfileRow,
 } from '@/lib/letter-profile'
 
 // Colonnes réelles de sender_profiles : table du chantier 2a + colonnes de la personnalisation v2.
@@ -139,6 +142,86 @@ describe('borne « aujourd’hui » en date LOCALE (M3)', () => {
     vi.setSystemTime(new Date('2026-09-29T02:00:00Z'))
     expect(validateLetterProfile(VALID, { value: '2026-09-29', max: null }).deceased_dob).toBe('dobAfterDeath')
     expect(validateLetterProfile(VALID, { value: '2026-09-28', max: null }).deceased_dob).toBeUndefined()
+  })
+})
+
+describe('initialLetterProfileInput — valeurs de départ du formulaire (montage et « Modifier »)', () => {
+  const V2_PROFILE: LetterProfileRow = {
+    first_name: 'Camille',
+    last_name: 'Roussel',
+    full_name: 'Camille Roussel',
+    address_line1: '12 rue des Lilas',
+    address_line2: 'Bât. B',
+    postal_code: '33000',
+    city: 'Bordeaux',
+    relationship: 'fille',
+  }
+  // Noms saisis par la PF (my_dossier_identity), volontairement différents du profil.
+  const DOSSIER_DEFAULTS = { firstName: 'Camille-Anne', lastName: 'Martin' }
+
+  it('profil v2 complet : ses valeurs priment sur les noms du dossier', () => {
+    expect(initialLetterProfileInput(V2_PROFILE, DOSSIER_DEFAULTS, 'parent')).toEqual({
+      first_name: 'Camille',
+      last_name: 'Roussel',
+      address_line1: '12 rue des Lilas',
+      address_line2: 'Bât. B',
+      postal_code: '33000',
+      city: 'Bordeaux',
+      relationship: 'fille',
+    })
+  })
+  it('profil 2a (ni prénom ni nom séparés, lien « Fille ») : noms du dossier, lien ramené à « fille »', () => {
+    const legacy: LetterProfileRow = {
+      ...V2_PROFILE,
+      first_name: null,
+      last_name: null,
+      full_name: 'Camille Roussel',
+      address_line2: null,
+      relationship: 'Fille',
+    }
+    expect(initialLetterProfileInput(legacy, DOSSIER_DEFAULTS, 'parent')).toEqual({
+      first_name: 'Camille-Anne',
+      last_name: 'Martin',
+      address_line1: '12 rue des Lilas',
+      address_line2: '',
+      postal_code: '33000',
+      city: 'Bordeaux',
+      relationship: 'fille',
+    })
+  })
+  it('aucun profil, relation « pacse » : « partenaire de PACS » choisi d’office, le reste vide', () => {
+    expect(initialLetterProfileInput(null, undefined, 'pacse')).toEqual({
+      first_name: '',
+      last_name: '',
+      address_line1: '',
+      address_line2: '',
+      postal_code: '',
+      city: '',
+      relationship: 'partenaire de PACS',
+    })
+  })
+})
+
+describe('formatDobForDisplay — date de naissance affichée dans l’interface', () => {
+  const originalTz = process.env.TZ
+  afterEach(() => {
+    if (originalTz === undefined) delete process.env.TZ
+    else process.env.TZ = originalTz
+  })
+
+  it('dans la langue de l’interface : jour et année en chiffres, mois en toutes lettres', () => {
+    expect(formatDobForDisplay('1941-03-14', 'fr')).toBe('14 mars 1941')
+    expect(formatDobForDisplay('1941-03-14', 'en')).toBe('14 March 1941')
+  })
+  it('date seule formatée en UTC : jamais la veille sous un fuseau négatif (Martinique)', () => {
+    process.env.TZ = 'America/Martinique'
+    expect(formatDobForDisplay('1941-03-14', 'fr')).toBe('14 mars 1941')
+    expect(formatDobForDisplay('1941-03-14', 'en')).toBe('14 March 1941')
+  })
+  it('valeur vide, impossible ou hors format AAAA-MM-JJ : chaîne vide, jamais « Invalid Date »', () => {
+    expect(formatDobForDisplay('', 'fr')).toBe('')
+    expect(formatDobForDisplay('1941-02-30', 'fr')).toBe('')
+    expect(formatDobForDisplay('14/03/1941', 'en')).toBe('')
   })
 })
 

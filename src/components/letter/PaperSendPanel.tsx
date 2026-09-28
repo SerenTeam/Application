@@ -112,8 +112,11 @@ export function PaperSendPanel({
   // Personnalisation v2 : dans le tableau de bord, le profil courrier vient du contexte (une seule
   // source pour les courriers et l'enveloppe) ; hors contexte, lecture directe RLS owner (2a).
   const letterProfileCtx = useLetterProfileContext()
+  // Booléen, et non l'objet du contexte (nouvelle identité à chaque mise à jour du profil) : l'effet
+  // de lecture autonome ne dépend que de la présence du contexte.
+  const hasLetterProfileCtx = letterProfileCtx !== null
   const [ownProfile, setOwnProfile] = useState<LetterProfileRow | null>(null)
-  const [ownProfileLoading, setOwnProfileLoading] = useState(!letterProfileCtx)
+  const [ownProfileLoading, setOwnProfileLoading] = useState(!hasLetterProfileCtx)
   const senderProfile = letterProfileCtx ? letterProfileCtx.profile : ownProfile
   const senderLoading = letterProfileCtx ? false : ownProfileLoading
   const handleSenderSaved = (row: LetterProfileRow) => {
@@ -154,7 +157,7 @@ export function PaperSendPanel({
   // Profil expéditeur hors tableau de bord : lecture directe RLS owner (chantier 2a, spec §3.1).
   // Un échec laisse le formulaire vide (non bloquant) mais est signalé à Sentry.
   useEffect(() => {
-    if (letterProfileCtx) return
+    if (hasLetterProfileCtx) return
     let cancelled = false
     void (async () => {
       const data = await nullOnError(fetchLetterProfile(supabase, userId))
@@ -165,7 +168,7 @@ export function PaperSendPanel({
     return () => {
       cancelled = true
     }
-  }, [userId, letterProfileCtx])
+  }, [userId, hasLetterProfileCtx])
 
   // Snapshot du dernier envoi papier existant pour CE courrier — même patron que le canal email
   // (pas de polling, simple lecture au montage, cf. LetterSendPanel).

@@ -6,7 +6,10 @@ import type { RelationV2 } from '@/types/questionnaire'
 // Profil courrier partagé par le tableau de bord (personnalisation v2, spec §4.7) : une seule source
 // pour le pré-remplissage des courriers (StepLetterSection) et pour l'expéditeur de l'envoi papier
 // (PaperSendPanel). Enregistrer le profil depuis le panneau d'envoi met aussitôt à jour les courriers
-// ouverts : l'adresse sous la signature et celle de l'enveloppe ne peuvent plus diverger.
+// ouverts : l'adresse sous la signature et celle de l'enveloppe ne peuvent plus diverger. Le nom non
+// plus pour un profil v2 (prénom et nom séparés) ; un profil du 2a, qui n'a que `full_name` tant
+// qu'il n'est pas réenregistré, signe encore avec les noms du dossier PF alors que l'enveloppe porte
+// `full_name`.
 export interface LetterProfileContextValue {
   profile: LetterProfileRow | null
   relation: RelationV2 | undefined

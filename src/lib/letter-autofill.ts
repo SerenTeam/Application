@@ -1,6 +1,6 @@
 import type { LetterGeneratorOptions } from '@/hooks/useLetterGenerator'
 import type { RelationV2 } from '@/types/questionnaire'
-import { defaultRelationLabel } from '@/lib/relation-labels'
+import { defaultRelationLabel, normalizeRelationLabel } from '@/lib/relation-labels'
 import type { DossierIdentity, LetterProfileRow } from '@/lib/letter-profile'
 
 // Pré-remplissage des courriers (personnalisation v2, spec docs/design-personnalisation-v2.md
@@ -39,7 +39,8 @@ export function buildLetterAutofill({ profile, dossier, answers }: LetterAutofil
       lastname: text(profile?.last_name) ?? text(dossier?.family_last_name),
       address: address || undefined,
       city: text(profile?.city),
-      relation: text(profile?.relationship) ?? (defaultRelationLabel(relation) || undefined),
+      // Lien saisi librement au 2a (« Fille ») : ramené à la forme proposée, « fille », dans le courrier.
+      relation: normalizeRelationLabel(relation, profile?.relationship ?? '') || defaultRelationLabel(relation) || undefined,
     },
     questionnaireData: {
       deceased_firstname: text(answers.deceased_firstname) ?? text(dossier?.deceased_first_name),

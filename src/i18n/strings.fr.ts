@@ -768,6 +768,8 @@ export const STRINGS_FR = {
   letterProfile: {
     title: 'Vos coordonnées pour les courriers',
     hint: 'Elles figurent dans chacun de vos courriers et servent d’adresse de retour. Vous pouvez les modifier à tout moment dans votre profil.',
+    // Variante de `hint` pour la page Profil (inutile d’y renvoyer au profil).
+    profileHint: 'Elles figurent dans chacun de vos courriers et servent d’adresse de retour.',
     firstNameLabel: 'Prénom',
     lastNameLabel: 'Nom',
     relationshipLabel: 'Vous signez en tant que',
@@ -780,12 +782,19 @@ export const STRINGS_FR = {
     cityLabel: 'Ville',
     lineCounter: '{count}/45 caractères',
     dobLabel: 'Date de naissance de {name} (facultatif)',
+    dobLabelNoName: 'Date de naissance de la personne décédée (facultatif)',
     dobHint: 'Elle figure dans certains courriers (banque, assurances, caisses de retraite).',
+    dobSummary: 'Date de naissance de {name} : {date}',
+    dobSummaryNoName: 'Date de naissance de la personne décédée : {date}',
     saveCta: 'Enregistrer',
     saving: 'Enregistrement...',
     savedHint: 'Coordonnées enregistrées.',
     saveError: 'Impossible d’enregistrer vos coordonnées, réessayez.',
+    dobSaveError: 'Vos coordonnées sont enregistrées, mais pas la date de naissance. Réessayez.',
     editCta: 'Modifier',
+    cancelCta: 'Annuler',
+    // Nom accessible du bouton « Modifier » : commence par le texte visible (WCAG 2.5.3).
+    editAriaLabel: 'Modifier vos coordonnées pour les courriers',
     errors: {
       firstNameRequired: 'Indiquez votre prénom.',
       lastNameRequired: 'Indiquez votre nom.',
@@ -800,7 +809,8 @@ export const STRINGS_FR = {
       dobAfterDeath: 'La date de naissance doit précéder la date du décès.',
     },
     screenTitle: 'Dernière étape : vos coordonnées pour les courriers',
-    screenLead: 'Remplies une seule fois, elles pré-remplissent tous vos courriers.',
+    screenLead:
+      'Remplies une seule fois, elles pré-remplissent tous vos courriers. Vous pourrez les modifier à tout moment dans votre profil.',
     screenSubmit: 'Enregistrer et voir mon parcours',
     screenSkip: 'Plus tard',
     screenLoading: 'Préparation de vos coordonnées...',

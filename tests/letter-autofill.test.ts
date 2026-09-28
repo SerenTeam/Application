@@ -77,6 +77,10 @@ describe('buildLetterAutofill', () => {
       deceased_dod: '2026-09-12',
     })
   })
+  it('lien saisi librement au 2a (« Fille ») : écrit « fille » dans les courriers', () => {
+    const legacy = { ...PROFILE, relationship: 'Fille' }
+    expect(buildLetterAutofill({ profile: legacy, dossier: null, answers: { relation: 'parent' } }).userProfile.relation).toBe('fille')
+  })
   it('chaînes vides ou blanches traitées comme absentes', () => {
     const a = buildLetterAutofill({ profile: { ...PROFILE, relationship: '  ' }, dossier: null, answers: { relation: 'parent', deceased_dob: '' } })
     expect(a.userProfile.relation).toBeUndefined()

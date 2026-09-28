@@ -84,4 +84,7 @@ describe('isFreeRelationLabel — saisie libre ou boutons', () => {
     expect(isFreeRelationLabel('parent', 'neveu')).toBe(true)
     expect(isFreeRelationLabel('enfant', 'fille')).toBe(true) // relation changée par un nouveau questionnaire
   })
+  it('une valeur non normalisée (« Fille ») reste en saisie libre, donc visible', () => {
+    expect(isFreeRelationLabel('parent', 'Fille')).toBe(true)
+  })
 })
