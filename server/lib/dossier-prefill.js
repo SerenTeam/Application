@@ -22,7 +22,9 @@ const RPC_TIMEOUT_MS = 2000
 /**
  * Course entre `promise` et un délai de `ms` — rejette avec le code `my_dossier_identity_timeout`
  * si `promise` n'a pas réglé à temps. Le minuteur est toujours nettoyé (aucun handle actif restant
- * une fois l'un des deux réglé), que ce soit lui ou `promise` qui gagne la course.
+ * une fois l'un des deux réglé), que ce soit lui ou `promise` qui gagne la course. Seul CE minuteur
+ * est libéré : Promise.race n'annule pas `promise` elle-même (l'appel RPC continue en arrière-plan
+ * jusqu'à son propre règlement, juste ignoré) — sans conséquence ici pour une simple lecture en base.
  */
 function withTimeout(promise, ms) {
   let timer
@@ -44,7 +46,7 @@ export async function prefillFromDossier(client, answers) {
     const { data, error } = await withTimeout(client.rpc('my_dossier_identity'), RPC_TIMEOUT_MS)
     // Jamais le texte Postgres brut vers les journaux/Sentry (un DETAIL peut porter des valeurs
     // littérales de la ligne en cause) : seul un code stable en sort.
-    if (error) throw new Error(`my_dossier_identity_failed:${error.code ?? 'unknown'}`)
+    if (error) throw new Error(`my_dossier_identity_failed:${error.code || 'unknown'}`)
     identity = data
   } catch (error) {
     console.error('⚠️ questionnaire/start : identité du dossier indisponible, questions posées normalement —', error?.message ?? 'erreur inconnue')

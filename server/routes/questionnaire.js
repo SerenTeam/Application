@@ -90,10 +90,13 @@ export function displayValue(spec, value, lang = 'fr') {
       return list.map((v) => textIn(spec.options.find((o) => o.value === v)?.label, lang) ?? v).join(', ')
     }
     case 'date': {
-      // Récapitulatif lisible : AAAA-MM-JJ → JJ/MM/AAAA en FR (identique aux courriers, qui
-      // restent TOUJOURS en français — réutilise formatLetterValue plutôt que dupliquer la
-      // conversion) ; en EN, un format distinct (« 12 September 2026 ») puisque JJ/MM et MM/JJ
-      // sont tous deux ambigus pour un lecteur anglophone et qu'aucun courrier ne les emploie.
+      // Récapitulatif lisible : AAAA-MM-JJ → JJ/MM/AAAA en FR — le même rendu qu'une date SAISIE
+      // dans un courrier (un <input type="date">, converti par formatLetterValue ; réutilisée ici
+      // plutôt que dupliquer la conversion). La date de décès PRÉ-REMPLIE d'un courrier, elle, est
+      // écrite en toutes lettres (« 12 septembre 2026 », formatDate de useLetterGenerator) — les
+      // deux rendus coexistent côté courriers selon l'origine de la valeur, jamais côté récap.
+      // En EN, un format distinct (« 12 September 2026 ») puisque JJ/MM et MM/JJ sont tous deux
+      // ambigus pour un lecteur anglophone ; les courriers, eux, restent toujours en français.
       if (lang === 'en') {
         const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value))
         if (!match) return String(value)

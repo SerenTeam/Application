@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import express from 'express'
 import request from 'supertest'
 // @ts-expect-error — module JS serveur
@@ -20,16 +20,23 @@ type Session = { id: string; user_id: string; answers: Record<string, unknown>; 
 
 function makeApp(opts: { identity?: unknown; rpcError?: boolean; saveAnswersError?: boolean } = {}) {
   const contexts: Array<Record<string, unknown>> = []
+  const persistedAnswersAtWrite: Array<Record<string, unknown> | undefined> = []
   const sessions = new Map<string, Session>()
   const saveAnswersCalls: string[] = []
   let seq = 0
+  // Id de la session en cours de traitement — posé par createSession/loadSession, lu par writeText
+  // pour capturer l'état RÉELLEMENT PERSISTÉ (la Map, jamais l'objet local muté en mémoire par la
+  // route) au moment de chaque rendu. Verrouille l'ordre sauvegarde → rendu dans /start.
+  let currentSessionId: string | undefined
   const store = {
     async createSession(_c: unknown, userId: string, lang: 'fr' | 'en' = 'fr') {
       const s: Session = { id: `sess-${++seq}`, user_id: userId, answers: {}, lang }
       sessions.set(s.id, s)
+      currentSessionId = s.id
       return structuredClone(s) // clone : force les routes à passer par saveAnswers pour persister
     },
     async loadSession(_c: unknown, id: string) {
+      currentSessionId = id
       const s = sessions.get(id)
       return s ? structuredClone(s) : null // clone : force les routes à passer par saveAnswers
     },
@@ -57,9 +64,12 @@ function makeApp(opts: { identity?: unknown; rpcError?: boolean; saveAnswersErro
     next()
   }
   // writer synchrone déterministe : pas de LLM dans les tests de routes. Il enregistre chaque
-  // contexte reçu dans `contexts` (tests de minimisation des données transmises au rédacteur).
+  // contexte reçu dans `contexts` (tests de minimisation des données transmises au rédacteur) et,
+  // en parallèle (même index), l'état PERSISTÉ de la session en cours à cet instant précis.
   const writeText = async ({ spec, context, lang }: { spec: { fallback_text: { question: unknown; aide?: unknown } }; context: Record<string, unknown>; lang: 'fr' | 'en' }) => {
     contexts.push(context)
+    const persisted = currentSessionId ? sessions.get(currentSessionId) : undefined
+    persistedAnswersAtWrite.push(persisted ? structuredClone(persisted.answers) : undefined)
     return {
       question: textIn(spec.fallback_text.question, lang),
       aide: textIn(spec.fallback_text.aide, lang),
@@ -69,7 +79,7 @@ function makeApp(opts: { identity?: unknown; rpcError?: boolean; saveAnswersErro
   const app = express()
   app.use(express.json())
   app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, requireActiveDossier: PASS, store, writeText }))
-  return { app, sessions, contexts, rpcCalls, saveAnswersCalls }
+  return { app, sessions, contexts, rpcCalls, saveAnswersCalls, persistedAnswersAtWrite }
 }
 
 const CANNED: Record<string, unknown> = {
@@ -391,10 +401,12 @@ describe('displayValue — valeur scalaire sur une question à cocher (sessions 
   })
 })
 
-// Personnalisation v2 : le récap affiche les dates AAAA-MM-JJ en clair — JJ/MM/AAAA en FR (comme
-// les courriers), en toutes lettres en EN (JJ/MM et MM/JJ sont tous deux ambigus pour un lecteur
-// anglophone). displayValue testé directement : pas besoin de dérouler un parcours HTTP complet
-// pour vérifier un formatage pur.
+// Personnalisation v2 : le récap affiche les dates AAAA-MM-JJ en clair — JJ/MM/AAAA en FR, comme
+// une date SAISIE dans un courrier (un <input type="date">, ex. la date de naissance) ; à ne pas
+// confondre avec la date de décès PRÉ-REMPLIE d'un courrier, écrite en toutes lettres (« 12
+// septembre 2026 »). En EN, un format en toutes lettres (JJ/MM et MM/JJ sont tous deux ambigus
+// pour un lecteur anglophone). displayValue testé directement : pas besoin de dérouler un parcours
+// HTTP complet pour vérifier un formatage pur.
 describe('displayValue — dates (JJ/MM/AAAA en FR, mois en toutes lettres en EN)', () => {
   it('formate la date de décès selon la langue, jour sans zéro initial en EN', () => {
     const spec = QUESTIONS_CATALOG.find((q: { id: string }) => q.id === 'deceased_dod')
@@ -444,6 +456,8 @@ describe('POST /api/questionnaire/start — pré-remplissage depuis le dossier P
     deceased_death_date: '2026-09-12',
   }
 
+  afterEach(() => vi.restoreAllMocks())
+
   it('les 3 champs d’identité sont enregistrés dans la session et ne sont pas posés', async () => {
     const { app, sessions, rpcCalls } = makeApp({ identity: IDENTITY })
     const start = await request(app).post('/api/questionnaire/start')
@@ -459,6 +473,15 @@ describe('POST /api/questionnaire/start — pré-remplissage depuis le dossier P
       .post('/api/questionnaire/answer')
       .send({ session_id: start.body.session_id, question_id: 'relation', value: 'parent' })
     expect(next.body.data.question_id).toBe('deceased_department')
+  })
+
+  it('ordre sauvegarde → rendu : au 1er appel du rédacteur, le pré-remplissage est déjà persisté', async () => {
+    const { app, persistedAnswersAtWrite } = makeApp({ identity: IDENTITY })
+    await request(app).post('/api/questionnaire/start')
+    // La Map sessions (jamais l'objet local muté en mémoire par la route) doit déjà porter le
+    // pré-remplissage AVANT que le rédacteur ne soit appelé pour la 1re question : saveAnswers a
+    // fini avant renderNext, pas juste avant la réponse HTTP.
+    expect(persistedAnswersAtWrite[0]).toMatchObject({ deceased_firstname: 'Bernard' })
   })
 
   it('la progression compte les réponses pré-remplies', async () => {
@@ -481,7 +504,7 @@ describe('POST /api/questionnaire/start — pré-remplissage depuis le dossier P
   })
 
   it('RPC en échec : le questionnaire démarre et pose les questions d’identité', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     const { app } = makeApp({ rpcError: true })
     const start = await request(app).post('/api/questionnaire/start')
     expect(start.status).toBe(200)
@@ -489,7 +512,6 @@ describe('POST /api/questionnaire/start — pré-remplissage depuis le dossier P
       .post('/api/questionnaire/answer')
       .send({ session_id: start.body.session_id, question_id: 'relation', value: 'parent' })
     expect(next.body.data.question_id).toBe('deceased_firstname')
-    errorSpy.mockRestore()
   })
 
   it('aucun dossier : session vide, comportement historique', async () => {
