@@ -14,7 +14,7 @@ function runProfile(fixed: Answers): { sequence: string[]; answers: Answers } {
     deceased_dod: '2026-04-10', deceased_department: '75', statut_professionnel: 'retraite', logement: 'proprietaire',
     enfants: 'aucun', has_notary: false, has_life_insurance: 'ne_sait_pas',
     has_joint_account: true, has_vehicle: false, has_credits: false,
-    employait_aide_domicile: false, contrat_obseques: 'non', organismes_contactes: [],
+    employait_aide_domicile: false, aides_percues: [], contrat_obseques: 'non', organismes_contactes: [],
     ...fixed,
   }
   let answers: Answers = {}
@@ -30,17 +30,17 @@ function runProfile(fixed: Answers): { sequence: string[]; answers: Answers } {
 }
 
 describe('nextQuestion — séquences par profil', () => {
-  it('conjoint marié : 16 questions, compte joint inclus, ordre croissant', () => {
+  it('conjoint marié : 17 questions, compte joint inclus, ordre croissant', () => {
     const { sequence } = runProfile({ relation: 'conjoint_marie' })
-    expect(sequence).toHaveLength(16)
+    expect(sequence).toHaveLength(17)
     expect(sequence).toContain('has_joint_account')
     expect(sequence).toContain('deceased_department')
     expect(sequence[0]).toBe('relation')
     expect(sequence[sequence.length - 1]).toBe('organismes_contactes')
   })
-  it('enfant du défunt : 16 questions, compte joint désormais posé (décision 2026-07-11)', () => {
+  it('enfant du défunt : 17 questions, compte joint désormais posé (décision 2026-07-11)', () => {
     const { sequence } = runProfile({ relation: 'enfant' })
-    expect(sequence).toHaveLength(16)
+    expect(sequence).toHaveLength(17)
     expect(sequence).toContain('has_joint_account')
   })
   it('null quand tout est répondu', () => {
@@ -184,10 +184,10 @@ describe('progress', () => {
     let answers: Answers = {}
     const p0 = progress(answers)
     expect(p0.current).toBe(0)
-    expect(p0.total).toBe(16)
+    expect(p0.total).toBe(17)
     answers = setAnswer(answers, spec('relation'), 'conjoint_marie')
     const p1 = progress(answers)
     expect(p1.current).toBe(1)
-    expect(p1.total).toBe(16) // branche conjoint ouverte
+    expect(p1.total).toBe(17) // branche conjoint ouverte
   })
 })

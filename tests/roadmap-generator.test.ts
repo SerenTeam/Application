@@ -8,6 +8,7 @@ const base: QuestionnaireAnswersV2 = {
   deceased_dod: '2026-04-10', statut_professionnel: 'sans_activite', logement: 'heberge_ou_autre',
   enfants: 'aucun', has_notary: true, has_life_insurance: 'non',
   has_vehicle: false, has_credits: false, employait_aide_domicile: false,
+  aides_percues: [],
   contrat_obseques: 'non', organismes_contactes: [],
 }
 const ids = (a: QuestionnaireAnswersV2) => generateRoadmap(a).map((s) => s.id)
@@ -82,6 +83,7 @@ describe('atteignabilité', () => {
       logement: 'locataire', enfants: 'mineurs', has_notary: false,
       has_life_insurance: 'oui', has_joint_account: true, has_vehicle: true,
       has_credits: true, employait_aide_domicile: true, contrat_obseques: 'ne_sait_pas',
+      aides_percues: ['apa', 'ash', 'aspa', 'handicap', 'aides_logement'],
     }
     const reached = new Set([
       ...ids(maximal),
@@ -92,6 +94,7 @@ describe('atteignabilité', () => {
       ...ids({ ...maximal, statut_professionnel: 'demandeur_emploi' }),
       // Chaque valeur de logement / contrat_obseques qui conditionne une étape doit être représentée
       ...ids({ ...maximal, logement: 'proprietaire' }),
+      ...ids({ ...maximal, logement: 'ehpad' }),
       ...ids({ ...maximal, contrat_obseques: 'oui' }),
     ])
     for (const s of STEPS_CATALOG) {
@@ -99,5 +102,28 @@ describe('atteignabilité', () => {
         expect(reached.has(s.id), `étape inatteignable : ${s.id}`).toBe(true)
       }
     }
+  })
+})
+
+describe('personnalisation v2 — EHPAD et aides perçues', () => {
+  it('EHPAD : contrat de séjour, pas d’étape énergie ; locataire : énergie, pas d’EHPAD', () => {
+    expect(ids({ ...base, logement: 'ehpad' })).toContain('logement-ehpad')
+    expect(ids({ ...base, logement: 'ehpad' })).not.toContain('logement-resiliation-energies')
+    expect(ids({ ...base, logement: 'locataire' })).toContain('logement-resiliation-energies')
+    expect(ids({ ...base, logement: 'proprietaire' })).toContain('logement-resiliation-energies')
+    expect(ids({ ...base, logement: 'locataire' })).not.toContain('logement-ehpad')
+    expect(ids({ ...base, logement: 'heberge_ou_autre' })).not.toContain('logement-resiliation-energies')
+  })
+  it('aides : APA, ASH ou PCH → département ; ASPA ou ASH → récupération ; aide au logement → CAF', () => {
+    expect(ids({ ...base, aides_percues: ['apa'] })).toContain('aides-departement')
+    expect(ids({ ...base, aides_percues: ['handicap'] })).toContain('aides-departement')
+    expect(ids({ ...base, aides_percues: ['apa'] })).not.toContain('aides-recuperation-succession')
+    expect(ids({ ...base, aides_percues: ['aspa'] })).toContain('aides-recuperation-succession')
+    expect(ids({ ...base, aides_percues: ['aspa'] })).not.toContain('aides-departement')
+    expect(ids({ ...base, aides_percues: ['ash'] })).toEqual(
+      expect.arrayContaining(['aides-departement', 'aides-recuperation-succession'])
+    )
+    expect(ids({ ...base, aides_percues: ['aides_logement'] })).toContain('aides-logement')
+    expect(ids(base)).not.toContain('aides-departement')
   })
 })

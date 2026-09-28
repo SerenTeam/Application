@@ -81,7 +81,7 @@ describe('invariant : pas de question morte, pas d’étape orpheline', () => {
       }
     }
   })
-  it('chaque valeur de condition en tableau est une option valide de la question du même champ', () => {
+  it('chaque condition est bien typée : tableau → options valides du champ ; scalaire → booléen sur une question boolean', () => {
     const TRISTATE_VALUES = ['oui', 'non', 'ne_sait_pas']
     const byId = Object.fromEntries(
       QUESTIONS_CATALOG.map((q: { id: string }) => [q.id, q])

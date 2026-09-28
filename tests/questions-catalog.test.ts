@@ -7,14 +7,14 @@ const CONTRACT_KEYS = [
   'relation', 'deceased_firstname', 'deceased_lastname', 'deceased_dod', 'deceased_department',
   'statut_professionnel', 'logement', 'enfants', 'has_notary', 'has_life_insurance',
   'has_joint_account', 'has_vehicle', 'has_credits', 'employait_aide_domicile',
-  'contrat_obseques', 'organismes_contactes',
+  'contrat_obseques', 'aides_percues', 'organismes_contactes',
 ]
 
 describe('questions-catalog', () => {
-  it('16 questions, ids uniques, tous dans le contrat', () => {
+  it('17 questions, ids uniques, tous dans le contrat', () => {
     const ids = QUESTIONS_CATALOG.map((q: { id: string }) => q.id)
-    expect(ids).toHaveLength(16)
-    expect(new Set(ids).size).toBe(16)
+    expect(ids).toHaveLength(17)
+    expect(new Set(ids).size).toBe(17)
     for (const id of ids) expect(CONTRACT_KEYS).toContain(id)
   })
   it('orders uniques', () => {
@@ -84,5 +84,16 @@ describe('questions-catalog', () => {
       for (const text of texts) if (GENDERED.test(text)) offenders.push(`${q.id} → ${text}`)
     }
     expect(offenders).toEqual([])
+  })
+  it('aides_percues : multiselect universel, 5 aides, textes {fr,en}', () => {
+    const q = QUESTIONS_CATALOG.find((x: { id: string }) => x.id === 'aides_percues')
+    expect(q, 'question aides_percues absente').toBeDefined()
+    expect(q.type).toBe('multiselect')
+    expect(q.applicable_when).toEqual({})
+    expect(q.options.map((o: { value: string }) => o.value)).toEqual(['apa', 'ash', 'aspa', 'handicap', 'aides_logement'])
+  })
+  it('logement : option ehpad proposée avant « hébergement chez un proche ou autre »', () => {
+    const q = QUESTIONS_CATALOG.find((x: { id: string }) => x.id === 'logement')
+    expect(q.options.map((o: { value: string }) => o.value)).toEqual(['locataire', 'proprietaire', 'ehpad', 'heberge_ou_autre'])
   })
 })

@@ -162,6 +162,7 @@ export const QUESTIONS_CATALOG = [
     options: [
       { value: 'locataire', label: { fr: 'Locataire de son logement', en: 'Renting their home' } },
       { value: 'proprietaire', label: { fr: 'Propriétaire de son logement', en: 'Owned their home' } },
+      { value: 'ehpad', label: { fr: 'En EHPAD ou en résidence pour personnes âgées', en: 'In a care home or a residence for older people' } },
       { value: 'heberge_ou_autre', label: { fr: 'Hébergement chez un proche ou autre situation', en: 'Living with someone else, or another situation' } },
     ],
     applicable_when: {},
@@ -169,8 +170,8 @@ export const QUESTIONS_CATALOG = [
     fallback_text: {
       question: { fr: 'Concernant son logement, {prenom} était plutôt…', en: 'Regarding their housing, {prenom} was…' },
       aide: {
-        fr: 'Locataire : le bail peut être résilié avec un préavis réduit à 1 mois. Propriétaire : le notaire établira une attestation immobilière.',
-        en: 'Renting: the lease can be terminated with a reduced 1-month notice period. Owner: the notaire will draw up a property certificate.',
+        fr: 'Locataire : le bail peut être résilié avec un préavis réduit à 1 mois. Propriétaire : le notaire établira une attestation immobilière. En EHPAD : la chambre est à libérer rapidement.',
+        en: 'Renting: the lease can be terminated with a reduced 1-month notice period. Owner: the notaire will draw up a property certificate. In a care home: the room must be vacated quickly.',
       },
     },
     categorie: { fr: 'Sa situation', en: 'Their situation' },
@@ -307,6 +308,34 @@ export const QUESTIONS_CATALOG = [
     order: 14,
   },
   {
+    // Personnalisation v2 (spec §5.2). Question sensible (autonomie, handicap) : exclue du contexte
+    // du rédacteur Mistral (WRITER_EXCLUDED_IDS, server/routes/questionnaire.js).
+    id: 'aides_percues',
+    type: 'multiselect',
+    options: [
+      { value: 'apa', label: { fr: 'APA (allocation personnalisée d\'autonomie)', en: 'APA (personalised autonomy allowance)' } },
+      { value: 'ash', label: { fr: 'Aide sociale à l\'hébergement (ASH), en EHPAD', en: 'Social accommodation assistance (ASH), in a care home' } },
+      { value: 'aspa', label: { fr: 'Minimum vieillesse (ASPA)', en: 'Minimum old-age pension (ASPA)' } },
+      { value: 'handicap', label: { fr: 'AAH ou PCH (aides liées au handicap)', en: 'AAH or PCH (disability benefits)' } },
+      { value: 'aides_logement', label: { fr: 'Aide au logement (APL, ALS)', en: 'Housing benefit (APL, ALS)' } },
+    ],
+    applicable_when: {},
+    obligatoire: true,
+    fallback_text: {
+      question: { fr: 'Parmi ces aides, lesquelles {prenom} percevait ?', en: 'Which of these benefits did {prenom} receive?' },
+      aide: {
+        fr: 'Les signaler évite d\'avoir à rembourser des sommes versées après le décès ; certaines peuvent aussi être récupérées sur la succession. Ne cochez rien si aucune ne correspond.',
+        en: 'Reporting them avoids having to repay amounts paid after the death; some may also be recovered from the estate. Leave everything unchecked if none applies.',
+      },
+    },
+    writer_hints: {
+      fr: 'Sujet sensible (autonomie, handicap) : ton factuel et doux, ne jamais supposer de réponse.',
+      en: 'Sensitive topic (loss of autonomy, disability): factual and gentle tone, never assume an answer.',
+    },
+    categorie: { fr: 'Aides', en: 'Benefits' },
+    order: 15,
+  },
+  {
     id: 'contrat_obseques',
     type: 'tristate',
     applicable_when: {},
@@ -319,7 +348,7 @@ export const QUESTIONS_CATALOG = [
       },
     },
     categorie: { fr: 'Obsèques', en: 'Funeral arrangements' },
-    order: 15,
+    order: 16,
   },
   {
     id: 'organismes_contactes',
@@ -351,6 +380,6 @@ export const QUESTIONS_CATALOG = [
       en: 'Last question: signal that the end is near, and offer a brief, understated acknowledgment of the path they\'ve walked.',
     },
     categorie: { fr: 'Vos démarches', en: 'Your steps' },
-    order: 16,
+    order: 18,
   },
 ]

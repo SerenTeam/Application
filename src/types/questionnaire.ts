@@ -11,9 +11,12 @@ export type StatutProfessionnel =
   | 'salarie' | 'fonctionnaire' | 'independant'
   | 'retraite' | 'demandeur_emploi' | 'sans_activite'
 
-export type Logement = 'locataire' | 'proprietaire' | 'heberge_ou_autre'
+export type Logement = 'locataire' | 'proprietaire' | 'ehpad' | 'heberge_ou_autre'
 
 export type Enfants = 'aucun' | 'majeurs' | 'mineurs'
+
+// Personnalisation v2 : aides que percevait le défunt (question à cocher — réponse vide = aucune).
+export type AidePercue = 'apa' | 'ash' | 'aspa' | 'handicap' | 'aides_logement'
 
 export type OrganismeContacte =
   | 'banque' | 'assurance' | 'caf' | 'retraite'
@@ -26,6 +29,9 @@ export interface QuestionnaireAnswersV2 {
   deceased_lastname: string
   deceased_dod: string // YYYY-MM-DD
   deceased_department?: string // chantier 2a : donnée d'adressage (annuaire des organismes), absente des dossiers antérieurs
+  // Personnalisation v2 : saisie une fois à l'écran de coordonnées (pas une question du catalogue) ;
+  // sert au « né(e) le … » des courriers. Absente si la famille ne l'a pas renseignée.
+  deceased_dob?: string // YYYY-MM-DD
   statut_professionnel: StatutProfessionnel
   logement: Logement
   enfants: Enfants
@@ -37,6 +43,7 @@ export interface QuestionnaireAnswersV2 {
   has_credits: boolean
   employait_aide_domicile: boolean
   contrat_obseques: TriState
+  aides_percues: AidePercue[]
   organismes_contactes: OrganismeContacte[]
 }
 
@@ -54,6 +61,7 @@ export interface ApplicableWhenV2 {
   has_vehicle?: boolean
   has_credits?: boolean
   employait_aide_domicile?: boolean
+  aides_percues?: AidePercue[]
 }
 
 // Garde de compilation : toute clé d'ApplicableWhenV2 doit exister dans le contrat.

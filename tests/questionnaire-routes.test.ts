@@ -19,6 +19,7 @@ const PASS = (_req: express.Request, _res: express.Response, next: express.NextF
 type Session = { id: string; user_id: string; answers: Record<string, unknown>; lang: 'fr' | 'en' }
 
 function makeApp() {
+  const contexts: Array<Record<string, unknown>> = []
   const sessions = new Map<string, Session>()
   let seq = 0
   const store = {
@@ -44,16 +45,20 @@ function makeApp() {
     req.supabaseClient = {}
     next()
   }
-  // writer synchrone déterministe : pas de LLM dans les tests de routes
-  const writeText = async ({ spec, lang }: { spec: { fallback_text: { question: unknown; aide?: unknown } }; lang: 'fr' | 'en' }) => ({
-    question: textIn(spec.fallback_text.question, lang),
-    aide: textIn(spec.fallback_text.aide, lang),
-    source: 'fallback' as const,
-  })
+  // writer synchrone déterministe : pas de LLM dans les tests de routes. Il enregistre chaque
+  // contexte reçu dans `contexts` (tests de minimisation des données transmises au rédacteur).
+  const writeText = async ({ spec, context, lang }: { spec: { fallback_text: { question: unknown; aide?: unknown } }; context: Record<string, unknown>; lang: 'fr' | 'en' }) => {
+    contexts.push(context)
+    return {
+      question: textIn(spec.fallback_text.question, lang),
+      aide: textIn(spec.fallback_text.aide, lang),
+      source: 'fallback' as const,
+    }
+  }
   const app = express()
   app.use(express.json())
   app.use('/api/questionnaire', createQuestionnaireRouter({ requireAuth, requireActiveDossier: PASS, store, writeText }))
-  return { app, sessions }
+  return { app, sessions, contexts }
 }
 
 const CANNED: Record<string, unknown> = {
@@ -61,7 +66,7 @@ const CANNED: Record<string, unknown> = {
   deceased_dod: '2026-04-10', deceased_department: '75', statut_professionnel: 'salarie', logement: 'locataire',
   enfants: 'aucun', has_notary: false, has_life_insurance: 'oui',
   has_joint_account: true, has_vehicle: false, has_credits: false,
-  employait_aide_domicile: false, contrat_obseques: 'non', organismes_contactes: ['banque'],
+  employait_aide_domicile: false, aides_percues: ['apa', 'ash'], contrat_obseques: 'non', organismes_contactes: ['banque'],
 }
 
 async function runToRecap(app: express.Express) {
@@ -93,7 +98,7 @@ describe('POST /api/questionnaire/start', () => {
     expect(q.options[0]).toEqual({ value: 'conjoint_marie', label: 'Mon époux / mon épouse' })
     expect(q.fallback_text).toBeUndefined()
     expect(q.writer_hints).toBeUndefined()
-    expect(q.progress).toEqual({ current: 0, total: 16 })
+    expect(q.progress).toEqual({ current: 0, total: 17 })
   })
   it('start avec lang:en → session en anglais, textes EN, resume conserve la langue', async () => {
     const { app } = makeApp()
@@ -128,7 +133,7 @@ describe('POST /api/questionnaire/answer', () => {
       .send({ session_id: sessionId, question_id: 'relation', value: 'conjoint_marie' })
     expect(res.status).toBe(200)
     expect(res.body.data.question_id).toBe('deceased_firstname')
-    expect(res.body.data.progress).toEqual({ current: 1, total: 16 }) // branche conjoint ouverte
+    expect(res.body.data.progress).toEqual({ current: 1, total: 17 }) // branche conjoint ouverte
     expect(sessions.get(sessionId)?.answers.relation).toBe('conjoint_marie') // persisté via saveAnswers, pas par aliasing
   })
   it('valeur hors options → 400 avec message du moteur (traduit FR)', async () => {
@@ -329,6 +334,15 @@ describe('PII : rédacteur Mistral (chantier 2a)', () => {
       expect(dump).not.toContain(deptLabel)
       expect(dump).not.toContain(deptCode)
       expect(dump).not.toContain('département') // ni le libellé de la question elle-même
+    }
+  })
+  it('les aides perçues ne sont jamais transmises au rédacteur (données de santé)', async () => {
+    const { app, contexts } = makeApp()
+    await runToRecap(app)
+    expect(contexts.length).toBeGreaterThan(0)
+    for (const ctx of contexts) {
+      const dump = JSON.stringify(ctx)
+      expect(dump).not.toMatch(/\bAPA\b|\bASH\b|\bASPA\b|\bAAH\b|\bPCH\b|autonomie|handicap|Parmi ces aides/)
     }
   })
 })
