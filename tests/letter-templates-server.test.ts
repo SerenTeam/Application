@@ -252,9 +252,10 @@ describe('personnalisation v2 — 5 courriers papier, destinataire saisi par la 
 //
 // Défaut préexistant relevé à la revue de la personnalisation v2 (2026-09-28) : `organisme_name`
 // est saisi librement par la famille, et « Au Service Succession de {{organisme_name}} » donnait
-// « … de AXA », « … de Le Crédit Lyonnais ». Aucune préposition ni aucun article du libellé ne
-// touche plus le nom : il est seul, ou précédé d'un tiret cadratin (forme des 5 courriers de la
-// personnalisation v2).
+// « … de AXA », « … de Le Crédit Lyonnais ». Les 15 courriers ont désormais la forme des 5
+// courriers v2, « À l'attention … — {{organisme_name}} » : aucune préposition ni aucun article
+// ne touche plus le nom. Modèles réseau : « du service compétent » (décision d'Arnaud,
+// 2026-09-28), aucun préfixe ne nommant l'organisme.
 
 // Noms officiels de l'annuaire (seed DILA), par réseau : ce que la famille est susceptible de saisir
 // dans « Nom de l'organisme ». Ce champ reste une saisie libre : l'annuaire ne pré-remplit que
@@ -274,9 +275,9 @@ const ORGANISATION_TYPE_RE =
   /caisse|carsat|cpam|\bcaf\b|cgss|cssm|cnav|\bsip\b|dgfip|allocations|assurance maladie|sécurité sociale|finances publiques|impôts/i
 
 describe('recipient_label — le nom de l’organisme n’est jamais accordé à la main', () => {
-  it('{{organisme_name}} est seul ou précédé de « — », jamais d’une préposition ni d’un article', () => {
+  it('tous les libellés ont la forme « À l’attention … — {{organisme_name}} »', () => {
     for (const t of FRONT_TEMPLATES) {
-      expect(t.recipient_label, t.id).toMatch(/^(?:[^{}]+ — )?\{\{organisme_name\}\}$/)
+      expect(t.recipient_label, t.id).toMatch(/^À l'attention [^{}]+ — \{\{organisme_name\}\}$/)
     }
   })
 
@@ -287,6 +288,27 @@ describe('recipient_label — le nom de l’organisme n’est jamais accordé à
     ['employeur-notification', 'Orange', "À l'attention du service des ressources humaines — Orange"],
     ['mutuelle-resiliation', 'Harmonie Mutuelle', "À l'attention du service des adhésions — Harmonie Mutuelle"],
     ['bailleur-notification', 'Les Résidences du Parc', "À l'attention du bailleur — Les Résidences du Parc"],
+    // Modèles réseau, avec des noms réels de l'annuaire.
+    [
+      'caf-notification',
+      "Caisse d'allocations familiales (Caf) du Rhône",
+      "À l'attention du service compétent — Caisse d'allocations familiales (Caf) du Rhône",
+    ],
+    [
+      'cpam-notification',
+      'Caisse générale de sécurité sociale (CGSS) de Guadeloupe',
+      'À l\'attention du service compétent — Caisse générale de sécurité sociale (CGSS) de Guadeloupe',
+    ],
+    [
+      'carsat-notification',
+      'Caisse nationale d’assurance vieillesse (Cnav) Assurance retraite Île-de-France',
+      'À l\'attention du service compétent — Caisse nationale d’assurance vieillesse (Cnav) Assurance retraite Île-de-France',
+    ],
+    [
+      'impots-notification',
+      'Service des impôts des particuliers (SIP) - Trévoux',
+      'À l\'attention du service compétent — Service des impôts des particuliers (SIP) - Trévoux',
+    ],
   ])('%s + « %s » → « %s »', (id, name, expected) => {
     expect(renderLetter(id, { organisme_name: name }).body.split('\n')[0]).toBe(expected)
   })

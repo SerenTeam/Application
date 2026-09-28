@@ -153,7 +153,7 @@ ${SIGNATURE}`,
     // Organisme du réseau CAF : résolution par annuaire (network + département du défunt).
     recipient_kind: 'network:caf',
     subject: 'Déclaration de décès — Dossier allocataire de {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: '{{organisme_name}}',
+    recipient_label: 'À l\'attention du service compétent — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -176,7 +176,7 @@ ${SIGNATURE}`,
     // Organisme du réseau CARSAT : résolution par annuaire (network + département du défunt).
     recipient_kind: 'network:carsat',
     subject: 'Déclaration de décès — {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: '{{organisme_name}}',
+    recipient_label: 'À l\'attention du service compétent — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -245,7 +245,7 @@ ${SIGNATURE}`,
     // Organisme du réseau CPAM : résolution par annuaire (network + département du défunt).
     recipient_kind: 'network:cpam',
     subject: 'Déclaration de décès — {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: '{{organisme_name}}',
+    recipient_label: 'À l\'attention du service compétent — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -269,7 +269,7 @@ ${SIGNATURE}`,
     // annuaire (network + département du défunt).
     recipient_kind: 'network:impots',
     subject: 'Déclaration de décès — {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: '{{organisme_name}}',
+    recipient_label: 'À l\'attention du service compétent — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}

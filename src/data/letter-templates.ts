@@ -12,10 +12,10 @@ export interface LetterTemplate {
   organisme: string
   subject: string
   // Le nom d'organisme est saisi librement par la famille : aucun article ni aucune préposition du
-  // libellé ne s'y accorde — `{{organisme_name}}` seul, ou précédé de « — ». Seul pour les modèles
-  // réseau : leur nom officiel désigne déjà l'organisme, et pas toujours comme on l'attend (CGSS et
-  // CSSM outre-mer, Cnav en Île-de-France, SIP). Testé dans tests/letter-templates-server.test.ts,
-  // y compris avec chaque nom de l'annuaire.
+  // libellé ne s'y accorde — forme unique « À l'attention … — {{organisme_name}} ». Modèles réseau :
+  // « du service compétent », sans préfixe nommant l'organisme : leur nom officiel le désigne déjà,
+  // et pas toujours comme on l'attend (CGSS et CSSM outre-mer, Cnav en Île-de-France, SIP). Testé
+  // dans tests/letter-templates-server.test.ts, y compris avec chaque nom de l'annuaire.
   recipient_label: string
   body: string
   variables: LetterVariable[]
@@ -226,7 +226,7 @@ ${SIGNATURE}`,
     step_id: 'administratif-caf',
     organisme: 'CAF',
     subject: 'Déclaration de décès — Dossier allocataire de {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: '{{organisme_name}}',
+    recipient_label: 'À l\'attention du service compétent — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -264,7 +264,7 @@ ${SIGNATURE}`,
     step_id: 'administratif-carsat-retraite',
     organisme: 'CARSAT',
     subject: 'Déclaration de décès — {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: '{{organisme_name}}',
+    recipient_label: 'À l\'attention du service compétent — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -376,7 +376,7 @@ ${SIGNATURE}`,
     step_id: 'administratif-cpam',
     organisme: 'CPAM',
     subject: 'Déclaration de décès — {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: '{{organisme_name}}',
+    recipient_label: 'À l\'attention du service compétent — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -415,7 +415,7 @@ ${SIGNATURE}`,
     step_id: 'administratif-impots',
     organisme: 'Direction Générale des Finances Publiques',
     subject: 'Déclaration de décès — {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: '{{organisme_name}}',
+    recipient_label: 'À l\'attention du service compétent — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
