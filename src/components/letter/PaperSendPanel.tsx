@@ -5,6 +5,7 @@ import { PillBadge } from '@/components/ui/pill-badge'
 import { Send, Loader2 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
+import { getLetterTemplate } from '@/data/letter-templates'
 import { useT } from '@/i18n/useT'
 import { fmt } from '@/i18n'
 import { useLang } from '@/i18n/LanguageContext'
@@ -446,6 +447,11 @@ export function PaperSendPanel({
   // v2 (contrat §7.6) : canal papier fermé — par le flag serveur, ou par un 503 déjà reçu.
   // L'envoi disparaît, les actions PDF existantes (au-dessus de ce panneau) restent.
   const channelClosed = me?.flags.paper_sends_enabled === false || banner?.kind === 'channel_closed'
+  // Décision d'Arnaud (avertir sans bloquer) : le corps de ce courrier affirme joindre une copie de
+  // l'acte de décès — tant qu'aucune pièce jointe n'est sélectionnée, on le signale près du bouton.
+  // L'envoi reste possible : ce n'est qu'un guide, `canSend` n'en dépend pas.
+  const claimsEnclosure = getLetterTemplate(templateId)?.encloses_death_certificate === true
+  const showEnclosureWarning = claimsEnclosure && attachmentIds.length === 0 && !channelClosed
   const canSend = isComplete && !!senderProfile && recipientValid(recipient) && !busy
   // I3 (revue finale) : jamais conditionné par le solde local seul — en prod par défaut
   // (PAYMENTS_ENABLED non défini), tout le monde a un solde de 0 et le bouton mènerait à un 503
@@ -516,6 +522,7 @@ export function PaperSendPanel({
             )}
           </div>
 
+          {showEnclosureWarning && <p className="text-xs text-warning">{t.paperSend.enclosureWarning}</p>}
           {!isComplete && <p className="text-xs text-text-muted">{t.paperSend.missingFieldsHint}</p>}
           {buyError && <p className="text-xs text-text-muted">{t.paperSend.quotaBuyError}</p>}
           {banner?.kind === 'quota_exhausted' && !banner.extraSendAvailable && (

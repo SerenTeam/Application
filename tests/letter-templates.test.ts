@@ -22,6 +22,27 @@ describe('letter templates — canal d\'envoi', () => {
     expect(emails).toContain('employeur-notification')
     expect(emails).toContain('mutuelle-resiliation')
   })
+  // Garde-fou : un courrier papier part tel quel — une variable facultative laissée vide
+  // imprimerait « [LIBELLÉ] » dans le pli envoyé.
+  it('papier : toute variable est requise', () => {
+    for (const t of LETTER_TEMPLATES.filter((x) => x.channel === 'papier')) {
+      for (const v of t.variables) {
+        expect(v.required, `${t.id} : ${v.key} doit être requise`).toBe(true)
+      }
+    }
+  })
+})
+
+// Le panneau d'envoi papier avertit (sans bloquer) quand le corps annonce une copie de l'acte de
+// décès jointe mais qu'aucune pièce jointe n'est sélectionnée : le drapeau doit suivre le corps.
+describe('encloses_death_certificate ↔ corps du courrier', () => {
+  it('drapeau à true ⇔ le corps annonce « ci-joint une copie de l’acte de décès »', () => {
+    for (const t of LETTER_TEMPLATES) {
+      expect(t.encloses_death_certificate === true, t.id).toBe(
+        t.body.includes('ci-joint une copie de l\'acte de décès')
+      )
+    }
+  })
 })
 
 // Bug : un champ auto_filled resté vide (échec de l'auto-remplissage) doit rester éditable

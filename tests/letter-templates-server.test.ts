@@ -49,6 +49,7 @@ describe('parité server/lib/letter-templates.js ↔ LETTER_TEMPLATES (front)', 
       const server = SERVER_TEMPLATES.find((t: { id: string }) => t.id === front.id)
       expect(server.body, `${front.id} : corps`).toBe(front.body)
       expect(server.subject, `${front.id} : sujet`).toBe(front.subject)
+      expect(server.recipient_label, `${front.id} : destinataire`).toBe(front.recipient_label)
     }
   })
 })

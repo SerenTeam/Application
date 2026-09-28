@@ -499,6 +499,7 @@ export const STRINGS_EN: Strings = {
     finalizingPayment: 'Finalizing payment, please try again in a moment...',
     autoRetrying: 'Retrying automatically...',
     missingFieldsHint: 'Fill in the information above before sending.',
+    enclosureWarning: 'This letter states that a copy of the death certificate is enclosed: add it before sending.',
   },
   // v2 contractual anchors (docs/design-v2-demonstrateur.md §8.1): a NEW namespace is inserted
   // RIGHT BEFORE its lot's anchor; existing namespaces are edited in place.

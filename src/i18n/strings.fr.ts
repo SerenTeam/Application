@@ -503,6 +503,7 @@ export const STRINGS_FR = {
     finalizingPayment: 'Finalisation du paiement en cours, réessayez dans un instant...',
     autoRetrying: 'Nouvelle tentative en cours...',
     missingFieldsHint: 'Complétez les informations ci-dessus avant l’envoi.',
+    enclosureWarning: 'Ce courrier indique qu’une copie de l’acte de décès est jointe : ajoutez-la avant l’envoi.',
   },
   // Ancres contractuelles v2 (docs/design-v2-demonstrateur.md §8.1) : un namespace NEUF s'insère
   // JUSTE AVANT l'ancre de son lot ; les namespaces existants se modifient en place.
