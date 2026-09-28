@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { getStepsCatalog } from '@/data/steps-catalog'
+import { stepLetterTemplateId } from '@/lib/step-letter'
 import { hasPendingPaperSendForCheckoutReturn } from '@/lib/paper-send-resume'
 import { AppHeader, HeaderNavLink } from '@/components/layout/AppHeader'
 import { CheckoutReturnBanner } from '@/components/payments/CheckoutReturnBanner'
@@ -80,7 +81,7 @@ function buildPhases(dbSteps: DbStep[], t: Strings, lang: Lang): RoadmapPhase[] 
       description,
       urgent: step.urgency === 'urgent',
       stepDbId: step.id,
-      letterTemplateId: step.letter_template_id ?? undefined,
+      letterTemplateId: stepLetterTemplateId(template, step.letter_template_id),
     }
 
     const list = grouped.get(step.urgency)
