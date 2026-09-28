@@ -449,9 +449,11 @@ export function PaperSendPanel({
   const channelClosed = me?.flags.paper_sends_enabled === false || banner?.kind === 'channel_closed'
   // Décision d'Arnaud (avertir sans bloquer) : le corps de ce courrier affirme joindre une copie de
   // l'acte de décès — tant qu'aucune pièce jointe n'est sélectionnée, on le signale près du bouton.
-  // L'envoi reste possible : ce n'est qu'un guide, `canSend` n'en dépend pas.
+  // L'envoi reste possible : ce n'est qu'un guide, `canSend` n'en dépend pas. Masqué pendant une
+  // reprise figée (`frozenForResume` : PJ gelées, legs R2) — n'avertir que si l'utilisateur peut
+  // encore ajouter une pièce.
   const claimsEnclosure = getLetterTemplate(templateId)?.encloses_death_certificate === true
-  const showEnclosureWarning = claimsEnclosure && attachmentIds.length === 0 && !channelClosed
+  const showEnclosureWarning = claimsEnclosure && attachmentIds.length === 0 && !channelClosed && !frozenForResume
   const canSend = isComplete && !!senderProfile && recipientValid(recipient) && !busy
   // I3 (revue finale) : jamais conditionné par le solde local seul — en prod par défaut
   // (PAYMENTS_ENABLED non défini), tout le monde a un solde de 0 et le bouton mènerait à un 503
