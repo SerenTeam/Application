@@ -32,7 +32,10 @@ export function elidesDe(value: string): boolean {
   return false
 }
 
-/** « de » ou « d' » accolé à la valeur : « de Jean », « d'Anne ». */
-export function withDe(value: string): string {
-  return elidesDe(value) ? `d'${value}` : `de ${value}`
+/**
+ * « de » ou « d' » accolé à la valeur : « de Jean », « d'Anne ». Apostrophe droite par défaut, celle
+ * des courriers ; les textes d'interface FR passent l'apostrophe typographique de leurs dictionnaires.
+ */
+export function withDe(value: string, apostrophe: "'" | '’' = "'"): string {
+  return elidesDe(value) ? `d${apostrophe}${value}` : `de ${value}`
 }

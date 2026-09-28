@@ -27,7 +27,7 @@ export function elidesDe(value) {
   return false
 }
 
-/** « de » ou « d' » accolé à la valeur : « de Jean », « d'Anne ». */
-export function withDe(value) {
-  return elidesDe(value) ? `d'${value}` : `de ${value}`
+/** « de » ou « d' » accolé à la valeur : « de Jean », « d'Anne » (apostrophe droite des courriers par défaut). */
+export function withDe(value, apostrophe = "'") {
+  return elidesDe(value) ? `d${apostrophe}${value}` : `de ${value}`
 }

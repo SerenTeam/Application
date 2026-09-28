@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { CONSENT_VERSION } from '@/lib/consent-version'
 import { useT } from '@/i18n/useT'
 import { fmt } from '@/i18n'
+import { withDe } from '@/lib/elision'
 
 type ConsentKind = 'terms' | 'privacy' | 'sensitive_data'
 const KINDS: ConsentKind[] = ['terms', 'privacy', 'sensitive_data']
@@ -62,7 +63,9 @@ export function ConsentPage() {
           {dossier?.partner_name ? fmt(t.consent.providedBy, { partner: dossier.partner_name }) : t.consent.providedByGeneric}
         </p>
         {dossier?.deceased_first_name && (
-          <p className="mb-6 text-center text-text-secondary">{fmt(t.consent.deceasedLine, { name: dossier.deceased_first_name })}</p>
+          <p className="mb-6 text-center text-text-secondary">
+            {fmt(t.consent.deceasedLine, { name: dossier.deceased_first_name, ofName: withDe(dossier.deceased_first_name, '’') })}
+          </p>
         )}
         <p className="mb-4 text-sm text-text-muted">{t.consent.intro}</p>
         <div className="space-y-4">
