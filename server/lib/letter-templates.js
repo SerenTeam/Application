@@ -50,7 +50,7 @@ const RAW_TEMPLATES = [
     // réseau possible → adresse toujours saisie par l'utilisateur.
     recipient_kind: 'user_specific',
     subject: 'Déclaration de décès — Comptes de {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'Au Service Succession de {{organisme_name}}',
+    recipient_label: 'À l\'attention du service succession — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -73,7 +73,7 @@ ${SIGNATURE}`,
     // Assureur propre à l'utilisateur (contrat privé) : pas d'annuaire réseau.
     recipient_kind: 'user_specific',
     subject: 'Déclaration de décès — Contrats de {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'Au Service Sinistres de {{organisme_name}}',
+    recipient_label: 'À l\'attention du service sinistres — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -98,7 +98,7 @@ ${SIGNATURE}`,
     // Assureur vie propre à l'utilisateur (contrat privé) : pas d'annuaire réseau.
     recipient_kind: 'user_specific',
     subject: 'Demande de versement du capital — Contrat de {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'Au Service Assurance Vie de {{organisme_name}}',
+    recipient_label: 'À l\'attention du service assurance vie — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -125,7 +125,7 @@ ${SIGNATURE}`,
     // Employeur propre à l'utilisateur/au défunt : pas d'annuaire réseau.
     recipient_kind: 'user_specific',
     subject: 'Notification de décès — {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'Au Service des Ressources Humaines de {{organisme_name}}',
+    recipient_label: 'À l\'attention du service des ressources humaines — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -153,7 +153,7 @@ ${SIGNATURE}`,
     // Organisme du réseau CAF : résolution par annuaire (network + département du défunt).
     recipient_kind: 'network:caf',
     subject: 'Déclaration de décès — Dossier allocataire de {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'À la Caisse d\'Allocations Familiales de {{organisme_name}}',
+    recipient_label: '{{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -176,7 +176,7 @@ ${SIGNATURE}`,
     // Organisme du réseau CARSAT : résolution par annuaire (network + département du défunt).
     recipient_kind: 'network:carsat',
     subject: 'Déclaration de décès — {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'À la CARSAT de {{organisme_name}}',
+    recipient_label: '{{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -199,7 +199,7 @@ ${SIGNATURE}`,
     // Mutuelle propre à l'utilisateur (contrat privé) : pas d'annuaire réseau.
     recipient_kind: 'user_specific',
     subject: 'Résiliation pour décès — Contrat de {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'Au Service Adhésion de {{organisme_name}}',
+    recipient_label: 'À l\'attention du service des adhésions — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -222,7 +222,7 @@ ${SIGNATURE}`,
     // Bailleur propre à l'utilisateur/au défunt (bail privé) : pas d'annuaire réseau.
     recipient_kind: 'user_specific',
     subject: 'Résiliation de bail pour décès — {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'À {{organisme_name}}',
+    recipient_label: 'À l\'attention du bailleur — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -245,7 +245,7 @@ ${SIGNATURE}`,
     // Organisme du réseau CPAM : résolution par annuaire (network + département du défunt).
     recipient_kind: 'network:cpam',
     subject: 'Déclaration de décès — {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'À la Caisse Primaire d\'Assurance Maladie de {{organisme_name}}',
+    recipient_label: '{{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -269,7 +269,7 @@ ${SIGNATURE}`,
     // annuaire (network + département du défunt).
     recipient_kind: 'network:impots',
     subject: 'Déclaration de décès — {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'Au Centre des Finances Publiques de {{organisme_name}}',
+    recipient_label: '{{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}

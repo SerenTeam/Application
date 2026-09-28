@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { LETTER_TEMPLATES as FRONT_TEMPLATES, getTemplateNetwork } from '../src/data/letter-templates'
 // @ts-expect-error — module JS serveur
 import { LETTER_TEMPLATES as SERVER_TEMPLATES } from '../server/lib/letter-templates.js'
@@ -243,5 +245,69 @@ describe('personnalisation v2 — 5 courriers papier, destinataire saisi par la 
       delete partial.subscriber_number
       expect(renderLetter(id, partial).missingVariables, id).toContain('subscriber_number')
     }
+  })
+})
+
+// ── Libellé destinataire : aucun accord fait à la main avec le nom de l'organisme ──────────────
+//
+// Défaut préexistant relevé à la revue de la personnalisation v2 (2026-09-28) : `organisme_name`
+// est saisi librement par la famille, et « Au Service Succession de {{organisme_name}} » donnait
+// « … de AXA », « … de Le Crédit Lyonnais ». Aucune préposition ni aucun article du libellé ne
+// touche plus le nom : il est seul, ou précédé d'un tiret cadratin (forme des 5 courriers de la
+// personnalisation v2).
+
+// Noms réels de l'annuaire (seed DILA), par réseau : ceux que la famille voit dans le sélecteur
+// d'adresse et recopie dans « Nom de l'organisme ».
+const ORGANISATIONS_SEED = readFileSync(
+  fileURLToPath(new URL('../supabase/migrations/20260914110000_organisations_seed.sql', import.meta.url)),
+  'utf8'
+)
+const DIRECTORY_NAMES: Record<string, string[]> = {}
+for (const [, name, network] of ORGANISATIONS_SEED.matchAll(/^\s*\('[^']+', '((?:[^']|'')+)', '[^']*', '(caf|cpam|carsat|impots)'/gm)) {
+  DIRECTORY_NAMES[network] ??= []
+  DIRECTORY_NAMES[network].push(name.replaceAll("''", "'"))
+}
+// Le libellé d'un modèle réseau ne désigne aucun organisme hors du nom : le nom de l'annuaire le
+// fait déjà, et pas toujours comme on l'attend (CGSS et CSSM outre-mer, Cnav en Île-de-France, SIP).
+const ORGANISATION_TYPE_RE = /caisse|carsat|cpam|\bcaf\b|cgss|cnav|allocations|assurance maladie|finances publiques|impôts/i
+
+describe('recipient_label — le nom de l’organisme n’est jamais accordé à la main', () => {
+  it('{{organisme_name}} est seul ou précédé de « — », jamais d’une préposition ni d’un article', () => {
+    for (const t of FRONT_TEMPLATES) {
+      expect(t.recipient_label, t.id).toMatch(/^(?:[^{}]+ — )?\{\{organisme_name\}\}$/)
+    }
+  })
+
+  it.each([
+    ['banque-declaration-deces', 'Le Crédit Lyonnais', "À l'attention du service succession — Le Crédit Lyonnais"],
+    ['assurance-declaration-deces', 'AXA', "À l'attention du service sinistres — AXA"],
+    ['assurance-vie-demande', 'Allianz', "À l'attention du service assurance vie — Allianz"],
+    ['employeur-notification', 'Orange', "À l'attention du service des ressources humaines — Orange"],
+    ['mutuelle-resiliation', 'Harmonie Mutuelle', "À l'attention du service des adhésions — Harmonie Mutuelle"],
+    ['bailleur-notification', 'Les Résidences du Parc', "À l'attention du bailleur — Les Résidences du Parc"],
+  ])('%s + « %s » → « %s »', (id, name, expected) => {
+    expect(renderLetter(id, { organisme_name: name }).body.split('\n')[0]).toBe(expected)
+  })
+
+  it('modèles réseau × 321 noms réels de l’annuaire : le nom figure tel quel, sans désignation doublée ni contredite', () => {
+    const networkTemplates = SERVER_TEMPLATES.filter((t: { recipient_kind: string }) => t.recipient_kind.startsWith('network:'))
+    expect(networkTemplates.map((t: { id: string }) => t.id).sort()).toEqual([
+      'caf-notification',
+      'carsat-notification',
+      'cpam-notification',
+      'impots-notification',
+    ])
+    let rendered = 0
+    for (const t of networkTemplates) {
+      const names = DIRECTORY_NAMES[t.recipient_kind.slice('network:'.length)] ?? []
+      expect(names.length, t.recipient_kind).toBeGreaterThan(0)
+      for (const name of names) {
+        const firstLine = renderLetter(t.id, { organisme_name: name }).body.split('\n')[0]
+        expect(firstLine, t.id).toContain(name)
+        expect(firstLine.replace(name, ''), `${t.id} : « ${firstLine} »`).not.toMatch(ORGANISATION_TYPE_RE)
+        rendered++
+      }
+    }
+    expect(rendered).toBe(321)
   })
 })
