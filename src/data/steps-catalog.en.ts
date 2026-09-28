@@ -386,7 +386,6 @@ export const STEPS_CATALOG_EN: StepTemplate[] = [
     responsable: 'vous',
     requires_notary: false,
     applicable_when: { logement: ['locataire', 'proprietaire'] },
-    letter_template_id: 'bailleur-notification',
     display_order: 18,
   },
   {

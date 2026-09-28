@@ -217,6 +217,17 @@ describe('invariant : étapes ↔ courriers', () => {
       expect(step!.letter_template_id, `${t.id} : l’étape ${t.step_id} ne le propose pas`).toBe(t.id)
     }
   })
+  // Défaut préexistant relevé à la revue de la personnalisation v2 (2026-09-28) : le courrier
+  // bailleur affirme que le défunt « était locataire » et invoque la résiliation du bail (art. 14
+  // de la loi du 6 juillet 1989) ; l'étape syndic, ouverte aussi aux propriétaires, le proposait.
+  it('un courrier qui affirme « était locataire » n’est proposé que par des étapes réservées aux locataires', () => {
+    const tenantLetters = LETTER_TEMPLATES.filter((t) => t.body.includes('était locataire')).map((t) => t.id)
+    expect(tenantLetters).toContain('bailleur-notification')
+    for (const s of STEPS_CATALOG) {
+      if (!s.letter_template_id || !tenantLetters.includes(s.letter_template_id)) continue
+      expect(s.applicable_when.logement, `${s.id} propose ${s.letter_template_id}`).toEqual(['locataire'])
+    }
+  })
   it('personnalisation v2 : les 5 nouvelles démarches proposent leur courrier', () => {
     const expected: Record<string, string> = {
       'abonnements-presse': 'resiliation-presse',
