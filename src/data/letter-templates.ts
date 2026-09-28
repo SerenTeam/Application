@@ -11,10 +11,11 @@ export interface LetterTemplate {
   step_id: string
   organisme: string
   subject: string
-  // Le nom d'organisme est saisi librement (ou recopié de l'annuaire) : aucun article ni aucune
-  // préposition du libellé ne s'y accorde — `{{organisme_name}}` seul, ou précédé de « — ». Seul
-  // pour les modèles réseau : le nom de l'annuaire désigne déjà l'organisme (Caf, CGSS, Cnav, SIP…).
-  // Testé dans tests/letter-templates-server.test.ts.
+  // Le nom d'organisme est saisi librement par la famille : aucun article ni aucune préposition du
+  // libellé ne s'y accorde — `{{organisme_name}}` seul, ou précédé de « — ». Seul pour les modèles
+  // réseau : leur nom officiel désigne déjà l'organisme, et pas toujours comme on l'attend (CGSS et
+  // CSSM outre-mer, Cnav en Île-de-France, SIP). Testé dans tests/letter-templates-server.test.ts,
+  // y compris avec chaque nom de l'annuaire.
   recipient_label: string
   body: string
   variables: LetterVariable[]

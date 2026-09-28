@@ -13,7 +13,7 @@ import { renderLetter, renderTemplate } from '../server/lib/letter-render.js'
 // stockée restant l'ISO.
 
 const IMPOTS_VALUES: Record<string, string> = {
-  organisme_name: 'Lyon',
+  organisme_name: 'Service des impôts des particuliers (SIP) - Caluire-et-Cuire',
   user_firstname: 'Claire',
   user_lastname: 'Martin',
   user_relation: 'fille',

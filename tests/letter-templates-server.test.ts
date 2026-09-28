@@ -256,8 +256,9 @@ describe('personnalisation v2 — 5 courriers papier, destinataire saisi par la 
 // touche plus le nom : il est seul, ou précédé d'un tiret cadratin (forme des 5 courriers de la
 // personnalisation v2).
 
-// Noms réels de l'annuaire (seed DILA), par réseau : ceux que la famille voit dans le sélecteur
-// d'adresse et recopie dans « Nom de l'organisme ».
+// Noms officiels de l'annuaire (seed DILA), par réseau : ce que la famille est susceptible de saisir
+// dans « Nom de l'organisme ». Ce champ reste une saisie libre : l'annuaire ne pré-remplit que
+// l'enveloppe, et parmi les modèles réseau seulement pour la CARSAT (seul envoyé par papier).
 const ORGANISATIONS_SEED = readFileSync(
   fileURLToPath(new URL('../supabase/migrations/20260914110000_organisations_seed.sql', import.meta.url)),
   'utf8'
@@ -269,7 +270,8 @@ for (const [, name, network] of ORGANISATIONS_SEED.matchAll(/^\s*\('[^']+', '((?
 }
 // Le libellé d'un modèle réseau ne désigne aucun organisme hors du nom : le nom de l'annuaire le
 // fait déjà, et pas toujours comme on l'attend (CGSS et CSSM outre-mer, Cnav en Île-de-France, SIP).
-const ORGANISATION_TYPE_RE = /caisse|carsat|cpam|\bcaf\b|cgss|cnav|allocations|assurance maladie|finances publiques|impôts/i
+const ORGANISATION_TYPE_RE =
+  /caisse|carsat|cpam|\bcaf\b|cgss|cssm|cnav|\bsip\b|dgfip|allocations|assurance maladie|sécurité sociale|finances publiques|impôts/i
 
 describe('recipient_label — le nom de l’organisme n’est jamais accordé à la main', () => {
   it('{{organisme_name}} est seul ou précédé de « — », jamais d’une préposition ni d’un article', () => {
