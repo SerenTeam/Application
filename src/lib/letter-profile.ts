@@ -110,7 +110,7 @@ export function validateLetterProfile(
   if (dob && dob.value) {
     if (!isRealIsoDate(dob.value)) errors.deceased_dob = 'dobInvalid'
     else if (dob.value < DOB_MIN) errors.deceased_dob = 'dobTooEarly'
-    else if (dob.value > (dob.max ?? todayLocalIsoDate())) errors.deceased_dob = 'dobAfterDeath'
+    else if (dob.value > (dob.max || todayLocalIsoDate())) errors.deceased_dob = 'dobAfterDeath'
   }
   return errors
 }
@@ -171,18 +171,21 @@ export async function fetchLatestQuestionnaire(
 }
 
 /**
- * Fusionne la date de naissance du défunt dans les réponses ; null retire la clé. Relit les
- * réponses juste avant d'écrire (au lieu de prendre un état déjà en mémoire, potentiellement
- * périmé) pour ne pas écraser une clé modifiée ailleurs entre-temps (deux onglets). Une erreur
- * Supabase (lecture ou écriture) remonte son message tel quel ; `questionnaire_not_found` (aucune
- * ligne à la lecture) et `questionnaire_not_updated` (aucune ligne touchée par l'écriture, ex. RLS)
- * sont des codes techniques — les consommateurs affichent un texte i18n. Retourne les réponses
- * écrites.
+ * Fusionne un lot de champs dans les réponses (patron générique : deceased_dob,
+ * deceased_department, …) — une valeur non nulle pose la clé, null la retire. Relit les réponses
+ * juste avant d'écrire (au lieu d'un état déjà en mémoire, potentiellement périmé) pour ne pas
+ * écraser une clé modifiée ailleurs entre-temps (deux onglets), et N'ÉCRIT RIEN quand le patch ne
+ * change rien (chaque clé à valeur non nulle a déjà cette valeur, chaque clé à null est déjà
+ * absente) — évite une écriture à chaque enregistrement du profil courrier alors que rien n'a
+ * changé. Une erreur Supabase (lecture ou écriture) remonte son message tel quel ;
+ * `questionnaire_not_found` (aucune ligne à la lecture) et `questionnaire_not_updated` (aucune
+ * ligne touchée par l'écriture, ex. RLS) sont des codes techniques — les consommateurs affichent un
+ * texte i18n. Retourne les réponses à jour (relues, patchées).
  */
-export async function saveDeceasedDob(
+export async function patchQuestionnaireAnswers(
   client: SupabaseClient,
   questionnaireId: string,
-  dob: string | null
+  patch: Record<string, string | null>
 ): Promise<Record<string, unknown>> {
   const { data, error: readError } = await client
     .from('questionnaires')
@@ -193,9 +196,17 @@ export async function saveDeceasedDob(
   const row = data as { answers: Record<string, unknown> | null } | null
   if (!row) throw new Error('questionnaire_not_found')
 
-  const next: Record<string, unknown> = { ...(row.answers ?? {}) }
-  if (dob) next.deceased_dob = dob
-  else delete next.deceased_dob
+  const current = row.answers ?? {}
+  const changed = Object.entries(patch).some(([key, value]) =>
+    value !== null ? current[key] !== value : Object.prototype.hasOwnProperty.call(current, key)
+  )
+  if (!changed) return { ...current }
+
+  const next: Record<string, unknown> = { ...current }
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== null) next[key] = value
+    else delete next[key]
+  }
 
   const { data: updated, error: writeError } = await client
     .from('questionnaires')
@@ -205,4 +216,13 @@ export async function saveDeceasedDob(
   if (writeError) throw new Error(writeError.message)
   if (!updated || (Array.isArray(updated) && updated.length === 0)) throw new Error('questionnaire_not_updated')
   return next
+}
+
+/** Date de naissance du défunt seule — cas d'usage historique de patchQuestionnaireAnswers. */
+export async function saveDeceasedDob(
+  client: SupabaseClient,
+  questionnaireId: string,
+  dob: string | null
+): Promise<Record<string, unknown>> {
+  return patchQuestionnaireAnswers(client, questionnaireId, { deceased_dob: dob || null })
 }

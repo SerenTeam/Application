@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { formatLetterValue, getLetterTemplate, type LetterTemplate } from '@/data/letter-templates'
 
 export interface LetterGeneratorOptions {
@@ -105,6 +105,16 @@ export function pickChangedAuto(prevAuto: Record<string, string> | null, auto: R
   return changed
 }
 
+/** Suivi de la dernière valeur auto : chaque appel renvoie les seules clés dont LA source a changé ({} au premier appel = montage). */
+export function createAutoSync(): (auto: Record<string, string>) => Record<string, string> {
+  let last: Record<string, string> | null = null
+  return (auto) => {
+    const changed = pickChangedAuto(last, auto)
+    last = auto
+    return changed
+  }
+}
+
 export function useLetterGenerator(options: LetterGeneratorOptions) {
   const template = getLetterTemplate(options.templateId)
 
@@ -116,14 +126,16 @@ export function useLetterGenerator(options: LetterGeneratorOptions) {
   // (ex. profil courrier enregistré depuis le panneau d'envoi : l'adresse sous la signature suit
   // alors celle de l'enveloppe) — jamais quand une AUTRE source change (une correction manuelle de
   // ville pour ce courrier précis n'est pas effacée par un changement d'adresse sans rapport). Une
-  // valeur auto vide n'efface jamais une saisie manuelle.
-  const lastAutoRef = useRef<Record<string, string> | null>(null)
+  // valeur auto vide n'efface jamais une saisie manuelle. `autoSync` est créé une seule fois (état
+  // React, pas une ref manipulée dans l'updater) et appelé HORS de l'updater passé à setValues :
+  // React double-invoque les updaters en StrictMode, ce qui avancerait le suivi deux fois pour un
+  // seul changement réel et ferait disparaître la resynchronisation en silence.
+  const [autoSync] = useState(createAutoSync)
   const autoSourcesKey = JSON.stringify([options.userProfile ?? null, options.questionnaireData ?? null])
   useEffect(() => {
     if (!template) return
     const auto = buildInitialValues(template, options.userProfile, options.questionnaireData)
-    const changed = pickChangedAuto(lastAutoRef.current, auto) // montage : {} (l'état initial vient déjà de ces sources)
-    lastAutoRef.current = auto
+    const changed = autoSync(auto) // montage : {} (l'état initial vient déjà de ces sources)
     setValues((prev) => mergeAutoFilled(prev, changed))
     // eslint-disable-next-line react-hooks/exhaustive-deps -- autoSourcesKey résume options.userProfile et options.questionnaireData, des littéraux recréés à chaque rendu par l'appelant
   }, [autoSourcesKey, template])

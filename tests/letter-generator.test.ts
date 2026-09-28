@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { buildInitialValues, mergeAutoFilled, pickChangedAuto } from '@/hooks/useLetterGenerator'
+import { buildInitialValues, mergeAutoFilled, pickChangedAuto, createAutoSync } from '@/hooks/useLetterGenerator'
 import { getLetterTemplate } from '@/data/letter-templates'
 
 describe('buildInitialValues', () => {
@@ -75,6 +75,24 @@ describe('pickChangedAuto', () => {
   })
   it('une clé qui repasse à vide est retenue ici (c’est mergeAutoFilled qui l’ignorera ensuite)', () => {
     expect(pickChangedAuto({ city: 'Mérignac' }, { city: '' })).toEqual({ city: '' })
+  })
+})
+
+// Câblage testable de la resynchro (re-revue I2) : le hook garde ce suivi dans un useState au lieu
+// d'un useRef manipulé à l'intérieur de l'updater passé à setValues — un updater peut être
+// double-invoqué par React en StrictMode, ce qui aurait avancé le suivi deux fois pour un seul
+// changement réel et fait disparaître la resynchronisation en silence.
+describe('createAutoSync', () => {
+  it('1er appel : {} (montage) ; 2e appel : seule la clé changée ; 3e appel identique : {} (mémorisé)', () => {
+    const autoSync = createAutoSync()
+    const v1 = { city: 'Mérignac', user_address: '1 rue A, 33700 Mérignac' }
+    expect(autoSync(v1)).toEqual({})
+
+    const v2 = { city: 'Mérignac', user_address: '2 rue B, 33700 Mérignac' }
+    expect(autoSync(v2)).toEqual({ user_address: '2 rue B, 33700 Mérignac' })
+
+    // Même valeurs qu'à l'appel précédent : la mémorisation du 2e appel doit être prise en compte.
+    expect(autoSync(v2)).toEqual({})
   })
 })
 

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { readFileSync } from 'fs'
 import path from 'path'
 import {
@@ -9,6 +9,7 @@ import {
   fetchDossierIdentity,
   fetchLatestQuestionnaire,
   saveDeceasedDob,
+  patchQuestionnaireAnswers,
   type LetterProfileInput,
 } from '@/lib/letter-profile'
 
@@ -124,6 +125,21 @@ describe('validateLetterProfile', () => {
     expect(validateLetterProfile(VALID, { value: '1899-12-31', max: null }).deceased_dob).toBe('dobTooEarly')
     expect(validateLetterProfile(VALID, { value: '2099-01-01', max: null }).deceased_dob).toBe('dobAfterDeath')
   })
+  it('max vide (réponses anciennes, date de décès non renseignée) : traité comme aucun décès connu', () => {
+    expect(validateLetterProfile(VALID, { value: '1941-03-14', max: '' }).deceased_dob).toBeUndefined()
+  })
+})
+
+describe('borne « aujourd’hui » en date LOCALE (M3)', () => {
+  const tz = process.env.TZ
+  afterEach(() => { vi.useRealTimers(); if (tz === undefined) delete process.env.TZ; else process.env.TZ = tz })
+  it('28/09 à 22 h en Martinique (déjà le 29 en UTC) : le 29 est dans le futur, le 28 est valide', () => {
+    process.env.TZ = 'America/Martinique'
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-29T02:00:00Z'))
+    expect(validateLetterProfile(VALID, { value: '2026-09-29', max: null }).deceased_dob).toBe('dobAfterDeath')
+    expect(validateLetterProfile(VALID, { value: '2026-09-28', max: null }).deceased_dob).toBeUndefined()
+  })
 })
 
 describe('accès Supabase du profil courrier', () => {
@@ -228,6 +244,38 @@ describe('accès Supabase du profil courrier', () => {
     it('écriture qui ne touche aucune ligne (RLS, id disparu entre-temps) : questionnaire_not_updated', async () => {
       const { client } = fakeClient([{ data: { answers: {} } }, { data: [] }])
       await expect(saveDeceasedDob(client, 'q-1', '1941-03-14')).rejects.toThrow('questionnaire_not_updated')
+    })
+    it('date inchangée : aucune écriture (une seule requête, la lecture)', async () => {
+      const { client, calls } = fakeClient([{ data: { answers: { deceased_dob: '1941-03-14' } } }])
+      const next = await saveDeceasedDob(client, 'q-1', '1941-03-14')
+      expect(next).toEqual({ deceased_dob: '1941-03-14' })
+      expect(calls).toHaveLength(1)
+      expect(calls[0].op).toBe('select')
+    })
+    it('null sur une clé déjà absente : aucune écriture', async () => {
+      const { client, calls } = fakeClient([{ data: { answers: { relation: 'parent' } } }])
+      const next = await saveDeceasedDob(client, 'q-1', null)
+      expect(next).toEqual({ relation: 'parent' })
+      expect(calls).toHaveLength(1)
+    })
+  })
+
+  describe('patchQuestionnaireAnswers (M4 : patron générique derrière saveDeceasedDob)', () => {
+    it('plusieurs clés à la fois : les deux appliquées, le reste des réponses relues est conservé', async () => {
+      const { client, calls } = fakeClient([
+        { data: { answers: { relation: 'parent', deceased_department: '33' } } },
+        { data: [{ id: 'q-1' }] },
+      ])
+      const next = await patchQuestionnaireAnswers(client, 'q-1', { deceased_department: '75', deceased_dob: '1941-03-14' })
+      expect(next).toEqual({ relation: 'parent', deceased_department: '75', deceased_dob: '1941-03-14' })
+      expect(calls[1].payload).toEqual({ answers: { relation: 'parent', deceased_department: '75', deceased_dob: '1941-03-14' } })
+    })
+    it('une clé déjà présente mais avec une autre valeur : écriture', async () => {
+      const { client, calls } = fakeClient([{ data: { answers: { deceased_department: '33' } } }, { data: [{ id: 'q-1' }] }])
+      const next = await patchQuestionnaireAnswers(client, 'q-1', { deceased_department: '75' })
+      expect(next).toEqual({ deceased_department: '75' })
+      expect(calls).toHaveLength(2)
+      expect(calls[1].op).toBe('update')
     })
   })
 })
