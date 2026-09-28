@@ -1242,7 +1242,7 @@ Dans `src/data/steps-catalog.en.ts`, mêmes 5 opérations, avec ces textes :
 5. Fin du tableau :
 
 ```ts
-  // ── V2 PERSONALIZATION: SUBSCRIPTIONS AND ACCOUNTS ───────────────────
+  // ── PERSONNALISATION V2 : ABONNEMENTS ET COMPTES ──────────────────────
   {
     id: 'abonnements-presse',
     title: 'Cancel newspaper and magazine subscriptions',
@@ -1478,7 +1478,7 @@ const VAR_SUBSCRIBER_NUMBER: LetterVariable = { key: 'subscriber_number', label:
 
 2. Ajouter à la fin de `LETTER_TEMPLATES` (après `impots-notification`) les 5 modèles ci-dessous. Les corps sont reproduits **à l'identique** côté serveur (Step 4) : la parité est testée caractère pour caractère.
 
-Règles de rédaction appliquées (recherche du 2026-09-28) : « acte de décès » (état civil), jamais « certificat de décès » ; le courrier télécom **demande** la résiliation sans frais sans affirmer que la loi l'impose ; le courrier EHPAD cite les articles L. 314-10-1 (sommes perçues d'avance restituées sous 30 jours) et R. 314-149 (socle de prestations facturable 6 jours au plus, dépôt de garantie) du CASF.
+Règles de rédaction appliquées (recherche du 2026-09-28) : « acte de décès » (état civil), jamais « certificat de décès » ; le courrier télécom **demande** la résiliation sans frais sans affirmer que la loi l'impose ; le courrier EHPAD cite les articles L. 314-10-1 (sommes perçues d'avance restituées sous 30 jours) et R. 314-149 (socle de prestations facturable 6 jours au plus, dépôt de garantie) du CASF **en les réservant explicitement aux EHPAD** (décision d'Arnaud du 2026-09-28 : libellé large « EHPAD ou résidence » conservé ; R. 314-149 ne s'applique qu'aux EHPAD — réponse ministérielle Sénat 2024-01913 du 19/03/2026).
 
 **Vérification obligatoire avant le commit** : ouvrir https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000032226650 et https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000032226641 (via WebFetch) et confirmer que l'article **L. 224-35** du code de la consommation prévoit bien la restitution des sommes versées d'avance « au plus tard dans un délai de dix jours à compter du paiement de la dernière facture ». Si ce n'est pas L. 224-35, corriger le numéro d'article dans le courrier télécom (client ET serveur) ; si la règle est introuvable, retirer la dernière phrase du 3ᵉ paragraphe de ce courrier. Consigner le résultat dans la note post-revue.
 
@@ -1623,7 +1623,7 @@ Je soussigné(e) {{user_firstname}} {{user_lastname}}, {{user_relation}} de {{de
 
 Je souhaite convenir avec vous, dans les meilleurs délais, d'une date pour retirer ses effets personnels et réaliser l'état des lieux de sortie.
 
-Je vous remercie de m'adresser la facture de clôture, établie conformément aux articles L. 314-10-1 et R. 314-149 du code de l'action sociale et des familles, et de restituer les sommes perçues d'avance ainsi que le dépôt de garantie dans les délais prévus par ces textes.
+Je vous remercie de m'adresser la facture de clôture, établie selon les règles applicables après le décès d'un résident (pour un EHPAD, articles L. 314-10-1 et R. 314-149 du code de l'action sociale et des familles), et de restituer les sommes perçues d'avance ainsi que le dépôt de garantie dans les délais prévus.
 
 Vous trouverez ci-joint une copie de l'acte de décès.
 
@@ -1789,7 +1789,7 @@ Je soussigné(e) {{user_firstname}} {{user_lastname}}, {{user_relation}} de {{de
 
 Je souhaite convenir avec vous, dans les meilleurs délais, d'une date pour retirer ses effets personnels et réaliser l'état des lieux de sortie.
 
-Je vous remercie de m'adresser la facture de clôture, établie conformément aux articles L. 314-10-1 et R. 314-149 du code de l'action sociale et des familles, et de restituer les sommes perçues d'avance ainsi que le dépôt de garantie dans les délais prévus par ces textes.
+Je vous remercie de m'adresser la facture de clôture, établie selon les règles applicables après le décès d'un résident (pour un EHPAD, articles L. 314-10-1 et R. 314-149 du code de l'action sociale et des familles), et de restituer les sommes perçues d'avance ainsi que le dépôt de garantie dans les délais prévus.
 
 Vous trouverez ci-joint une copie de l'acte de décès.
 
