@@ -173,11 +173,26 @@ describe('personnalisation v2 — abonnements et comptes', () => {
       ['photos_documents', 'numerique-photos-documents'],
     ]
     for (const [value, stepId] of CASES) {
-      expect(ids({ ...base, abonnements: [value] as QuestionnaireAnswersV2['abonnements'] }), value).toContain(stepId)
+      const r = ids({ ...base, abonnements: [value] as QuestionnaireAnswersV2['abonnements'] })
+      expect(r, value).toContain(stepId)
       expect(ids(base), `${stepId} sans case cochée`).not.toContain(stepId)
+      // Exclusivité croisée : une case cochée seule n'ajoute aucune des 7 autres démarches de la table.
+      for (const [, other] of CASES) {
+        if (other !== stepId) expect(r, `${value} ne doit pas ajouter ${other}`).not.toContain(other)
+      }
     }
   })
   it('le filet « repérer les prélèvements encore actifs » reste proposé à tous', () => {
     expect(ids(base)).toContain('numerique-abonnements')
+  })
+  it('photos et documents : « Dans le mois », affichée avant les services en ligne', () => {
+    const photos = STEPS_CATALOG.find((s) => s.id === 'numerique-photos-documents')!
+    const services = STEPS_CATALOG.find((s) => s.id === 'abonnements-services-en-ligne')!
+    expect(photos.urgency).toBe('month')
+    expect(photos.display_order).toBeLessThan(services.display_order)
+    // Même urgence : l'ordre d'affichage départage — récupérer les contenus avant de résilier.
+    const r = ids({ ...base, abonnements: ['services_en_ligne', 'photos_documents'] })
+    expect(r).toEqual(expect.arrayContaining(['numerique-photos-documents', 'abonnements-services-en-ligne']))
+    expect(r.indexOf('numerique-photos-documents')).toBeLessThan(r.indexOf('abonnements-services-en-ligne'))
   })
 })

@@ -26,6 +26,8 @@ const CLOSED_TYPES = ['boolean', 'tristate', 'select', 'multiselect']
 // aides_percues (personnalisation v2) : APA, AAH/PCH, ASH révèlent perte d'autonomie ou handicap —
 // données de santé, jamais transmises au rédacteur, même comme « dernière réponse ».
 // logement (personnalisation v2) : la valeur EHPAD révèle une perte d'autonomie — exclue par prudence
+// abonnements (personnalisation v2) : catégories génériques non sensibles — transmises au rédacteur
+// comme toute dernière réponse fermée (règle PII de CLAUDE.md).
 const WRITER_EXCLUDED_IDS = ['deceased_department', 'aides_percues', 'logement']
 
 /**

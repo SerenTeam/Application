@@ -433,8 +433,8 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
   {
     id: 'logement-resiliation-telecom',
     title: 'Résilier les abonnements internet et téléphone',
-    description: 'Les abonnements internet, téléphone fixe et mobile du défunt doivent être résiliés.',
-    theme: 'logement',
+    description: 'Les abonnements internet, téléphone fixe et mobile du défunt sont à résilier.',
+    theme: 'abonnements',
     urgency: 'month',
     urgency_label: 'Dans le mois',
     when_to_do: 'Dans le mois suivant le décès.',
@@ -444,6 +444,7 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
       'Demander la résiliation pour motif de décès, sans frais si les conditions générales le prévoient',
       'Fournir une copie de l\'acte de décès',
       'Restituer les équipements (box, décodeur) si demandé',
+      'La résiliation prend effet au plus tard 10 jours après réception de la demande ; les sommes versées d\'avance sont restituées au plus tard 10 jours après le paiement de la dernière facture',
     ],
     responsable: 'vous',
     requires_notary: false,
@@ -477,16 +478,16 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
   {
     id: 'numerique-abonnements',
     title: 'Repérer les prélèvements encore actifs',
-    description: 'Parcourez les derniers relevés bancaires et de carte du défunt pour repérer les abonnements et prélèvements qui courent encore.',
-    theme: 'numerique',
+    description: 'Parcourez les relevés bancaires et de carte du défunt pour repérer les abonnements qui courent encore, y compris ceux payés une fois par an.',
+    theme: 'abonnements',
     urgency: 'month',
     urgency_label: 'Dans le mois',
     when_to_do: 'Dans le mois suivant le décès.',
-    why_to_do: 'Un abonnement payé par carte ou par prélèvement sur un compte encore actif (un compte joint, par exemple) continue d\'être débité tant qu\'il n\'est pas résilié. Les relevés révèlent aussi les abonnements oubliés.',
+    why_to_do: 'Un abonnement payé par carte ou par prélèvement continue de courir tant qu\'il n\'est pas résilié. Les relevés révèlent aussi les abonnements oubliés, notamment ceux renouvelés chaque année.',
     what_you_do: [
-      'Relire les relevés des derniers mois : prélèvements et paiements par carte qui reviennent chaque mois',
+      'Relire les relevés des 12 derniers mois : prélèvements et paiements par carte qui reviennent chaque mois ou chaque année',
       'Lister chaque prestataire avec son montant et sa référence de contrat',
-      'Écrire à chacun pour demander la résiliation, avec une copie de l\'acte de décès',
+      'Résilier les abonnements devenus inutiles, par courrier rappelant le numéro de contrat avec une copie de l\'acte de décès ; ne pas résilier l\'assurance habitation, l\'énergie ou un crédit sans avoir lu les démarches qui leur sont consacrées',
     ],
     responsable: 'vous',
     requires_notary: false,
@@ -522,7 +523,7 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
     theme: 'numerique',
     urgency: 'later',
     urgency_label: 'Quand vous le souhaitez',
-    when_to_do: 'Quand les démarches principales sont terminées.',
+    when_to_do: 'Quand les démarches principales sont terminées, et dans l\'année : les boîtes Outlook.com inactives sont gelées après 1 an.',
     why_to_do: 'Les emails peuvent contenir des informations sur des contrats, assurances ou comptes oubliés. Depuis la loi pour une République numérique (2016), les héritiers peuvent faire clôturer le compte du défunt et s\'opposer à la poursuite du traitement de ses données ; le défunt a aussi pu laisser des directives sur le sort de ses données.',
     what_you_do: [
       'Accéder à la boîte email si vous avez les identifiants',
@@ -1188,10 +1189,20 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
   },
   // ── PERSONNALISATION V2 : ABONNEMENTS ET COMPTES ──────────────────────
   // Textes vérifiés le 2026-09-28 (service-public, CNIL, aides officielles des plateformes).
+  // Sources des plateformes (relecture juridique) :
+  //   Netflix : https://help.netflix.com/fr/node/110165
+  //   Apple : https://support.apple.com/fr-fr/102431
+  //   Google : https://support.google.com/accounts/troubleshooter/6357590?hl=fr
+  //            https://support.google.com/accounts/answer/12418290?hl=fr
+  //   Microsoft : https://support.microsoft.com/fr-fr/account-billing/accessing-outlook-com-onedrive-and-other-microsoft-services-when-someone-has-died-ebbd2860-917e-4b39-9913-212362da6b2f
+  //   Amazon : https://www.amazon.fr/gp/help/customer/display.html?nodeId=GUU8DRRE5NUHH8T5
+  // Télécom (logement-resiliation-telecom) : code de la consommation, L224-39 (résiliation effective
+  // au plus tard 10 jours après réception de la demande) et L224-35 (sommes versées d'avance restituées
+  // au plus tard 10 jours après le paiement de la dernière facture).
   {
     id: 'abonnements-presse',
     title: 'Résilier les abonnements presse',
-    description: 'Les abonnements aux journaux et magazines restent prélevés tant qu\'ils ne sont pas résiliés.',
+    description: 'Les abonnements aux journaux et magazines continuent de courir tant qu\'ils ne sont pas résiliés.',
     theme: 'abonnements',
     urgency: 'month',
     urgency_label: 'Dans le mois',
@@ -1236,7 +1247,7 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
     urgency: 'month',
     urgency_label: 'Dans le mois',
     when_to_do: 'Dans le mois suivant le décès.',
-    why_to_do: 'Un abonnement payé par carte ou par prélèvement sur un compte encore actif continue d\'être débité tant qu\'il n\'est pas résilié. Les héritiers peuvent demander la clôture des comptes du défunt.',
+    why_to_do: 'Un abonnement payé par carte ou par prélèvement continue de courir tant qu\'il n\'est pas résilié. Les héritiers peuvent demander la clôture des comptes du défunt.',
     what_you_do: [
       'Repérer les plateformes sur les relevés bancaires et de carte',
       'Netflix : annuler depuis la page Compte si vous y avez accès ; sinon, contacter le service client avec l\'e-mail ou le téléphone du compte et les informations de paiement',
@@ -1250,44 +1261,46 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
     display_order: 58,
   },
   {
+    id: 'numerique-photos-documents',
+    title: 'Récupérer les photos et documents stockés en ligne',
+    description: 'Photos, vidéos et documents du défunt peuvent se trouver dans un espace en ligne (iCloud, Google Photos, OneDrive…). Récupérez-les avant toute résiliation ou clôture de compte : certains services suppriment les contenus inactifs.',
+    theme: 'numerique',
+    urgency: 'month',
+    urgency_label: 'Dans le mois',
+    when_to_do: 'Au plus tôt, et avant de résilier un stockage en ligne ou de demander la clôture d\'un compte : certains services suppriment les contenus inactifs (OneDrive les gèle après 1 an d\'inactivité puis les supprime peu après ; Google peut supprimer un compte inactif depuis 2 ans).',
+    why_to_do: 'Les héritiers peuvent obtenir la communication des données qui s\'apparentent à des souvenirs de famille, dans la mesure nécessaire au règlement de la succession et sauf directives contraires du défunt (loi Informatique et Libertés, article 85). Une clôture de compte peut entraîner la suppression définitive des contenus.',
+    what_you_do: [
+      'Apple (iCloud) : si le défunt vous a désigné contact légataire, faire la demande sur le site Héritage numérique d\'Apple, avec votre clé d\'accès et l\'acte de décès ; sinon, s\'adresser à Apple (accès aux données ou suppression du compte) : Apple indique qu\'en France d\'autres justificatifs qu\'une décision de justice peuvent être acceptés',
+      'Google (Google Photos, Drive) : utiliser le formulaire de Google pour le compte d\'un utilisateur décédé ; Google ne communique jamais le mot de passe',
+      'Microsoft (OneDrive) : les fichiers sont gelés après 1 an d\'inactivité puis supprimés peu après ; Microsoft ne communique les contenus que sur décision de justice, sans garantie',
+      'En cas de refus, rappeler que la loi permet aux héritiers d\'obtenir les données s\'apparentant à des souvenirs de famille (loi Informatique et Libertés, art. 85), sauf directives contraires du défunt',
+      'Télécharger ce que vous souhaitez garder avant de demander la clôture des comptes',
+    ],
+    responsable: 'vous',
+    requires_notary: false,
+    applicable_when: { abonnements: ['photos_documents'] },
+    source_url: 'https://www.cnil.fr/fr/mort-numerique-effacement-informations-personne-decedee',
+    display_order: 59,
+  },
+  {
     id: 'abonnements-services-en-ligne',
     title: 'Résilier les logiciels et services en ligne payants',
-    description: 'Stockage en ligne, antivirus, suites bureautiques, applications, Amazon Prime… : ces abonnements continuent d\'être débités tant qu\'ils ne sont pas résiliés.',
+    description: 'Stockage en ligne, antivirus, suites bureautiques, applications, Amazon Prime… : ces abonnements continuent de courir tant qu\'ils ne sont pas résiliés.',
     theme: 'abonnements',
     urgency: 'month',
     urgency_label: 'Dans le mois',
     when_to_do: 'Dans le mois suivant le décès.',
     why_to_do: 'La loi Informatique et Libertés (article 85) permet aux héritiers de faire clôturer les comptes du défunt. Chaque service a sa propre procédure, souvent décrite dans son aide en ligne.',
     what_you_do: [
+      'Avant de résilier un stockage en ligne (iCloud+, Google One, OneDrive…) ou de fermer un compte Amazon, récupérer les photos et documents qu\'il contient',
       'Repérer les services payés sur les relevés, y compris les abonnements pris dans les boutiques d\'applications',
-      'Amazon : suivre la démarche prévue par l\'aide Amazon en cas de décès (acte de décès demandé ; la fermeture du compte est définitive)',
-      'Microsoft : interrompre le moyen de paiement des abonnements ; le compte expire après 2 ans d\'inactivité',
+      'Amazon : pour arrêter seulement Prime, le résilier depuis le compte ; pour fermer le compte, suivre la démarche prévue par l\'aide Amazon en cas de décès (acte de décès demandé ; la fermeture est définitive et supprime l\'accès aux contenus : photos, musique, livres)',
+      'Microsoft : interrompre le moyen de paiement des abonnements (Microsoft 365…) ; le compte expire après 2 ans d\'inactivité, mais les fichiers OneDrive sont gelés dès 1 an',
       'Autres services : contacter leur service client en signalant le décès, avec une copie de l\'acte de décès',
     ],
     responsable: 'vous',
     requires_notary: false,
     applicable_when: { abonnements: ['services_en_ligne'] },
-    source_url: 'https://www.cnil.fr/fr/mort-numerique-effacement-informations-personne-decedee',
-    display_order: 59,
-  },
-  {
-    id: 'numerique-photos-documents',
-    title: 'Récupérer les photos et documents stockés en ligne',
-    description: 'Photos, vidéos et documents du défunt peuvent se trouver dans un espace en ligne (iCloud, Google Photos, OneDrive…). Récupérez-les avant toute clôture de compte.',
-    theme: 'numerique',
-    urgency: 'later',
-    urgency_label: 'Quand vous le souhaitez',
-    when_to_do: 'Quand vous le souhaitez, avant de demander la clôture des comptes.',
-    why_to_do: 'Les héritiers peuvent obtenir la communication des données qui s\'apparentent à des souvenirs de famille (loi Informatique et Libertés, article 85). Une clôture de compte peut entraîner la suppression définitive des contenus.',
-    what_you_do: [
-      'Apple (iCloud) : si le défunt vous a désigné contact légataire, faire la demande sur le site Héritage numérique d\'Apple, avec votre clé d\'accès et l\'acte de décès',
-      'Google (Google Photos, Drive) : utiliser le formulaire de Google pour le compte d\'un utilisateur décédé ; Google ne communique jamais le mot de passe',
-      'Microsoft (OneDrive) : les contenus ne sont communiqués que sur décision de justice ; le compte expire après 2 ans d\'inactivité',
-      'Télécharger ce que vous souhaitez garder avant de demander la clôture des comptes',
-    ],
-    responsable: 'vous',
-    requires_notary: false,
-    applicable_when: { abonnements: ['photos_documents'] },
     source_url: 'https://www.cnil.fr/fr/mort-numerique-effacement-informations-personne-decedee',
     display_order: 60,
   },

@@ -366,7 +366,7 @@ export const QUESTIONS_CATALOG = [
     type: 'multiselect',
     options: [
       { value: 'presse', label: { fr: 'Journaux ou magazines', en: 'Newspapers or magazines' } },
-      { value: 'telephonie', label: { fr: 'Téléphone mobile ou box internet', en: 'Mobile phone or home internet' } },
+      { value: 'telephonie', label: { fr: 'Téléphone (fixe ou mobile) ou box internet', en: 'Phone (landline or mobile) or home internet' } },
       { value: 'sport_loisirs', label: { fr: 'Salle de sport, club ou association', en: 'Gym, club or association' } },
       { value: 'streaming', label: { fr: 'Streaming, musique ou vidéo (Netflix, Spotify, Canal+…)', en: 'Streaming, music or video (Netflix, Spotify, Canal+…)' } },
       { value: 'services_en_ligne', label: { fr: 'Logiciels ou services en ligne payants (cloud, antivirus, applications)', en: 'Paid software or online services (cloud storage, antivirus, apps)' } },
@@ -379,13 +379,13 @@ export const QUESTIONS_CATALOG = [
     fallback_text: {
       question: { fr: 'Parmi ces abonnements et comptes, lesquels étaient au nom de {prenom} ?', en: 'Which of these subscriptions and accounts were in {prenom}\'s name?' },
       aide: {
-        fr: 'Cochez ce que vous connaissez : chaque choix ajoute la démarche correspondante. Pour le reste, une démarche vous aidera à repérer les prélèvements encore actifs.',
-        en: 'Check what you know about: each choice adds the matching step. For anything else, a step will help you spot the direct debits still running.',
+        fr: 'Cochez ce que vous connaissez : chaque choix ajoute la démarche correspondante. Vous pouvez continuer sans rien cocher. Pour les abonnements payants que vous ne connaissez pas, une démarche vous aidera à repérer les prélèvements encore actifs.',
+        en: 'Check what you know about: each choice adds the matching step. You can continue without checking anything. For paid subscriptions you don\'t know about, a step will help you spot the direct debits still running.',
       },
     },
     writer_hints: {
-      fr: 'Ton pratique et rassurant : inutile de tout savoir maintenant.',
-      en: 'Practical, reassuring tone: there is no need to know everything right now.',
+      fr: 'Ton pratique et rassurant : inutile de tout savoir maintenant. Préciser qu\'on peut continuer sans rien cocher.',
+      en: 'Practical, reassuring tone: there is no need to know everything right now. Mention that one can continue without checking anything.',
     },
     categorie: { fr: 'Abonnements', en: 'Subscriptions' },
     order: 17,

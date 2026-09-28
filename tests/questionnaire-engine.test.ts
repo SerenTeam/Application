@@ -210,6 +210,7 @@ describe('plafond UX (spec personnalisation v2 §5.1)', () => {
       const { sequence } = runProfile({ relation }, prefilled)
       expect(sequence.length, relation).toBeLessThanOrEqual(15)
       expect(sequence).not.toContain('deceased_firstname')
+      expect(sequence).not.toContain('deceased_lastname')
       expect(sequence).not.toContain('deceased_dod')
     }
   })
