@@ -157,8 +157,10 @@ export const QUESTIONS_CATALOG = [
     order: 6,
   },
   {
+    // Personnalisation v2 : choix multiples (une personne en EHPAD peut avoir conservé son logement).
+    // Exclue du contexte du rédacteur Mistral (WRITER_EXCLUDED_IDS, server/routes/questionnaire.js).
     id: 'logement',
-    type: 'select',
+    type: 'multiselect',
     options: [
       { value: 'locataire', label: { fr: 'Locataire de son logement', en: 'Renting their home' } },
       { value: 'proprietaire', label: { fr: 'Propriétaire de son logement', en: 'Owned their home' } },
@@ -168,11 +170,15 @@ export const QUESTIONS_CATALOG = [
     applicable_when: {},
     obligatoire: true,
     fallback_text: {
-      question: { fr: 'Concernant son logement, {prenom} était plutôt…', en: 'Regarding their housing, {prenom} was…' },
+      question: { fr: 'Concernant son logement, quelle était la situation de {prenom} ?', en: 'Regarding their housing, what was {prenom}\'s situation?' },
       aide: {
-        fr: 'Locataire : le bail peut être résilié avec un préavis réduit à 1 mois. Propriétaire : le notaire établira une attestation immobilière. En EHPAD : la chambre est à libérer rapidement.',
-        en: 'Renting: the lease can be terminated with a reduced 1-month notice period. Owner: the notaire will draw up a property certificate. In a care home: the room must be vacated quickly.',
+        fr: 'Plusieurs réponses possibles, par exemple « En EHPAD… » et « Propriétaire » si le logement a été conservé. Locataire : le bail peut être résilié avec un préavis réduit à 1 mois. Propriétaire : le notaire établira une attestation immobilière. En EHPAD : mieux vaut libérer la chambre rapidement.',
+        en: 'Several answers are possible, for example “In a care home…” and “Owned their home” if the home was kept. Renting: the lease can be terminated with a reduced 1-month notice period. Owner: the notaire will draw up a property certificate. In a care home: it is best to vacate the room quickly.',
       },
+    },
+    writer_hints: {
+      fr: 'Préciser que plusieurs réponses sont possibles (par exemple EHPAD et propriétaire).',
+      en: 'Mention that several answers are possible (for example care home and owner).',
     },
     categorie: { fr: 'Sa situation', en: 'Their situation' },
     order: 7,
@@ -314,10 +320,10 @@ export const QUESTIONS_CATALOG = [
     type: 'multiselect',
     options: [
       { value: 'apa', label: { fr: 'APA (allocation personnalisée d\'autonomie)', en: 'APA (personalised autonomy allowance)' } },
-      { value: 'ash', label: { fr: 'Aide sociale à l\'hébergement (ASH), en EHPAD', en: 'Social accommodation assistance (ASH), in a care home' } },
+      { value: 'ash', label: { fr: 'Aide sociale à l\'hébergement (ASH) en EHPAD', en: 'Social accommodation assistance (ASH) in a care home' } },
       { value: 'aspa', label: { fr: 'Minimum vieillesse (ASPA)', en: 'Minimum old-age pension (ASPA)' } },
       { value: 'handicap', label: { fr: 'AAH ou PCH (aides liées au handicap)', en: 'AAH or PCH (disability benefits)' } },
-      { value: 'aides_logement', label: { fr: 'Aide au logement (APL, ALS)', en: 'Housing benefit (APL, ALS)' } },
+      { value: 'aides_logement', label: { fr: 'Aide au logement (APL, ALS, ALF)', en: 'Housing benefit (APL, ALS, ALF)' } },
     ],
     applicable_when: {},
     obligatoire: true,
@@ -329,8 +335,8 @@ export const QUESTIONS_CATALOG = [
       },
     },
     writer_hints: {
-      fr: 'Sujet sensible (autonomie, handicap) : ton factuel et doux, ne jamais supposer de réponse.',
-      en: 'Sensitive topic (loss of autonomy, disability): factual and gentle tone, never assume an answer.',
+      fr: 'Sujet sensible (autonomie, handicap) : ton factuel et doux, ne jamais supposer de réponse. Préciser qu\'on peut continuer sans rien cocher ; ne rien affirmer sur le remboursement ou la récupération des aides.',
+      en: 'Sensitive topic (loss of autonomy, disability): factual and gentle tone, never assume an answer. Mention that one can continue without checking anything; make no claim about repayment or recovery of benefits.',
     },
     categorie: { fr: 'Aides', en: 'Benefits' },
     order: 15,

@@ -11,7 +11,7 @@ const spec = (id: string) => QUESTIONS_CATALOG.find((q: { id: string }) => q.id 
 function runProfile(fixed: Answers): { sequence: string[]; answers: Answers } {
   const canned: Answers = {
     relation: 'parent', deceased_firstname: 'Pierre', deceased_lastname: 'Dupont',
-    deceased_dod: '2026-04-10', deceased_department: '75', statut_professionnel: 'retraite', logement: 'proprietaire',
+    deceased_dod: '2026-04-10', deceased_department: '75', statut_professionnel: 'retraite', logement: ['proprietaire'],
     enfants: 'aucun', has_notary: false, has_life_insurance: 'ne_sait_pas',
     has_joint_account: true, has_vehicle: false, has_credits: false,
     employait_aide_domicile: false, aides_percues: [], contrat_obseques: 'non', organismes_contactes: [],
@@ -70,6 +70,15 @@ describe('validateAnswer', () => {
   it('multiselect : rejette les doublons', () => {
     expect(validateAnswer(spec('organismes_contactes'), ['banque', 'banque']).ok).toBe(false)
   })
+  it('aides_percues (personnalisation v2) : sélection valide ou vide acceptée, aide inconnue rejetée', () => {
+    expect(validateAnswer(spec('aides_percues'), ['apa', 'handicap']).ok).toBe(true)
+    expect(validateAnswer(spec('aides_percues'), []).ok).toBe(true)
+    expect(validateAnswer(spec('aides_percues'), ['apl']).ok).toBe(false)
+  })
+  it('logement (personnalisation v2) : choix multiples — EHPAD + propriétaire accepté, valeur scalaire rejetée', () => {
+    expect(validateAnswer(spec('logement'), ['ehpad', 'proprietaire']).ok).toBe(true)
+    expect(validateAnswer(spec('logement'), 'ehpad').ok).toBe(false)
+  })
   it('text : non vide, ≤ 200 caractères', () => {
     expect(validateAnswer(spec('deceased_firstname'), 'Pierre').ok).toBe(true)
     expect(validateAnswer(spec('deceased_firstname'), '   ').ok).toBe(false)
@@ -111,7 +120,7 @@ describe('setAnswer — conservation des réponses (catalogue 100 % universel) e
     answers = setAnswer(answers, spec('relation'), 'conjoint_marie')
     // avance jusqu'à has_joint_account
     answers = { ...answers, deceased_firstname: 'P', deceased_lastname: 'D', deceased_dod: '2026-04-10',
-      deceased_department: '75', statut_professionnel: 'retraite', logement: 'locataire', enfants: 'aucun',
+      deceased_department: '75', statut_professionnel: 'retraite', logement: ['locataire'], enfants: 'aucun',
       has_notary: false, has_life_insurance: 'non' }
     answers = setAnswer(answers, spec('has_joint_account'), true)
     expect(answers.has_joint_account).toBe(true)

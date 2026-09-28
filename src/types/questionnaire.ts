@@ -33,7 +33,9 @@ export interface QuestionnaireAnswersV2 {
   // sert au « né(e) le … » des courriers. Absente si la famille ne l'a pas renseignée.
   deceased_dob?: string // YYYY-MM-DD
   statut_professionnel: StatutProfessionnel
-  logement: Logement
+  // Personnalisation v2 : choix multiples (ex. EHPAD + logement conservé). Les dossiers antérieurs
+  // stockent une valeur scalaire : les matchers (isApplicable, matchesWhen) acceptent les deux formes.
+  logement: Logement[]
   enfants: Enfants
   has_notary: boolean
   has_life_insurance: TriState

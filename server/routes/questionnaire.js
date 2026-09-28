@@ -25,7 +25,8 @@ const CLOSED_TYPES = ['boolean', 'tristate', 'select', 'multiselect']
 // texte/date (nom de famille, date de décès). docs/design-chantier-2a-envoi-papier.md §3.2.
 // aides_percues (personnalisation v2) : APA, AAH/PCH, ASH révèlent perte d'autonomie ou handicap —
 // données de santé, jamais transmises au rédacteur, même comme « dernière réponse ».
-const WRITER_EXCLUDED_IDS = ['deceased_department', 'aides_percues']
+// logement (personnalisation v2) : la valeur EHPAD révèle une perte d'autonomie — exclue par prudence
+const WRITER_EXCLUDED_IDS = ['deceased_department', 'aides_percues', 'logement']
 
 /**
  * Langue à utiliser pour un message d'erreur émis AVANT le chargement d'une session (ou quand

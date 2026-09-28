@@ -91,9 +91,21 @@ describe('questions-catalog', () => {
     expect(q.type).toBe('multiselect')
     expect(q.applicable_when).toEqual({})
     expect(q.options.map((o: { value: string }) => o.value)).toEqual(['apa', 'ash', 'aspa', 'handicap', 'aides_logement'])
+    // Chaque texte est un objet { fr, en } réellement renseigné dans les deux langues.
+    const texts = [
+      q.fallback_text.question, q.fallback_text.aide, q.writer_hints, q.categorie,
+      ...q.options.map((o: { label: unknown }) => o.label),
+    ]
+    for (const field of texts) {
+      expect(field).toEqual({ fr: expect.any(String), en: expect.any(String) })
+      for (const lang of ['fr', 'en'] as const) {
+        expect(textIn(field, lang).trim().length, `${JSON.stringify(field)} (${lang})`).toBeGreaterThan(0)
+      }
+    }
   })
-  it('logement : option ehpad proposée avant « hébergement chez un proche ou autre »', () => {
+  it('logement : choix multiples, option ehpad proposée avant « hébergement chez un proche ou autre »', () => {
     const q = QUESTIONS_CATALOG.find((x: { id: string }) => x.id === 'logement')
+    expect(q.type).toBe('multiselect')
     expect(q.options.map((o: { value: string }) => o.value)).toEqual(['locataire', 'proprietaire', 'ehpad', 'heberge_ou_autre'])
   })
 })

@@ -63,7 +63,7 @@ function makeApp() {
 
 const CANNED: Record<string, unknown> = {
   relation: 'conjoint_marie', deceased_firstname: 'Pierre', deceased_lastname: 'Dupont',
-  deceased_dod: '2026-04-10', deceased_department: '75', statut_professionnel: 'salarie', logement: 'locataire',
+  deceased_dod: '2026-04-10', deceased_department: '75', statut_professionnel: 'salarie', logement: ['locataire'],
   enfants: 'aucun', has_notary: false, has_life_insurance: 'oui',
   has_joint_account: true, has_vehicle: false, has_credits: false,
   employait_aide_domicile: false, aides_percues: ['apa', 'ash'], contrat_obseques: 'non', organismes_contactes: ['banque'],
@@ -336,13 +336,16 @@ describe('PII : rédacteur Mistral (chantier 2a)', () => {
       expect(dump).not.toContain('département') // ni le libellé de la question elle-même
     }
   })
-  it('les aides perçues ne sont jamais transmises au rédacteur (données de santé)', async () => {
+  it('les aides perçues et le logement ne sont jamais transmis au rédacteur (données de santé)', async () => {
     const { app, contexts } = makeApp()
     await runToRecap(app)
     expect(contexts.length).toBeGreaterThan(0)
     for (const ctx of contexts) {
       const dump = JSON.stringify(ctx)
       expect(dump).not.toMatch(/\bAPA\b|\bASH\b|\bASPA\b|\bAAH\b|\bPCH\b|autonomie|handicap|Parmi ces aides/)
+      // logement exclu par prudence : la valeur EHPAD révèle une perte d'autonomie
+      expect(dump).not.toContain('EHPAD')
+      expect(dump).not.toContain('Locataire de son logement')
     }
   })
 })
