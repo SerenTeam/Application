@@ -19,7 +19,8 @@ const URGENCY_ORDER: Record<StepTemplate['urgency'], number> = {
 
 export type RoadmapStep = StepTemplate & { initial_status: 'todo' | 'done' }
 
-// Matcher générique : tableau = appartenance, booléen = égalité stricte.
+// Matcher générique : tableau = appartenance (ou, si la réponse est elle-même un tableau — question
+// à cocher —, au moins une valeur commune), booléen = égalité stricte.
 // Même sémantique que matchesWhen() dans server/lib/questionnaire-engine.js (dupliqué :
 // le serveur JS ne peut pas importer ce module TS — garder les deux alignés).
 // Exportée pour le test de parité tests/invariants.test.ts.
@@ -27,7 +28,9 @@ export function isApplicable(step: StepTemplate, answers: QuestionnaireAnswersV2
   for (const [key, cond] of Object.entries(step.applicable_when)) {
     const val = (answers as unknown as Record<string, unknown>)[key]
     if (Array.isArray(cond)) {
-      if (!cond.includes(val as never)) return false
+      const accepted = cond as readonly unknown[]
+      const hit = Array.isArray(val) ? val.some((v) => accepted.includes(v)) : accepted.includes(val)
+      if (!hit) return false
     } else if (val !== cond) {
       return false
     }

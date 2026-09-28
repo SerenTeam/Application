@@ -141,6 +141,11 @@ describe('parité des matchers isApplicable (TS) ↔ matchesWhen (JS)', () => {
     { when: { statut_professionnel: ['salarie'], has_credits: true }, answers: { statut_professionnel: 'salarie', has_credits: false } },
     { when: { relation: [] }, answers: {} },                                  // tableau vide : jamais applicable
     { when: { relation: ['conjoint_marie'] }, answers: { relation: null } },  // null ≠ undefined : doit rester non-match des deux côtés
+    // Réponse à cocher (multiselect) : une condition en tableau matche s'il y a au moins une valeur commune.
+    { when: { abonnements: ['presse', 'telephonie'] }, answers: { abonnements: ['email', 'presse'] } },
+    { when: { abonnements: ['presse'] }, answers: { abonnements: ['email'] } },
+    { when: { abonnements: ['presse'] }, answers: { abonnements: [] } },
+    { when: { abonnements: ['presse'], has_vehicle: true }, answers: { abonnements: ['presse'], has_vehicle: false } },
   ]
   it('les deux matchers donnent le même résultat sur tous les cas', () => {
     for (const { when, answers } of CASES) {
@@ -152,4 +157,26 @@ describe('parité des matchers isApplicable (TS) ↔ matchesWhen (JS)', () => {
       ).toBe(matchesWhen(when, answers))
     }
   })
+})
+
+describe('matchers : condition en tableau sur une réponse à cocher (multiselect)', () => {
+  const when = { abonnements: ['presse', 'telephonie'] }
+  const CASES: Array<[unknown, boolean]> = [
+    [['presse'], true],
+    [['email', 'telephonie'], true],
+    [['presse', 'telephonie'], true],
+    [['email'], false],
+    [[], false],
+    [undefined, false],
+    ['presse', true], // réponse scalaire : appartenance, comportement historique inchangé
+  ]
+  for (const [value, expected] of CASES) {
+    it(`réponse ${JSON.stringify(value)} → ${expected} (TS et JS)`, () => {
+      const answers: Record<string, unknown> = value === undefined ? {} : { abonnements: value }
+      expect(matchesWhen(when, answers)).toBe(expected)
+      expect(
+        isApplicable({ applicable_when: when } as unknown as StepTemplate, answers as unknown as QuestionnaireAnswersV2)
+      ).toBe(expected)
+    })
+  }
 })
