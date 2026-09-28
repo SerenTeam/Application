@@ -1254,7 +1254,7 @@ end $$;
 rollback;
 
 -- ════════════════════════════════════════════════════════════════════════════════════════
--- S13p — droits des RPC PF, admin (L4c) et F1 (L1b) : les 7 fonctions sont TOUJOURS contrôlées.
+-- S13p — droits des RPC PF, admin (L4c) et F1 (L1b) : les 8 fonctions sont TOUJOURS contrôlées.
 -- Revue L4c, défaut m4 : le « continue » silencieux est remplacé par une assertion de présence, si
 -- bien qu'une migration manquante devient un échec rouge et non une couverture évaporée.
 -- ════════════════════════════════════════════════════════════════════════════════════════
@@ -1264,7 +1264,8 @@ begin
   foreach v_fn in array array['public.partner_create_dossier(text, text, text, text, text, text, text, date, text, boolean)',
                               'public.partner_rotate_invitation(text, uuid, text)', 'public.partner_cancel_dossier(uuid)',
                               'public.partner_list_dossiers()', 'public.partner_month_counters()',
-                              'public.admin_partner_overview()', 'public.get_transmission_by_code(text)'] loop
+                              'public.admin_partner_overview()', 'public.get_transmission_by_code(text)',
+                              'public.my_dossier_identity()'] loop
     perform scenario_v2.ok('S13p fonction présente : ' || v_fn, to_regprocedure(v_fn) is not null);
     perform scenario_v2.ok('S13p aucun EXECUTE PUBLIC : ' || v_fn,
       (select p.proacl is not null and not exists (select 1 from aclexplode(p.proacl) a where a.grantee = 0 and a.privilege_type = 'EXECUTE')
@@ -1276,6 +1277,65 @@ begin
       not has_function_privilege('anon', v_fn, 'execute') and has_function_privilege('authenticated', v_fn, 'execute'));
   end loop;
 end $$;
+
+-- ════════════════════════════════════════════════════════════════════════════════════════
+-- S15 — my_dossier_identity (personnalisation v2) : la famille relit 5 champs de SON dossier ;
+-- sans dossier actif ou clos, en compte PF ou sans identité : null.
+-- ════════════════════════════════════════════════════════════════════════════════════════
+begin;
+insert into public.dossiers (partner_id, source, status, user_id, family_first_name, family_last_name, family_email,
+                             deceased_first_name, deceased_last_name, deceased_death_date,
+                             price_ttc_cents, commission_ttc_cents, activated_at) values
+  ('00000000-0000-4000-8000-00000000a001', 'partner', 'active', '00000000-0000-4000-8000-00000000b006', 'Camille', 'Roussel',
+   'fam1@scenario.seren-test.fr', 'Bernard', 'Roussel', current_date - 5, 29000, 7000, now()),
+  ('00000000-0000-4000-8000-00000000a002', 'partner', 'active', '00000000-0000-4000-8000-00000000b007', 'Paul', 'Roy',
+   'fam2@scenario.seren-test.fr', 'Luc', 'Roy', current_date - 30, 29000, 7000, now());
+
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b006', 'fam1@scenario.seren-test.fr');
+set local role authenticated;
+do $$
+declare r jsonb := public.my_dossier_identity();
+begin
+  perform scenario_v2.ok('S15a famille : son dossier et seulement le sien',
+    r->>'family_first_name' = 'Camille' and r->>'family_last_name' = 'Roussel'
+    and r->>'deceased_first_name' = 'Bernard' and r->>'deceased_last_name' = 'Roussel'
+    and r->>'deceased_death_date' = (current_date - 5)::text, r::text);
+  perform scenario_v2.ok('S15b 5 clés exactes, ni e-mail, ni montant, ni jeton, ni autre famille',
+    (select array_agg(k order by k) from jsonb_object_keys(r) as k)
+      = array['deceased_death_date', 'deceased_first_name', 'deceased_last_name', 'family_first_name', 'family_last_name']
+    and r::text !~ '(@scenario|invite_token|price_ttc|commission_ttc|Roy)', r::text);
+end $$;
+
+reset role;
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b008', 'nobody@scenario.seren-test.fr');
+set local role authenticated;
+do $$ begin
+  perform scenario_v2.ok('S15c compte sans dossier → null', public.my_dossier_identity() is null);
+end $$;
+
+reset role;
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b001', 'pfx.manager@scenario.seren-test.fr');
+set local role authenticated;
+do $$ begin
+  perform scenario_v2.ok('S15d compte PF → null (rôle exclusif, comme my_account)', public.my_dossier_identity() is null);
+end $$;
+
+reset role;
+select scenario_v2.claims(null, null);
+set local role authenticated;
+do $$ begin
+  perform scenario_v2.ok('S15e sans identité → null', public.my_dossier_identity() is null);
+end $$;
+
+reset role;
+update public.dossiers set status = 'closed', closed_at = now() where family_email = 'fam1@scenario.seren-test.fr';
+select scenario_v2.claims('00000000-0000-4000-8000-00000000b006', 'fam1@scenario.seren-test.fr');
+set local role authenticated;
+do $$ begin
+  perform scenario_v2.ok('S15f dossier clos : la famille relit toujours son identité',
+    public.my_dossier_identity()->>'deceased_first_name' = 'Bernard');
+end $$;
+rollback;
 
 -- ── Nettoyage des fixtures (committé) ──────────────────────────────────────────────────────
 delete from public.dossiers

@@ -11,6 +11,7 @@ const CORE = '20260915200000_v2_core.sql'
 const PARTNER = '20260915201000_v2_partner_rpc.sql'
 const ADMIN = '20260915202000_v2_admin.sql'
 const F1 = '20260915210000_transmissions_f1.sql'
+const IDENTITY = '20260928121000_v2_dossier_identity.sql' // personnalisation v2 (docs/design-personnalisation-v2.md §4.2)
 
 interface SqlFile { name: string; raw: string; code: string }
 interface SqlFunction { file: string; name: string; signature: string; params: string; header: string; body: string }
@@ -26,7 +27,7 @@ function load(name: string): SqlFile | null {
   return { name, raw, code: stripComments(raw) }
 }
 
-const FILES: SqlFile[] = [CORE, PARTNER, ADMIN, F1].map(load).filter((f): f is SqlFile => f !== null)
+const FILES: SqlFile[] = [CORE, PARTNER, ADMIN, F1, IDENTITY].map(load).filter((f): f is SqlFile => f !== null)
 const file = (name: string) => FILES.find((f) => f.name === name)
 
 function parseFunctions(f: SqlFile): SqlFunction[] {
@@ -64,6 +65,7 @@ const EXPECTED_GRANTS: Record<string, string[]> = {
   'public.partner_month_counters': ['authenticated'],
   'public.admin_partner_overview': ['authenticated'],
   'public.get_transmission_by_code': ['authenticated'],
+  'public.my_dossier_identity': ['authenticated'],
 }
 
 const EXPECTED_BY_FILE: Record<string, string[]> = {
@@ -73,6 +75,7 @@ const EXPECTED_BY_FILE: Record<string, string[]> = {
     'public.partner_list_dossiers', 'public.partner_month_counters'],
   [ADMIN]: ['public.admin_partner_overview'],
   [F1]: ['public.get_transmission_by_code'],
+  [IDENTITY]: ['public.my_dossier_identity'],
 }
 
 // §3.5 — seuls messages d'exception autorisés.
@@ -103,6 +106,10 @@ describe('migrations v2 — présence', () => {
       const names = FUNCTIONS.filter((fn) => fn.file === f.name).map((fn) => fn.name).sort()
       expect(names, f.name).toEqual([...EXPECTED_BY_FILE[f.name]].sort())
     }
+  })
+
+  it('le fichier de la personnalisation v2 (my_dossier_identity) existe', () => {
+    expect(file(IDENTITY), IDENTITY).toBeDefined()
   })
 })
 
@@ -284,5 +291,18 @@ describe('migrations v2 — fonctions', () => {
 
   it('aucune clé ou rôle secret mentionné', () => {
     for (const f of FILES) expect(f.raw, f.name).not.toMatch(/service_role|sb_secret_/i)
+  })
+
+  it('my_dossier_identity : 5 champs d’identité exactement, jamais e-mail, téléphone, montant ni jeton', () => {
+    const fn = FUNCTIONS.find((f) => f.name === 'public.my_dossier_identity')
+    expect(fn, 'my_dossier_identity absente').toBeDefined()
+    const body = squash(fn!.body)
+    const built = body.match(/jsonb_build_object\(([\s\S]*?)\);/)
+    expect(built, 'jsonb_build_object introuvable').not.toBeNull()
+    const keys = [...built![1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]).sort()
+    expect(keys).toEqual(['deceased_death_date', 'deceased_first_name', 'deceased_last_name', 'family_first_name', 'family_last_name'])
+    expect(body).not.toMatch(/family_email|family_phone|price_ttc|commission_ttc|invite_token|included_sends/)
+    expect(fn!.params.trim(), 'aucun paramètre : identité = auth.uid()').toBe('')
+    expect(body).toContain('auth.uid()')
   })
 })
