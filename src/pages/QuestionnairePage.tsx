@@ -12,9 +12,10 @@ import { WelcomeScreen } from '@/components/questionnaire/WelcomeScreen'
 import { QuestionCard, type QuestionData } from '@/components/questionnaire/QuestionCard'
 import { RecapScreen, type RecapEntry } from '@/components/questionnaire/RecapScreen'
 import { CompletionScreen } from '@/components/questionnaire/CompletionScreen'
+import { CoordinatesScreen } from '@/components/questionnaire/CoordinatesScreen'
 import { Button } from '@/components/ui/button'
 
-type Phase = 'welcome' | 'loading' | 'question' | 'recap' | 'completing' | 'done'
+type Phase = 'welcome' | 'loading' | 'question' | 'recap' | 'completing' | 'coordinates' | 'done'
 
 type ServerData = (QuestionData & { action: 'question' }) | { action: 'recap'; recap: RecapEntry[] }
 
@@ -229,7 +230,9 @@ export function QuestionnairePage() {
       await saveRoadmapToDb(user.id, qId, steps, lang)
 
       sessionStorage.removeItem('seren_questionnaire_session')
-      setPhase('done')
+      // Personnalisation v2 : la roadmap est enregistrée — on demande maintenant, une seule fois,
+      // les coordonnées qui pré-rempliront les courriers (spec §4.4).
+      setPhase('coordinates')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t.questionnaire.unexpectedError)
       setPhase('completing') // reste sur l'écran pour afficher le bouton Réessayer
@@ -323,6 +326,15 @@ export function QuestionnairePage() {
               {t.questionnaire.retry}
             </Button>
           </div>
+        )}
+
+        {!sessionExpired && phase === 'coordinates' && user && questionnaireId && finalAnswers && (
+          <CoordinatesScreen
+            userId={user.id}
+            questionnaireId={questionnaireId}
+            answers={finalAnswers}
+            onDone={() => setPhase('done')}
+          />
         )}
 
         {!sessionExpired && phase === 'done' && (
