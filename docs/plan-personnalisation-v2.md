@@ -3031,6 +3031,34 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 >   - Déplacer les gloses EN des liens hors de `src/lib` : elles sont liées 1:1 aux valeurs françaises, comme dans le catalogue serveur.
 > - **Hors périmètre.** Des 404 aléatoires touchent les tests de routes supertest (préexistants, environ 1 exécution complète sur 15). Confiés à une tâche séparée.
 
+> **Note (2026-09-28) — l'élision manquante des courriers est corrigée** sur la branche `fix/v2-courriers-elision` (partie de `354a9bd`, commits `fix(courriers): …`). C'était un défaut préexistant, relevé par la revue de `fix/v2-courriers-libelles` : « fille de Anne Martin », « Dossier allocataire de Anne Martin ».
+> - **Revues** : une revue indépendante (« prête avec correctifs »), puis des correctifs et un rebase sur `354a9bd`, puis une re-revue (« prête avec correctifs légers », appliqués et éprouvés par mutation) ont conclu : prête à merger. Suite à **1116** tests.
+> - **Fusions vérifiées sans conflit** :
+>   - avec la pointe `741d7e0` de cette branche : 1116 tests (un échec supertest intermittent préexistant, non reproduit en 7 relances) ;
+>   - avec `fix/v2-courriers-libelles` : 1129 tests.
+> - **Recensement** : « de {{deceased_firstname}} » dans les 15 corps et dans 10 objets, à l'identique côté client et côté serveur. Avant le correctif, 50 tests étaient rouges (Anne, Hélène et Yves, dans les deux miroirs du rendu).
+> - **Décisions d'Arnaud** :
+>   - élision **au rendu** : les 15 modèles restent mot pour mot identiques ;
+>   - « d' » devant une voyelle (accents, æ, œ compris), devant un y suivi d'une consonne (Yves) et devant un h muet reconnu par une liste de prénoms ; « de » partout ailleurs (Hugues, Hassan, Yann) ;
+>   - les textes d'interface FR qui avaient le même défaut sont inclus.
+> - **Code** :
+>   - règle dans `src/lib/elision.ts`, miroir `server/lib/elision.js` ;
+>   - `fillLetterPlaceholder` dans les deux miroirs du rendu (`useLetterGenerator`, `letter-render`) ;
+>   - aperçu du profil courrier en FR et en EN (« fille d'Anne », avec l'apostrophe droite du courrier) ;
+>   - « Date de naissance d’Anne » (libellé et résumé) et « décès d’Anne » (/bienvenue), avec l'apostrophe typographique des dictionnaires ; les textes EN gardent `{name}`, et leurs rendus sont testés ;
+>   - durcissement voisin : un « $& » saisi n'est plus interprété (variables, destinataire, objet).
+> - **Liste des h muets** (26 prénoms) : Hadrien, Hector, Héléna, Hélène, Hélie, Héloïse, Henri, Henriette, Henry, Hermance, Hermine, Hermione, Hervé, Hilaire, Hilarion, Hippolyte, Honorat, Honoré, Honorine, Horace, Hortense, Hubert, Hugo, Huguette, Humbert, Hyacinthe. Sept d'entre eux (Henry, Hermione, Hélie, Hermance, Honorat, Hilarion, Humbert) ont été ajoutés sur suggestion des revues ; on peut les retirer sans autre effet.
+> - **À verser à la relecture juridique** : le texte rendu ne diffère du modèle que par l'élision. La liste des h muets est un choix de langue ; un prénom en h absent de la liste garde « de ».
+> - **Effets de bord** :
+>   - les courriers déjà enregistrés ou envoyés gardent leur texte ;
+>   - la clé de déduplication de l'envoi e-mail porte sur le corps résolu : un renvoi e-mail à cheval sur le déploiement, pour un prénom élidé, ne serait pas dédupliqué (canal fermé en prod). L'envoi papier n'est pas concerné ;
+>   - tant que `fix/v2-courriers-libelles` n'est pas mergée, les libellés « … de {{organisme_name}} » élident aussi (« d'AXA ») ;
+>   - une valeur non textuelle envoyée au serveur donne toujours une erreur 500, comme avant.
+> - **Non retenu** : une substitution en une seule passe. L'ordre des substitutions diffère entre client et serveur, mais aucune divergence n'est atteignable dans les 15 modèles (2 940 rendus comparés par la re-revue). La limite est documentée dans le code, et la parité du rendu complet est testée.
+> - **Hors périmètre, confiés à des tâches séparées** :
+>   - le même défaut dans 8 questions du questionnaire (« de {prenom} », « Est-ce que {prenom} ») et dans l'e-mail d'invitation (« les prestations de ${partner} ») ;
+>   - **sécurité** : `LetterPreview` injecte le courrier en HTML sans échappement (`dangerouslySetInnerHTML`), alors que le prénom du défunt peut venir du dossier saisi par la PF.
+
 ---
 
 ### Task 8 : Formulaire unique `LetterProfileForm`, contexte profil courrier, panneau d'envoi
