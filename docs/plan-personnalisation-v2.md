@@ -1911,6 +1911,20 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 > - **Sortis en tâches séparées (défauts préexistants)** : la grammaire des 10 anciens courriers, et le courrier bailleur proposé aux propriétaires par l'étape syndic.
 > - **Backlog produit (M5)** : un seul envoi papier par étape, alors que presse, sport et télécom peuvent concerner plusieurs prestataires.
 
+> **Note (2026-09-28) — les deux défauts préexistants sortis de la Task 5 sont corrigés** sur la branche `fix/v2-courriers-libelles` (partie de `611ad24`, commits `fix(courriers): …`), revue indépendante puis correctifs. Suite à **907** tests.
+> - **Libellés de destinataire** : les 15 courriers ont la forme « À l'attention … — {{organisme_name}} », à l'identique client et serveur. Plus aucun « … de AXA », « … de Le Crédit Lyonnais » ni « À Les … ». La mutuelle passe à « service des adhésions » (formulation du courrier sport).
+>   - Pour les 4 modèles réseau (CAF, CPAM, CARSAT, impôts), le libellé est « À l'attention du service compétent — … » (**décision d'Arnaud**). Tout préfixe nommant l'organisme doublait les 321 noms de l'annuaire ou les contredisait (CGSS et CSSM outre-mer, Cnav en Île-de-France, SIP). C'est testé nom par nom.
+>   - `organisme_name` reste une saisie libre. L'annuaire ne pré-remplit que l'enveloppe, et seulement pour la CARSAT parmi les réseaux.
+> - **Étape syndic** : elle ne propose plus `bailleur-notification`, que seule `logement-resilier-bail` (locataires) propose désormais. Un invariant l'impose : un courrier qui affirme « était locataire » n'est proposé que par des étapes réservées aux locataires.
+>   - **Roadmaps existantes (décision d'Arnaud)** : le tableau de bord masque un courrier que le catalogue ne propose plus sur l'étape, sans jamais en ajouter et sans écriture en base (`src/lib/step-letter.ts`).
+>   - Cela compte en prod : sur `main`, l'étape syndic s'affiche à tous, avec ce courrier.
+> - **À verser à la relecture juridique** :
+>   - la ligne destinataire de 10 courriers a changé ;
+>   - le courrier bailleur affirme « Conformément à l'article 14 de la loi du 6 juillet 1989, le décès du locataire entraîne la résiliation du bail avec un préavis d'un mois ». Or l'article 14 (Légifrance, LEGIARTI000006475111) prévoit le transfert du bail à certains proches, et à défaut une résiliation de plein droit par le décès, sans mentionner de préavis ;
+>   - l'étape `logement-resilier-bail` parle de « courrier recommandé » et de « préavis d'1 mois » ;
+>   - l'étape syndic garde, pour les propriétaires, la puce « conditions de résiliation ou transfert du bail ».
+> - **Hors périmètre, relevé par la revue** : 20 noms CARSAT sur 20 dépassent 45 caractères. Recopiés dans l'enveloppe, ils rendent l'adresse invalide, et le bouton d'envoi reste grisé sans message. Autre défaut : l'élision (« fille de Anne Martin ») dans les corps des courriers.
+
 ---
 
 ### Task 6 : Pré-remplissage du questionnaire depuis le dossier PF (serveur) + dates lisibles au récapitulatif
