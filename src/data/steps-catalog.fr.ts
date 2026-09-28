@@ -1143,7 +1143,7 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
     ],
     responsable: 'vous',
     requires_notary: false,
-    applicable_when: { aides_percues: ['apa', 'ash', 'handicap'] },
+    applicable_when: { aides_percues: ['apa', 'ash', 'pch'] },
     source_url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F10009',
     letter_template_id: 'aides-departement',
     display_order: 53,

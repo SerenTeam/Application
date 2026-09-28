@@ -83,7 +83,7 @@ describe('atteignabilité', () => {
       logement: ['locataire'], enfants: 'mineurs', has_notary: false,
       has_life_insurance: 'oui', has_joint_account: true, has_vehicle: true,
       has_credits: true, employait_aide_domicile: true, contrat_obseques: 'ne_sait_pas',
-      aides_percues: ['apa', 'ash', 'aspa', 'handicap', 'aides_logement'],
+      aides_percues: ['apa', 'ash', 'aspa', 'pch', 'aides_logement'],
       abonnements: ['presse', 'telephonie', 'sport_loisirs', 'streaming', 'services_en_ligne', 'reseaux_sociaux', 'email', 'photos_documents'],
     }
     const reached = new Set([
@@ -140,11 +140,15 @@ describe('personnalisation v2 — EHPAD et aides perçues', () => {
       )
     }
   })
-  it('aides : APA, ASH ou PCH → département ; ASPA ou ASH → récupération ; aide au logement → CAF', () => {
+  it('aides : APA, ASH ou PCH → département ; ASPA ou ASH → récupération ; aide au logement → CAF ; AAH seule → aucune des deux', () => {
     expect(ids({ ...base, aides_percues: ['apa'] })).toContain('aides-departement')
-    expect(ids({ ...base, aides_percues: ['handicap'] })).toContain('aides-departement')
+    expect(ids({ ...base, aides_percues: ['pch'] })).toContain('aides-departement')
     expect(ids({ ...base, aides_percues: ['apa'] })).not.toContain('aides-recuperation-succession')
-    expect(ids({ ...base, aides_percues: ['handicap'] })).not.toContain('aides-recuperation-succession')
+    expect(ids({ ...base, aides_percues: ['pch'] })).not.toContain('aides-recuperation-succession')
+    // L'AAH est versée par la CAF ou la MSA, pas par le département : couverte par l'étape
+    // universelle administratif-caf.
+    expect(ids({ ...base, aides_percues: ['aah'] })).not.toContain('aides-departement')
+    expect(ids({ ...base, aides_percues: ['aah'] })).not.toContain('aides-recuperation-succession')
     expect(ids({ ...base, aides_percues: ['aspa'] })).toContain('aides-recuperation-succession')
     expect(ids({ ...base, aides_percues: ['aspa'] })).not.toContain('aides-departement')
     expect(ids({ ...base, aides_percues: ['ash'] })).toEqual(

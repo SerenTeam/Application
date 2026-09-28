@@ -71,7 +71,7 @@ describe('validateAnswer', () => {
     expect(validateAnswer(spec('organismes_contactes'), ['banque', 'banque']).ok).toBe(false)
   })
   it('aides_percues (personnalisation v2) : sélection valide ou vide acceptée, aide inconnue rejetée', () => {
-    expect(validateAnswer(spec('aides_percues'), ['apa', 'handicap']).ok).toBe(true)
+    expect(validateAnswer(spec('aides_percues'), ['apa', 'pch']).ok).toBe(true)
     expect(validateAnswer(spec('aides_percues'), []).ok).toBe(true)
     expect(validateAnswer(spec('aides_percues'), ['apl']).ok).toBe(false)
   })

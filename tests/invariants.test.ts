@@ -67,6 +67,7 @@ describe('invariant : pas de question morte, pas d’étape orpheline', () => {
       enfants: ['aucun', 'majeurs'], // 'mineurs' pilote l'ASF (famille-aides-enfants-orphelins) et le juge des tutelles ; 'majeurs' reste neutre : l'ASF exige un enfant à charge et la pension d'orphelin exige la perte des deux parents (trop conditionnel pour un profil tout-majeurs)
       has_life_insurance: ['non'],
       contrat_obseques: ['non'],
+      aides_percues: ['aah'], // l'AAH est versée par la CAF ou la MSA : couverte par l'étape universelle administratif-caf
     }
     for (const q of QUESTIONS_CATALOG) {
       const values = q.options?.map((o: { value: string }) => o.value)

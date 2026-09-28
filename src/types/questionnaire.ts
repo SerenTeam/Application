@@ -16,7 +16,7 @@ export type Logement = 'locataire' | 'proprietaire' | 'ehpad' | 'heberge_ou_autr
 export type Enfants = 'aucun' | 'majeurs' | 'mineurs'
 
 // Personnalisation v2 : aides que percevait le défunt (question à cocher — réponse vide = aucune).
-export type AidePercue = 'apa' | 'ash' | 'aspa' | 'handicap' | 'aides_logement'
+export type AidePercue = 'apa' | 'ash' | 'aspa' | 'aah' | 'pch' | 'aides_logement'
 
 // Personnalisation v2 : abonnements et comptes du défunt (question à cocher — réponse vide = aucun connu).
 export type Abonnement =

@@ -85,13 +85,13 @@ describe('questions-catalog', () => {
     }
     expect(offenders).toEqual([])
   })
-  it('aides_percues : multiselect universel, 5 aides, textes {fr,en}', () => {
+  it('aides_percues : multiselect universel, 6 aides, textes {fr,en}', () => {
     const q = QUESTIONS_CATALOG.find((x: { id: string }) => x.id === 'aides_percues')
     expect(q, 'question aides_percues absente').toBeDefined()
     expect(q.type).toBe('multiselect')
     expect(q.applicable_when).toEqual({})
     expect(q.min_selected, 'réponse vide acceptée : « Ne cochez rien si aucune ne correspond »').toBeUndefined()
-    expect(q.options.map((o: { value: string }) => o.value)).toEqual(['apa', 'ash', 'aspa', 'handicap', 'aides_logement'])
+    expect(q.options.map((o: { value: string }) => o.value)).toEqual(['apa', 'ash', 'aspa', 'aah', 'pch', 'aides_logement'])
     // Chaque texte est un objet { fr, en } réellement renseigné dans les deux langues.
     const texts = [
       q.fallback_text.question, q.fallback_text.aide, q.writer_hints, q.categorie,
