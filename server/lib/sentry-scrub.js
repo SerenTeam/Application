@@ -1,9 +1,13 @@
 // Scrub Sentry serveur (contrat §4.8, §6) : aucun jeton d'activation, hash, URL d'activation, corps
-// des routes d'activation/partenaire ni en-tête Authorization ne doit quitter le serveur. Module
-// dédié (note N1) : server.js démarre le serveur à l'import et ne peut pas être testé directement.
+// des routes d'activation/partenaire/questionnaire ni en-tête Authorization ne doit quitter le
+// serveur. Module dédié (note N1) : server.js démarre le serveur à l'import et ne peut pas être
+// testé directement.
 const TOKEN_FRAGMENT_RE = /#t=[A-Za-z0-9_-]+/g
 const SENSITIVE_KEYS = new Set(['token_hash', 'invite_token_hash', 'activation_url'])
-const SENSITIVE_ROUTES = ['/api/activation/', '/api/partner/dossiers']
+// Le SDK (@sentry/node 10) joint le corps BRUT de la requête entrante à l'événement, même avec
+// sendDefaultPii: false. Questionnaire : identité du défunt et données de santé (aides_percues :
+// APA, ASH, AAH/PCH ; logement : EHPAD) — tout le préfixe, pas seulement /answer.
+const SENSITIVE_ROUTES = ['/api/activation/', '/api/partner/dossiers', '/api/questionnaire/']
 const MAX_DEPTH = 12
 
 function scrubString(value) {
