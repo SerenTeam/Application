@@ -1,0 +1,35 @@
+import type { RelationV2 } from '@/types/questionnaire'
+
+// Lien écrit dans les courriers — toujours en français (les courriers vont à des organismes
+// français). `relation` (questionnaire) dit qui était le défunt POUR l'utilisateur ; le courrier
+// écrit ce qu'est l'utilisateur POUR le défunt : « parent » (mon père ou ma mère) → « fils / fille ».
+// Le genre n'est jamais deviné : la personne choisit (spec docs/design-personnalisation-v2.md §4.6).
+export interface RelationLabelOption {
+  value: string // mot français enregistré (sender_profiles.relationship) et écrit dans le courrier
+  label: { fr: string; en: string } // FR : le mot seul ; EN : le mot suivi d'une glose
+}
+
+function option(value: string, gloss: string): RelationLabelOption {
+  return { value, label: { fr: value, en: `${value} — ${gloss}` } }
+}
+
+const OPTIONS: Record<Exclude<RelationV2, 'autre'>, RelationLabelOption[]> = {
+  conjoint_marie: [option('époux', 'husband'), option('épouse', 'wife')],
+  pacse: [option('partenaire de PACS', 'PACS partner')],
+  concubin: [option('concubin', 'partner (man)'), option('concubine', 'partner (woman)')],
+  parent: [option('fils', 'son'), option('fille', 'daughter')],
+  enfant: [option('père', 'father'), option('mère', 'mother')],
+  frere_soeur: [option('frère', 'brother'), option('sœur', 'sister')],
+}
+
+/** Choix « Vous signez en tant que ». null = saisie libre (relation « autre » ou inconnue). */
+export function relationLabelOptions(relation: RelationV2 | undefined): RelationLabelOption[] | null {
+  if (!relation || relation === 'autre') return null
+  return OPTIONS[relation] ?? null
+}
+
+/** Valeur retenue sans intervention : seule une forme unique, donc sans ambiguïté de genre (PACS). */
+export function defaultRelationLabel(relation: RelationV2 | undefined): string {
+  const options = relationLabelOptions(relation)
+  return options && options.length === 1 ? options[0].value : ''
+}

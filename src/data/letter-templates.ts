@@ -35,7 +35,7 @@ const VAR_USER_LASTNAME: LetterVariable = { key: 'user_lastname', label: 'Votre 
 const VAR_USER_ADDRESS: LetterVariable = { key: 'user_address', label: 'Votre adresse', type: 'text', auto_filled: true, required: true }
 const VAR_USER_RELATION: LetterVariable = { key: 'user_relation', label: 'Votre lien de parenté', type: 'text', auto_filled: true, required: true }
 const VAR_TODAY_DATE: LetterVariable = { key: 'today_date', label: 'Date du jour', type: 'date', auto_filled: true, required: true }
-const VAR_CITY: LetterVariable = { key: 'city', label: 'Votre ville', type: 'text', auto_filled: false, required: true }
+const VAR_CITY: LetterVariable = { key: 'city', label: 'Votre ville', type: 'text', auto_filled: true, required: true }
 const VAR_ORGANISME_NAME: LetterVariable = { key: 'organisme_name', label: 'Nom de l\'organisme', type: 'text', auto_filled: false, required: true }
 export const VAR_ACCOUNT_NUMBER: LetterVariable = { key: 'account_number', label: 'Numéro de compte ou contrat', type: 'text', auto_filled: false, required: false }
 // Personnalisation v2 : identifiant indispensable à l'éditeur ou à l'opérateur pour retrouver le

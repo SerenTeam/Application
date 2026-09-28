@@ -100,3 +100,12 @@ describe('parité server/lib/letter-channels.js ↔ LETTER_TEMPLATES', () => {
     expect(LETTER_CHANNELS).toEqual(fromTemplates)
   })
 })
+
+describe('ville : variable pré-remplie (personnalisation v2)', () => {
+  it('city est auto_filled dans tous les modèles qui l’utilisent', () => {
+    for (const t of LETTER_TEMPLATES) {
+      const city = t.variables.find((v) => v.key === 'city')
+      if (city) expect(city.auto_filled, t.id).toBe(true)
+    }
+  })
+})

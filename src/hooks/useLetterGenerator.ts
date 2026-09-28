@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { formatLetterValue, getLetterTemplate, type LetterTemplate } from '@/data/letter-templates'
 
 export interface LetterGeneratorOptions {
@@ -8,6 +8,7 @@ export interface LetterGeneratorOptions {
     lastname?: string
     address?: string
     relation?: string
+    city?: string
   }
   questionnaireData?: {
     deceased_firstname?: string
@@ -30,7 +31,7 @@ function formatDate(iso?: string): string {
   }
 }
 
-function buildInitialValues(
+export function buildInitialValues(
   template: LetterTemplate,
   userProfile?: LetterGeneratorOptions['userProfile'],
   questionnaireData?: LetterGeneratorOptions['questionnaireData']
@@ -65,6 +66,9 @@ function buildInitialValues(
       case 'deceased_dod':
         values[v.key] = formatDate(questionnaireData?.deceased_dod)
         break
+      case 'city':
+        values[v.key] = userProfile?.city ?? ''
+        break
       case 'today_date':
         values[v.key] = formatDate(new Date().toISOString())
         break
@@ -74,12 +78,38 @@ function buildInitialValues(
   return values
 }
 
+/**
+ * Fusionne des valeurs auto-remplies dans l'état courant : une valeur auto NON VIDE remplace, une
+ * valeur vide n'efface jamais une saisie manuelle. Même référence si rien ne change.
+ */
+export function mergeAutoFilled(prev: Record<string, string>, auto: Record<string, string>): Record<string, string> {
+  let next = prev
+  for (const [key, value] of Object.entries(auto)) {
+    if (value && prev[key] !== value) {
+      if (next === prev) next = { ...prev }
+      next[key] = value
+    }
+  }
+  return next
+}
+
 export function useLetterGenerator(options: LetterGeneratorOptions) {
   const template = getLetterTemplate(options.templateId)
 
   const [values, setValues] = useState<Record<string, string>>(() =>
     template ? buildInitialValues(template, options.userProfile, options.questionnaireData) : {}
   )
+
+  // Personnalisation v2 : resynchronise les champs auto-remplis quand leurs sources changent (profil
+  // courrier enregistré depuis le panneau d'envoi, chargement tardif) — l'adresse sous la signature
+  // suit alors celle de l'enveloppe. Les saisies manuelles ne sont jamais effacées.
+  const autoSourcesKey = JSON.stringify([options.userProfile ?? null, options.questionnaireData ?? null])
+  useEffect(() => {
+    if (!template) return
+    const auto = buildInitialValues(template, options.userProfile, options.questionnaireData)
+    setValues((prev) => mergeAutoFilled(prev, auto))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSourcesKey, template])
 
   const setVariable = useCallback((key: string, val: string) => {
     setValues((prev) => ({ ...prev, [key]: val }))
