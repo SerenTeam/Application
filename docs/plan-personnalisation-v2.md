@@ -3707,6 +3707,51 @@ panneau d'envoi lit et écrit le profil via un contexte : courriers et enveloppe
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
+> **Note post-revue (Task 8, 2026-09-28)** — Commits : `dbe7db0` (la tâche, identique au plan), `b1c7a76` (correctifs de la revue qualité), `b4fe269` (correctifs de la re-revue). Revue de spec : conforme. Revue qualité : « approuvée sous réserve » (5 points importants), puis de nouveau « sous réserve » en re-revue (2 défauts reproduits dans Chrome), enfin **approuvée sans point restant**. Harnais du relecteur 8/8, mutations 6/6 à la dernière passe. Suite à **941** tests. **Le code livré s'écarte du bloc du Step 4 sur les points ci-dessous**, qui font foi.
+> - **Accessibilité.**
+>   - Chaque champ a un id stable (`${uid}-${champ}`), `aria-invalid` et `aria-describedby` (aide puis erreur). Le `fieldset` des pastilles pointe vers son erreur.
+>   - Après une validation en échec, le focus va au premier champ en erreur, dans l'ordre visuel.
+>   - `role="alert"` sur les erreurs d'enregistrement, `role="status"` sur « Coordonnées enregistrées. ».
+>   - Aux bascules lecture/édition, le focus va sur « Modifier » ou sur le prénom. Il n'est **jamais** pris au montage (plusieurs panneaux coexistent), ni volé à la personne partie dans un autre champ pendant un enregistrement lent : la garde `document.activeElement` ne replace le focus que s'il est retombé sur `body`.
+>   - « Modifier » porte un `aria-label` et un `aria-describedby` vers le message d'enregistrement.
+>   - `autoCapitalize` : « words » sur les noms, « none » sur le lien libre. `aria-required` sur les champs obligatoires.
+>   - Vrai `<form noValidate>` : Entrée soumet, boutons secondaires en `type="button"`.
+> - **Contraste et mobile.** Les erreurs passent en `text-sm text-error` (4,63:1, contre 3,05:1 avant). Le succès utilise une coche `text-success` avec un texte `text-text-secondary`. Une bordure `border-error` marque aussi le champ invalide. En variante `screen`, le bouton principal passe à la ligne sous 640 px : il débordait de la carte à 360 px. Les pastilles sont alignées sur QuestionCard (point dans un cercle, `ring-offset-2`, texte sélectionné en `text-text`).
+> - **Lien de parenté.** Il est normalisé à l'enregistrement (« Fille » tapé devient « fille »). Il l'est aussi sur la carte en lecture et dans l'autofill : un profil 2a écrit donc « fille » dans les courriers. L'aperçu « … de {prénom} » s'affiche aussi en saisie libre.
+> - **Date de naissance.**
+>   - Elle n'est réécrite que si elle a changé (`dobNeedsSave`).
+>   - Un échec est distingué de celui du profil (`saveError` vaut 'profile' ou 'dob', avec un message dédié sous la date) et les deux partent à Sentry.
+>   - Contrat de `onSaved` :
+>     - en `screen`, il signifie « terminé » et n'arrive qu'après le succès complet ;
+>     - en `panel`, il arrive dès que le profil est en base, et le formulaire reste ouvert sur l'erreur de date. Sans ce cas, « Annuler » puis « Modifier » réécrivaient l'ancienne adresse.
+>   - La carte en lecture affiche la date (`dobSummary`, `formatDobForDisplay`, en UTC).
+>   - `max` vaut la date du jour locale quand la date de décès est inconnue.
+>   - Libellé de repli sans prénom (`dobLabelNoName`).
+> - **Divers.**
+>   - Bouton « Annuler » en édition.
+>   - Prop `showHeader` (par défaut en `panel`) : le Profil (Task 10) passe `false`.
+>   - `initialLetterProfileInput`, `formatDobForDisplay`, `dobNeedsSave` et `todayLocalIsoDate` sont exportées de `letter-profile.ts` et testées.
+>   - Dans PaperSendPanel, l'effet dépend du booléen `hasLetterProfileCtx`.
+>   - Commentaire du contexte nuancé : un profil 2a peut encore diverger de l'enveloppe tant qu'il n'est pas réenregistré.
+> - **i18n.**
+>   - 7 clés ajoutées : `dobSaveError`, `dobLabelNoName`, `dobSummary`, `dobSummaryNoName`, `cancelCta`, `editAriaLabel`, `profileHint`.
+>   - `screenLead` mentionne le Profil (FR et EN).
+>   - EN : « Save and view my roadmap », et « {name}’s date of birth (optional) ».
+> - **Écarts de la tâche initiale, acceptés en revue de spec.**
+>   - Commentaire de section des dictionnaires corrigé.
+>   - Ligne vide avant `letterProfile`.
+>   - Le grep « aucune référence » du Step 5 trouve le commentaire « remplace SenderProfileForm », imposé par le Step 4 lui-même.
+> - **Recette hors dépôt, non versionnée.** Deux harnais Chrome headless pilotés par CDP, avec faux Supabase et StrictMode, dans le scratchpad : `harness/` (implémenteur, 63/63 en FR et 7/7 en EN) et `rr8-harness/` (relecteur, 8/8).
+> - **Plan adapté.**
+>   - Task 9 : focus sur le titre de l'écran.
+>   - Task 10 : `showHeader={false}` et `profileHint` sur le Profil.
+>   - Task 11 : lignes 16 à 20 de la recette.
+> - **Tests stabilisés (hors tâche, mais bloquants pour la porte finale).** `f39060b` remplace dans `require-access-consent` les attentes fixes de 20 ms par des attentes déterministes. Ce test échouait 4 fois sur 6 en suite complète. `9babcce` fait de même pour `letter-date-format` et la relance papier (10 suites complètes vertes d'affilée).
+> - **Non retenus.** `lang="fr"` sur les mots français de l'UI anglaise (WCAG 3.1.2), qui obligerait à restructurer les libellés. La parallélisation des lectures de `load()`, gain négligeable.
+> - **Hors périmètre, confiés à des tâches séparées.**
+>   - Le bouton du récapitulatif déborde sur mobile (déjà en prod) et le texte `text-warning` des panneaux 2a manque de contraste.
+>   - Typographie des courriers : « de Anne » au lieu de « d’Anne », « 1 mars » au lieu de « 1er mars ».
+
 ---
 
 ### Task 9 : Écran « Vos coordonnées pour les courriers » à la fin du questionnaire
@@ -3718,7 +3763,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - [ ] **Step 1 : créer `src/components/questionnaire/CoordinatesScreen.tsx`**
 
 ```tsx
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useT } from '@/i18n/useT'
 import { SectionHeading } from '@/components/ui/section-heading'
@@ -3748,6 +3793,12 @@ export function CoordinatesScreen({ userId, questionnaireId, answers, onDone }: 
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<LetterProfileRow | null>(null)
   const [dossier, setDossier] = useState<DossierIdentity | null>(null)
+  // Accessibilité (note post-revue Task 8) : le spinner « completing » vient d'être démonté, le focus
+  // serait perdu (body) — on le place sur le titre de l'écran dès qu'il s'affiche.
+  const headingRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!loading) headingRef.current?.focus()
+  }, [loading])
 
   useEffect(() => {
     let cancelled = false
@@ -3779,7 +3830,14 @@ export function CoordinatesScreen({ userId, questionnaireId, answers, onDone }: 
 
   return (
     <section className="animate-fade-in">
-      <SectionHeading as="h1" className="mb-8 max-w-none" title={t.letterProfile.screenTitle} lead={t.letterProfile.screenLead} />
+      <SectionHeading
+        ref={headingRef}
+        tabIndex={-1}
+        as="h1"
+        className="mb-8 max-w-none focus:outline-none"
+        title={t.letterProfile.screenTitle}
+        lead={t.letterProfile.screenLead}
+      />
       <div className="rounded-card border border-border-card bg-white p-8 shadow-card-border max-sm:p-5">
         <LetterProfileForm
           userId={userId}
@@ -4103,10 +4161,12 @@ export function ProfilePage() {
         {user && loaded && (
           <div className="mb-8 rounded-card border border-border-card bg-white p-10 shadow-card-border max-sm:p-7">
             <h2 className="mb-2 font-display text-[1.5rem] font-normal text-text">{t.letterProfile.title}</h2>
-            <p className="mb-6 text-sm text-text-muted">{t.letterProfile.hint}</p>
+            {/* profileHint : l'aide générale renvoie « à votre profil », où l'on est déjà (note post-revue Task 8) */}
+            <p className="mb-6 text-sm text-text-muted">{t.letterProfile.profileHint}</p>
             <LetterProfileForm
               userId={user.id}
               profile={profile}
+              showHeader={false}
               defaults={{ firstName: dossier?.family_first_name ?? undefined, lastName: dossier?.family_last_name ?? undefined }}
               relation={answers.relation as RelationV2 | undefined}
               deceasedFirstName={deceasedFirstName}
@@ -4135,7 +4195,7 @@ export function ProfilePage() {
 }
 ```
 
-Note : en variante `panel`, la date de naissance n'est éditable qu'en mode édition (après « Modifier ») ; c'est voulu, la carte en lecture reste compacte.
+Note : en variante `panel`, la date de naissance n'est éditable qu'en mode édition (après « Modifier ») ; la carte en lecture l'affiche (`dobSummary`, ajouté par la note post-revue de la Task 8). `showHeader={false}` évite le titre et l'aide en double, puisque la carte du Profil a les siens.
 
 - [ ] **Step 4 : vérifier**
 
@@ -4368,7 +4428,12 @@ Parcours complet, données fictives, dans le navigateur intégré (un onglet par
 | 12 | Étape EHPAD → courrier | complet sauf « Nom de l'établissement » |
 | 13 | Profil | carte « Vos coordonnées pour les courriers » ; prénom affiché (plus « Non renseigné ») ; « Modifier » rouvre le formulaire avec les valeurs enregistrées (« fille » sélectionné) ; changer le complément d'adresse puis « Enregistrer » → carte en lecture + « Coordonnées enregistrées. » ; de retour au tableau de bord, le courrier presse affiche la nouvelle adresse |
 | 14 | Bascule EN (toggle) sur le tableau de bord puis retour FR | libellés traduits, courriers toujours en français |
-| 15 | Nouveau dossier famille, « Plus tard » sur l'écran de coordonnées | carte de rappel visible au tableau de bord ; courriers : champs identité/adresse à saisir ; **resynchronisation sans rechargement** (seule preuve du câblage de l'effet, que Vitest ne rend pas) : (a) ouvrir un courrier, taper la ville à la main, puis remplir le profil dans le panneau papier → l'aperçu affiche aussitôt l'adresse et la ville du profil ; (b) corriger la ville de ce courrier, « Modifier » le profil et ne changer que le complément d'adresse → la ville corrigée reste, l'adresse suit |
+| 15 | Nouveau dossier famille (relation « Un autre lien » au questionnaire, cf. ligne 18), « Plus tard » sur l'écran de coordonnées | carte de rappel visible au tableau de bord ; courriers : champs identité/adresse à saisir ; **resynchronisation sans rechargement** (seule preuve du câblage de l'effet, que Vitest ne rend pas) : (a) ouvrir un courrier, taper la ville à la main, puis remplir le profil dans le panneau papier → l'aperçu affiche aussitôt l'adresse et la ville du profil ; (b) corriger la ville de ce courrier, « Modifier » le profil et ne changer que le complément d'adresse → la ville corrigée reste, l'adresse suit |
+| 16 | Écran de coordonnées à 360 px de large (`resize_window` 360×800) | bouton principal sur plusieurs lignes, dans la carte ; aucun défilement horizontal |
+| 17 | Écran de coordonnées au clavier seul : Tab jusqu'aux pastilles, flèches pour choisir, puis Entrée sur un formulaire incomplet | Entrée soumet ; focus sur le premier champ en erreur (`aria-invalid="true"`, message relié par `aria-describedby`) ; après enregistrement en variante panel, le focus revient sur « Modifier » |
+| 18 | Dans le questionnaire de la ligne 15 (même passage, pas un second questionnaire), répondre « Un autre lien » à la relation ; plus tard, lien libre « neveu » dans le panneau d'envoi | champ libre avec `autocapitalize="none"` ; aperçu « … neveu de … » ; courrier : « neveu de … » |
+| 19 | Même famille : déplier deux étapes à courrier, ouvrir les deux panneaux d'envoi, enregistrer le profil dans l'un | l'autre panneau passe en lecture, sans rechargement |
+| 20 | Profil hérité du 2a (base LOCALE) : `update public.sender_profiles set first_name = null, last_name = null, relationship = 'Fille' where user_id = (select id from auth.users where email = '<famille ligne 1-14>');`, puis tableau de bord | carte de rappel visible ; courriers : « fille de … » (lien normalisé) ; panneau d'envoi : carte en lecture avec le `full_name`, bouton d'envoi actif une fois le destinataire saisi |
 
 Tout écart → tâche correctrice confiée à un sous-agent (même double revue), puis rejeu de la ligne concernée.
 
