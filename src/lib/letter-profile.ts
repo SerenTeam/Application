@@ -53,7 +53,8 @@ export type LetterProfileError =
   | 'cityRequired'
   | 'relationshipRequired'
   | 'dobInvalid'
-  | 'dobOutOfRange'
+  | 'dobTooEarly'
+  | 'dobAfterDeath'
 
 export type LetterProfileField = keyof LetterProfileInput | 'deceased_dob'
 export type LetterProfileErrors = Partial<Record<LetterProfileField, LetterProfileError>>
@@ -67,6 +68,14 @@ function isRealIsoDate(value: string): boolean {
   if (!ISO_DATE_RE.test(value)) return false
   const t = Date.parse(value)
   return !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === value
+}
+
+/** Date du jour en LOCAL (pas toISOString, qui est en UTC — décale d'un jour dans les DOM/TOM). */
+function todayLocalIsoDate(): string {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
 }
 
 /**
@@ -95,13 +104,13 @@ export function validateLetterProfile(
   const city = input.city.trim()
   if (!city) errors.city = 'cityRequired'
   else if (city.length > LINE_MAX) errors.city = 'lineTooLong'
-  if (!input.relationship.trim()) errors.relationship = 'relationshipRequired'
+  const relationship = input.relationship.trim()
+  if (!relationship) errors.relationship = 'relationshipRequired'
+  else if (relationship.length > LINE_MAX) errors.relationship = 'lineTooLong'
   if (dob && dob.value) {
-    const today = new Date().toISOString().slice(0, 10)
     if (!isRealIsoDate(dob.value)) errors.deceased_dob = 'dobInvalid'
-    else if (dob.value < DOB_MIN || dob.value > today || (dob.max !== null && dob.value > dob.max)) {
-      errors.deceased_dob = 'dobOutOfRange'
-    }
+    else if (dob.value < DOB_MIN) errors.deceased_dob = 'dobTooEarly'
+    else if (dob.value > (dob.max ?? todayLocalIsoDate())) errors.deceased_dob = 'dobAfterDeath'
   }
   return errors
 }
@@ -127,7 +136,9 @@ export async function saveLetterProfile(
     city: input.city.trim(),
     relationship: input.relationship.trim() || null,
   }
-  const { error } = await client.from('sender_profiles').upsert({ user_id: userId, ...row }, { onConflict: 'user_id' })
+  const { error } = await client
+    .from('sender_profiles')
+    .upsert({ user_id: userId, ...row, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
   if (error) throw new Error(error.message)
   return row
 }
@@ -160,19 +171,38 @@ export async function fetchLatestQuestionnaire(
 }
 
 /**
- * Fusionne la date de naissance du défunt dans les réponses (même patron que deceased_department,
- * chantier 2a) ; null retire la clé. Retourne les réponses écrites.
+ * Fusionne la date de naissance du défunt dans les réponses ; null retire la clé. Relit les
+ * réponses juste avant d'écrire (au lieu de prendre un état déjà en mémoire, potentiellement
+ * périmé) pour ne pas écraser une clé modifiée ailleurs entre-temps (deux onglets). Une erreur
+ * Supabase (lecture ou écriture) remonte son message tel quel ; `questionnaire_not_found` (aucune
+ * ligne à la lecture) et `questionnaire_not_updated` (aucune ligne touchée par l'écriture, ex. RLS)
+ * sont des codes techniques — les consommateurs affichent un texte i18n. Retourne les réponses
+ * écrites.
  */
 export async function saveDeceasedDob(
   client: SupabaseClient,
   questionnaireId: string,
-  answers: Record<string, unknown>,
   dob: string | null
 ): Promise<Record<string, unknown>> {
-  const next: Record<string, unknown> = { ...answers }
+  const { data, error: readError } = await client
+    .from('questionnaires')
+    .select('answers')
+    .eq('id', questionnaireId)
+    .maybeSingle()
+  if (readError) throw new Error(readError.message)
+  const row = data as { answers: Record<string, unknown> | null } | null
+  if (!row) throw new Error('questionnaire_not_found')
+
+  const next: Record<string, unknown> = { ...(row.answers ?? {}) }
   if (dob) next.deceased_dob = dob
   else delete next.deceased_dob
-  const { error } = await client.from('questionnaires').update({ answers: next }).eq('id', questionnaireId)
-  if (error) throw new Error(error.message)
+
+  const { data: updated, error: writeError } = await client
+    .from('questionnaires')
+    .update({ answers: next })
+    .eq('id', questionnaireId)
+    .select('id')
+  if (writeError) throw new Error(writeError.message)
+  if (!updated || (Array.isArray(updated) && updated.length === 0)) throw new Error('questionnaire_not_updated')
   return next
 }

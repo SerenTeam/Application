@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { formatLetterValue, getLetterTemplate, type LetterTemplate } from '@/data/letter-templates'
 
 export interface LetterGeneratorOptions {
@@ -18,17 +18,13 @@ export interface LetterGeneratorOptions {
   }
 }
 
+const ISO_DAY_RE = /^\d{4}-\d{2}-\d{2}$/
 function formatDate(iso?: string): string {
   if (!iso) return ''
-  try {
-    return new Date(iso).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    })
-  } catch {
-    return iso
-  }
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '' // jamais « Invalid Date » dans un courrier : le champ redevient à saisir
+  // Date seule = minuit UTC : formatée en UTC, sinon la veille dans les fuseaux négatifs
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', ...(ISO_DAY_RE.test(iso) ? { timeZone: 'UTC' } : {}) })
 }
 
 export function buildInitialValues(
@@ -93,6 +89,22 @@ export function mergeAutoFilled(prev: Record<string, string>, auto: Record<strin
   return next
 }
 
+/**
+ * Ne garde, parmi les valeurs auto recalculées, que celles qui ont changé depuis le dernier calcul
+ * (prevAuto). Au montage (prevAuto === null), l'état initial vient déjà de ces sources : rien à
+ * rejouer. Permet de ne resynchroniser que les champs dont LA SOURCE a changé, jamais les autres
+ * (ex. une correction manuelle de ville pour ce courrier précis ne doit pas être écrasée par un
+ * changement d'adresse sans rapport).
+ */
+export function pickChangedAuto(prevAuto: Record<string, string> | null, auto: Record<string, string>): Record<string, string> {
+  if (prevAuto === null) return {}
+  const changed: Record<string, string> = {}
+  for (const [key, value] of Object.entries(auto)) {
+    if (prevAuto[key] !== value) changed[key] = value
+  }
+  return changed
+}
+
 export function useLetterGenerator(options: LetterGeneratorOptions) {
   const template = getLetterTemplate(options.templateId)
 
@@ -100,15 +112,20 @@ export function useLetterGenerator(options: LetterGeneratorOptions) {
     template ? buildInitialValues(template, options.userProfile, options.questionnaireData) : {}
   )
 
-  // Personnalisation v2 : resynchronise les champs auto-remplis quand leurs sources changent (profil
-  // courrier enregistré depuis le panneau d'envoi, chargement tardif) — l'adresse sous la signature
-  // suit alors celle de l'enveloppe. Les saisies manuelles ne sont jamais effacées.
+  // Personnalisation v2 : resynchronise un champ auto-rempli seulement quand SA source a changé
+  // (ex. profil courrier enregistré depuis le panneau d'envoi : l'adresse sous la signature suit
+  // alors celle de l'enveloppe) — jamais quand une AUTRE source change (une correction manuelle de
+  // ville pour ce courrier précis n'est pas effacée par un changement d'adresse sans rapport). Une
+  // valeur auto vide n'efface jamais une saisie manuelle.
+  const lastAutoRef = useRef<Record<string, string> | null>(null)
   const autoSourcesKey = JSON.stringify([options.userProfile ?? null, options.questionnaireData ?? null])
   useEffect(() => {
     if (!template) return
     const auto = buildInitialValues(template, options.userProfile, options.questionnaireData)
-    setValues((prev) => mergeAutoFilled(prev, auto))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const changed = pickChangedAuto(lastAutoRef.current, auto) // montage : {} (l'état initial vient déjà de ces sources)
+    lastAutoRef.current = auto
+    setValues((prev) => mergeAutoFilled(prev, changed))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- autoSourcesKey résume options.userProfile et options.questionnaireData, des littéraux recréés à chaque rendu par l'appelant
   }, [autoSourcesKey, template])
 
   const setVariable = useCallback((key: string, val: string) => {

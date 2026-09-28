@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { relationLabelOptions, defaultRelationLabel } from '@/lib/relation-labels'
+import type { RelationV2 } from '@/types/questionnaire'
 
 describe('relationLabelOptions — ce qu’est l’utilisateur pour le défunt', () => {
   const values = (r: Parameters<typeof relationLabelOptions>[0]) => relationLabelOptions(r)?.map((o) => o.value)
@@ -23,6 +24,10 @@ describe('relationLabelOptions — ce qu’est l’utilisateur pour le défunt',
     expect(fils.label.fr).toBe('fils')
     expect(fils.label.en).toBe('fils — son')
   })
+  it('clé héritée du prototype (« constructor », « hasOwnProperty ») → aucune option, jamais d’exception', () => {
+    expect(relationLabelOptions('constructor' as unknown as RelationV2)).toBeNull()
+    expect(relationLabelOptions('hasOwnProperty' as unknown as RelationV2)).toBeNull()
+  })
 })
 
 describe('defaultRelationLabel', () => {
@@ -31,5 +36,9 @@ describe('defaultRelationLabel', () => {
     expect(defaultRelationLabel('parent')).toBe('')
     expect(defaultRelationLabel('autre')).toBe('')
     expect(defaultRelationLabel(undefined)).toBe('')
+  })
+  it('clé héritée du prototype → saisie libre, jamais d’exception', () => {
+    expect(defaultRelationLabel('constructor' as unknown as RelationV2)).toBe('')
+    expect(defaultRelationLabel('hasOwnProperty' as unknown as RelationV2)).toBe('')
   })
 })

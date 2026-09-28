@@ -25,7 +25,10 @@ const OPTIONS: Record<Exclude<RelationV2, 'autre'>, RelationLabelOption[]> = {
 /** Choix « Vous signez en tant que ». null = saisie libre (relation « autre » ou inconnue). */
 export function relationLabelOptions(relation: RelationV2 | undefined): RelationLabelOption[] | null {
   if (!relation || relation === 'autre') return null
-  return OPTIONS[relation] ?? null
+  // OPTIONS[relation] résoudrait aussi les clés héritées du prototype (ex. relation === 'constructor'
+  // ou 'hasOwnProperty') : hasOwnProperty exclut ces clés qui n'ont jamais été posées sur l'objet.
+  if (!Object.prototype.hasOwnProperty.call(OPTIONS, relation)) return null
+  return OPTIONS[relation as keyof typeof OPTIONS]
 }
 
 /** Valeur retenue sans intervention : seule une forme unique, donc sans ambiguïté de genre (PACS). */

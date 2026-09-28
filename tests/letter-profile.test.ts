@@ -31,7 +31,17 @@ const VALID: LetterProfileInput = {
   relationship: 'fille',
 }
 
-interface Call { table?: string; rpc?: string; op?: string; payload?: unknown; options?: unknown; filters: Array<[string, unknown]> }
+interface Call {
+  table?: string
+  rpc?: string
+  op?: string
+  payload?: unknown
+  options?: unknown
+  selectedColumns?: string
+  order?: [string, unknown]
+  limit?: number
+  filters: Array<[string, unknown]>
+}
 
 function fakeClient(responses: Array<{ data?: unknown; error?: unknown }> = []) {
   const calls: Call[] = []
@@ -45,12 +55,14 @@ function fakeClient(responses: Array<{ data?: unknown; error?: unknown }> = []) 
       calls.push(call)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const b: any = {
-        select(cols: string) { call.op = call.op ?? 'select'; call.payload = cols; return b },
+        // select() ne doit pas écraser payload : .update(...).select('id') doit garder les deux
+        // (les colonnes lues vont dans un champ séparé, comme les filtres ou les tris).
+        select(cols: string) { call.op = call.op ?? 'select'; call.selectedColumns = cols; return b },
         upsert(payload: unknown, options: unknown) { call.op = 'upsert'; call.payload = payload; call.options = options; return b },
         update(payload: unknown) { call.op = 'update'; call.payload = payload; return b },
         eq(col: string, val: unknown) { call.filters.push([col, val]); return b },
-        order() { return b },
-        limit() { return b },
+        order(col: string, opts: unknown) { call.order = [col, opts]; return b },
+        limit(n: number) { call.limit = n; return b },
         maybeSingle() { return b },
         then(res: (v: unknown) => unknown, rej?: (e: unknown) => unknown) { return settle().then(res, rej) },
       }
@@ -92,19 +104,30 @@ describe('validateLetterProfile', () => {
   it('45 caractères par ligne, et « prénom nom » tient sur l’enveloppe', () => {
     expect(validateLetterProfile({ ...VALID, address_line1: 'x'.repeat(46) }).address_line1).toBe('lineTooLong')
     expect(validateLetterProfile({ ...VALID, address_line2: 'x'.repeat(46) }).address_line2).toBe('lineTooLong')
+    expect(validateLetterProfile({ ...VALID, city: 'x'.repeat(46) }).city).toBe('lineTooLong')
+    expect(validateLetterProfile({ ...VALID, first_name: 'x'.repeat(46) }).first_name).toBe('lineTooLong')
     expect(validateLetterProfile({ ...VALID, first_name: 'x'.repeat(23), last_name: 'y'.repeat(23) }).last_name).toBe('fullNameTooLong')
+  })
+  it('lien avec la personne décédée : 45 caractères au maximum (M2)', () => {
+    expect(validateLetterProfile({ ...VALID, relationship: 'x'.repeat(46) }).relationship).toBe('lineTooLong')
   })
   it('date de naissance facultative, réelle, antérieure au décès', () => {
     expect(validateLetterProfile(VALID, { value: '', max: '2026-09-12' })).toEqual({})
     expect(validateLetterProfile(VALID, { value: '1941-03-14', max: '2026-09-12' })).toEqual({})
     expect(validateLetterProfile(VALID, { value: '1941-02-30', max: '2026-09-12' }).deceased_dob).toBe('dobInvalid')
-    expect(validateLetterProfile(VALID, { value: '2026-09-13', max: '2026-09-12' }).deceased_dob).toBe('dobOutOfRange')
-    expect(validateLetterProfile(VALID, { value: '1899-12-31', max: null }).deceased_dob).toBe('dobOutOfRange')
+    expect(validateLetterProfile(VALID, { value: '2026-09-13', max: '2026-09-12' }).deceased_dob).toBe('dobAfterDeath')
+    // Égale à la date du décès : valide (borne inclusive).
+    expect(validateLetterProfile(VALID, { value: '2026-09-12', max: '2026-09-12' }).deceased_dob).toBeUndefined()
+  })
+  it('bornes (M3) : 1900-01-01 valide, avant → dobTooEarly ; après aujourd’hui sans décès connu → dobAfterDeath', () => {
+    expect(validateLetterProfile(VALID, { value: '1900-01-01', max: null })).toEqual({})
+    expect(validateLetterProfile(VALID, { value: '1899-12-31', max: null }).deceased_dob).toBe('dobTooEarly')
+    expect(validateLetterProfile(VALID, { value: '2099-01-01', max: null }).deceased_dob).toBe('dobAfterDeath')
   })
 })
 
 describe('accès Supabase du profil courrier', () => {
-  it('saveLetterProfile : upsert sur user_id, colonnes du schéma seulement, full_name calculé', async () => {
+  it('saveLetterProfile : upsert sur user_id, colonnes du schéma seulement, full_name calculé, updated_at posé', async () => {
     const { client, calls } = fakeClient()
     const row = await saveLetterProfile(client, 'user-1', { ...VALID, address_line2: '  ' })
     expect(calls[0].table).toBe('sender_profiles')
@@ -113,7 +136,9 @@ describe('accès Supabase du profil courrier', () => {
     const payload = calls[0].payload as Record<string, unknown>
     for (const key of Object.keys(payload)) expect(SENDER_COLUMNS.has(key), `colonne « ${key} » absente`).toBe(true)
     expect(payload).toMatchObject({ user_id: 'user-1', full_name: 'Camille Roussel', address_line2: null })
+    expect(typeof payload.updated_at).toBe('string') // posé sur la ligne écrite, pas sur la ligne renvoyée
     expect(row.full_name).toBe('Camille Roussel')
+    expect('updated_at' in row).toBe(false)
   })
   it('saveLetterProfile : une erreur Supabase remonte', async () => {
     const { client } = fakeClient([{ error: { message: 'rls' } }])
@@ -123,7 +148,7 @@ describe('accès Supabase du profil courrier', () => {
     const { client, calls } = fakeClient([{ data: { full_name: 'Camille Roussel' } }])
     const row = await fetchLetterProfile(client, 'user-1')
     expect(calls[0].filters).toEqual([['user_id', 'user-1']])
-    for (const col of String(calls[0].payload).split(',').map((c) => c.trim())) expect(SENDER_COLUMNS.has(col), col).toBe(true)
+    for (const col of String(calls[0].selectedColumns).split(',').map((c) => c.trim())) expect(SENDER_COLUMNS.has(col), col).toBe(true)
     expect(row).toEqual({ full_name: 'Camille Roussel' })
   })
   it('fetchDossierIdentity : RPC my_dossier_identity, null si aucun dossier', async () => {
@@ -131,17 +156,78 @@ describe('accès Supabase du profil courrier', () => {
     expect(await fetchDossierIdentity(client)).toBeNull()
     expect(calls[0].rpc).toBe('my_dossier_identity')
   })
-  it('fetchLatestQuestionnaire : dernière roadmap puis son questionnaire', async () => {
+  it('fetchDossierIdentity : dossier existant renvoyé tel quel', async () => {
+    const dossier = {
+      family_first_name: 'Camille',
+      family_last_name: 'Martin',
+      deceased_first_name: 'Bernard',
+      deceased_last_name: 'Roussel',
+      deceased_death_date: '2026-09-12',
+    }
+    const { client } = fakeClient([{ data: dossier }])
+    expect(await fetchDossierIdentity(client)).toEqual(dossier)
+  })
+  it('fetchDossierIdentity : une erreur RPC remonte', async () => {
+    const { client } = fakeClient([{ error: { message: 'rpc-boom' } }])
+    await expect(fetchDossierIdentity(client)).rejects.toThrow('rpc-boom')
+  })
+  it('fetchLatestQuestionnaire : dernière roadmap (triée, limitée à 1) puis son questionnaire', async () => {
     const { client, calls } = fakeClient([{ data: { questionnaire_id: 'q-1' } }, { data: { id: 'q-1', answers: { relation: 'parent' } } }])
     expect(await fetchLatestQuestionnaire(client, 'user-1')).toEqual({ id: 'q-1', answers: { relation: 'parent' } })
     expect(calls.map((c) => c.table)).toEqual(['roadmaps', 'questionnaires'])
+    expect(calls[0].order).toEqual(['created_at', { ascending: false }])
+    expect(calls[0].limit).toBe(1)
   })
-  it('saveDeceasedDob : fusionne ou retire deceased_dob sans toucher au reste', async () => {
-    const { client, calls } = fakeClient()
-    const next = await saveDeceasedDob(client, 'q-1', { relation: 'parent' }, '1941-03-14')
-    expect(next).toEqual({ relation: 'parent', deceased_dob: '1941-03-14' })
-    expect(calls[0]).toMatchObject({ table: 'questionnaires', op: 'update', filters: [['id', 'q-1']] })
-    const cleared = await saveDeceasedDob(client, 'q-1', next, null)
-    expect(cleared).toEqual({ relation: 'parent' })
+  it('fetchLatestQuestionnaire : aucune roadmap → null', async () => {
+    const { client } = fakeClient([{ data: null }])
+    expect(await fetchLatestQuestionnaire(client, 'user-1')).toBeNull()
+  })
+  it('fetchLatestQuestionnaire : roadmap sans questionnaire_id → null', async () => {
+    const { client } = fakeClient([{ data: { questionnaire_id: null } }])
+    expect(await fetchLatestQuestionnaire(client, 'user-1')).toBeNull()
+  })
+  it('fetchLatestQuestionnaire : erreur sur la lecture de la roadmap', async () => {
+    const { client } = fakeClient([{ error: { message: 'boom-roadmap' } }])
+    await expect(fetchLatestQuestionnaire(client, 'user-1')).rejects.toThrow('boom-roadmap')
+  })
+  it('fetchLatestQuestionnaire : erreur sur la lecture du questionnaire', async () => {
+    const { client } = fakeClient([{ data: { questionnaire_id: 'q-1' } }, { error: { message: 'boom-q' } }])
+    await expect(fetchLatestQuestionnaire(client, 'user-1')).rejects.toThrow('boom-q')
+  })
+
+  describe('saveDeceasedDob (M1 : relit les réponses, ne les reçoit plus en paramètre)', () => {
+    it('fusionne deceased_dob dans les réponses RELUES, sans muter l’objet lu, écrit avec select(id)', async () => {
+      const originalAnswers = { relation: 'parent' }
+      const { client, calls } = fakeClient([{ data: { answers: originalAnswers } }, { data: [{ id: 'q-1' }] }])
+      const next = await saveDeceasedDob(client, 'q-1', '1941-03-14')
+      expect(next).toEqual({ relation: 'parent', deceased_dob: '1941-03-14' })
+      expect(originalAnswers).toEqual({ relation: 'parent' }) // non muté
+      expect(calls[0]).toMatchObject({ table: 'questionnaires', op: 'select', filters: [['id', 'q-1']] })
+      expect(calls[1]).toMatchObject({ table: 'questionnaires', op: 'update', filters: [['id', 'q-1']], selectedColumns: 'id' })
+      expect(calls[1].payload).toEqual({ answers: { relation: 'parent', deceased_dob: '1941-03-14' } })
+    })
+    it('dob null retire la clé sans toucher au reste', async () => {
+      const { client, calls } = fakeClient([{ data: { answers: { relation: 'parent', deceased_dob: '1941-03-14' } } }, { data: [{ id: 'q-1' }] }])
+      const next = await saveDeceasedDob(client, 'q-1', null)
+      expect(next).toEqual({ relation: 'parent' })
+      expect(calls[1].payload).toEqual({ answers: { relation: 'parent' } })
+    })
+    it('erreur à la lecture des réponses : remonte, aucune écriture tentée', async () => {
+      const { client, calls } = fakeClient([{ error: { message: 'read-boom' } }])
+      await expect(saveDeceasedDob(client, 'q-1', '1941-03-14')).rejects.toThrow('read-boom')
+      expect(calls).toHaveLength(1)
+    })
+    it('questionnaire introuvable à la lecture : questionnaire_not_found', async () => {
+      const { client } = fakeClient([{ data: null }])
+      await expect(saveDeceasedDob(client, 'q-1', '1941-03-14')).rejects.toThrow('questionnaire_not_found')
+    })
+    it('erreur à l’écriture : remonte', async () => {
+      const { client } = fakeClient([{ data: { answers: {} } }, { error: { message: 'write-boom' } }])
+      await expect(saveDeceasedDob(client, 'q-1', '1941-03-14')).rejects.toThrow('write-boom')
+    })
+    it('écriture qui ne touche aucune ligne (RLS, id disparu entre-temps) : questionnaire_not_updated', async () => {
+      const { client } = fakeClient([{ data: { answers: {} } }, { data: [] }])
+      await expect(saveDeceasedDob(client, 'q-1', '1941-03-14')).rejects.toThrow('questionnaire_not_updated')
+    })
   })
 })
