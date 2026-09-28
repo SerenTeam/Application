@@ -3911,6 +3911,26 @@ date de naissance du défunt (facultative). « Plus tard » mène au même écra
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
+> **Note post-revue (Task 9, 2026-09-28/29)** — Commits : `354a9bd` (la tâche, identique au plan à l'octet près), `741d7e0` (correctifs de la revue qualité), `f0d20a6` (test unitaire de `focusIfIdle`, 7 mutations attrapées sur 7). Revue de spec : conforme (21 scénarios sur 21 dans un harnais Chrome). Revue qualité : « approuvée sous réserve » (2 points importants, reproduits et mesurés), puis approuvée en re-revue. Suite à **945** tests. **Écarts au bloc du Step 1** :
+> - **Focus jamais volé.** Nouveau helper `src/lib/focus.ts` → `focusIfIdle(el)` : il ne donne le focus que si celui-ci est retombé sur `body`.
+>   - Il sert à trois endroits : le titre de l'écran de coordonnées, celui de l'écran de fin, et la bascule de `LetterProfileForm` (même sémantique que la garde de la Task 8).
+>   - Sans lui, un Tab vers l'en-tête ou un clic sur « EN » pendant les lectures était annulé à l'arrivée de l'écran.
+> - **Vrai `<h1>` focalisé.** `FocusableH1` est passé à `SectionHeading` par `as`, au lieu de `ref` + `tabIndex` sur le div englobant. Le lecteur d'écran annonce désormais « titre de niveau 1 ». `SectionHeading`, primitive partagée, n'est pas modifiée.
+> - **Écran de fin.**
+>   - `onDone` remonte en haut de page (`window.scrollTo(0, 0)`). À 360×640 et 375×560, l'icône et le titre restaient sous l'en-tête collant après un long formulaire. C'était une régression de cette tâche, puisque l'écran de fin suivait avant une page courte.
+>   - `CompletionScreen` donne le focus à son titre à l'arrivée (fichier hors liste du plan, écart assumé).
+> - **Commentaire** au-dessus de `setPhase('coordinates')` reformulé : l'écran revient à chaque fin de questionnaire.
+> - **Acceptés en l'état.**
+>   - Recharger la page pendant l'écran de coordonnées ramène à l'accueil du questionnaire. La roadmap est intacte et la carte de rappel de la Task 10 sert de filet (ligne 23 de la recette). C'est le même comportement qu'avec l'écran de fin.
+>   - Le spinner n'a pas de `role="status"`, comme les autres spinners de la page.
+>   - Dépendance `[userId]` : le changement de compte dans un autre onglet reste théorique.
+> - **Recette Task 11 complétée.** Lignes 21 à 23 (focus jamais volé, écran de fin en haut, rechargement), et ligne 16 précisée : l'en-tête de page déborde encore sous 406 px en FR, défaut préexistant.
+> - **Hors périmètre, confiés à des tâches séparées.**
+>   - L'en-tête de page déborde sur mobile. C'est déjà en prod ; la tâche regroupe aussi le bouton du récapitulatif et le contraste des messages d'avertissement.
+>   - Le focus est perdu entre les questions.
+>   - `saveRoadmapToDb` n'est pas idempotent : « Réessayer » peut laisser une roadmap orpheline.
+>   - Question produit pour Arnaud : l'accueil du questionnaire ignore une roadmap existante (un rechargement suivi de « Commencer » en crée une seconde).
+
 ---
 
 ### Task 10 : Tableau de bord (pré-remplissage, contexte, carte de rappel) et page Profil
@@ -4429,11 +4449,14 @@ Parcours complet, données fictives, dans le navigateur intégré (un onglet par
 | 13 | Profil | carte « Vos coordonnées pour les courriers » ; prénom affiché (plus « Non renseigné ») ; « Modifier » rouvre le formulaire avec les valeurs enregistrées (« fille » sélectionné) ; changer le complément d'adresse puis « Enregistrer » → carte en lecture + « Coordonnées enregistrées. » ; de retour au tableau de bord, le courrier presse affiche la nouvelle adresse |
 | 14 | Bascule EN (toggle) sur le tableau de bord puis retour FR | libellés traduits, courriers toujours en français |
 | 15 | Nouveau dossier famille (relation « Un autre lien » au questionnaire, cf. ligne 18), « Plus tard » sur l'écran de coordonnées | carte de rappel visible au tableau de bord ; courriers : champs identité/adresse à saisir ; **resynchronisation sans rechargement** (seule preuve du câblage de l'effet, que Vitest ne rend pas) : (a) ouvrir un courrier, taper la ville à la main, puis remplir le profil dans le panneau papier → l'aperçu affiche aussitôt l'adresse et la ville du profil ; (b) corriger la ville de ce courrier, « Modifier » le profil et ne changer que le complément d'adresse → la ville corrigée reste, l'adresse suit |
-| 16 | Écran de coordonnées à 360 px de large (`resize_window` 360×800) | bouton principal sur plusieurs lignes, dans la carte ; aucun défilement horizontal |
+| 16 | Écran de coordonnées à 360 px de large (`resize_window` 360×800) | bouton principal sur plusieurs lignes, dans la carte ; aucun débordement du `main` ni de la carte (l'en-tête de page, lui, déborde encore sous 406 px en FR : défaut préexistant, confié à une tâche séparée) ; juger l'enchaînement des deux spinners et la mise en page (titre hors carte) |
 | 17 | Écran de coordonnées au clavier seul : Tab jusqu'aux pastilles, flèches pour choisir, puis Entrée sur un formulaire incomplet | Entrée soumet ; focus sur le premier champ en erreur (`aria-invalid="true"`, message relié par `aria-describedby`) ; après enregistrement en variante panel, le focus revient sur « Modifier » |
 | 18 | Dans le questionnaire de la ligne 15 (même passage, pas un second questionnaire), répondre « Un autre lien » à la relation ; plus tard, lien libre « neveu » dans le panneau d'envoi | champ libre avec `autocapitalize="none"` ; aperçu « … neveu de … » ; courrier : « neveu de … » |
 | 19 | Même famille : déplier deux étapes à courrier, ouvrir les deux panneaux d'envoi, enregistrer le profil dans l'un | l'autre panneau passe en lecture, sans rechargement |
 | 20 | Profil hérité du 2a (base LOCALE) : `update public.sender_profiles set first_name = null, last_name = null, relationship = 'Fille' where user_id = (select id from auth.users where email = '<famille ligne 1-14>');`, puis tableau de bord | carte de rappel visible ; courriers : « fille de … » (lien normalisé) ; panneau d'envoi : carte en lecture avec le `full_name`, bouton d'envoi actif une fois le destinataire saisi |
+| 21 | Confirmer le récapitulatif puis, pendant « Génération… », tabuler vers l'en-tête | à l'arrivée sur l'écran de coordonnées, le focus reste dans l'en-tête (jamais volé) ; sans Tab, il est sur le `h1` |
+| 22 | À 375×560, remplir l'écran de coordonnées et « Enregistrer » depuis le bas | écran « Votre parcours est prêt » affiché depuis le haut, focus sur son titre |
+| 23 | Recharger la page pendant l'écran de coordonnées | accueil du questionnaire ; tableau de bord intact (roadmap déjà enregistrée) ; carte de rappel visible |
 
 Tout écart → tâche correctrice confiée à un sous-agent (même double revue), puis rejeu de la ligne concernée.
 
