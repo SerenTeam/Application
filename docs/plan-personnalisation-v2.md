@@ -1933,15 +1933,15 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 > - **Hors périmètre, relevé par la revue** :
 >   - 20 noms CARSAT sur 20 dépassent 45 caractères. Recopiés dans l'enveloppe, ils rendent l'adresse invalide, et le bouton d'envoi reste grisé sans message.
 >   - L'élision manque dans les corps et les objets des courriers (« fille de Anne Martin », « Dossier allocataire de Anne Martin »).
->   - L'étape `banque-debloquer-compte-joint` (continuer à utiliser le compte joint ou le transférer) propose `banque-declaration-deces`, qui demande « le blocage des comptes ». C'est l'inverse du but de l'étape (même famille de défaut que le syndic ; idem sur `main`). Décision produit à prendre : retirer le courrier de l'étape, ou prévoir un courrier dédié. Si le catalogue est corrigé, `stepLetterTemplateId` masquera l'ancien courrier sur les roadmaps existantes. **Tranché le 2026-09-28 : courrier retiré de l'étape (note suivante).**
+>   - L'étape `banque-debloquer-compte-joint` (continuer à utiliser le compte joint ou le transférer) propose `banque-declaration-deces`, qui demande de « procéder au blocage des comptes ». C'est l'inverse du but de l'étape (même famille de défaut que le syndic ; idem sur `main`). Décision produit à prendre : retirer le courrier de l'étape, ou prévoir un courrier dédié. Si le catalogue est corrigé, `stepLetterTemplateId` masquera l'ancien courrier sur les roadmaps existantes. **Tranché le 2026-09-28 : courrier retiré de l'étape (note suivante).**
 
-> **Note (2026-09-28) — l'étape compte joint ne propose plus le courrier de blocage des comptes.** C'est le défaut relevé ci-dessus (« Hors périmètre »). Il est corrigé sur la branche `fix/v2-courrier-compte-joint`, partie de `fix/v2-courriers-libelles` (`1bba0c5`) : commits `fa15ba9` (correctif) et `42575d9` (revue). Une revue indépendante a conclu « avec correctifs mineurs » ; ils sont appliqués. Suite à **910** tests.
+> **Note (2026-09-28) — l'étape compte joint ne propose plus le courrier de blocage des comptes.** C'est le défaut relevé ci-dessus (« Hors périmètre »). Il est corrigé sur la branche `fix/v2-courrier-compte-joint`, partie de `fix/v2-courriers-libelles` (`1bba0c5`) : commits `fa15ba9` (correctif), `42575d9` (revue) et `de7a602` (re-revue). Une revue indépendante (« avec correctifs mineurs »), des correctifs, puis une re-revue ont conclu : prêt à merger une fois le texte de cette note corrigé, ce qui est fait. Suite à **910** tests. Fusion vérifiée avec la pointe `b1c7a76` de cette branche : 956 tests, sans conflit (hors le test instable signalé en fin de note).
 > - **Défaut** : `banque-debloquer-compte-joint` (continuer à utiliser le compte joint ou le transférer) proposait `banque-declaration-deces`, qui demande « de procéder au blocage des comptes détenus dans votre établissement, dans l'attente du règlement de la succession ». Un cotitulaire qui l'envoyait depuis cette étape demandait l'inverse de ce qu'il cherchait.
 > - **Décision d'Arnaud** : retirer le courrier de l'étape (FR et EN), sans courrier dédié au compte joint. Un tel courrier exigerait un contenu juridique nouveau, à sourcer et à faire relire. Aucun corps de courrier n'est modifié. Le courrier reste proposé par `banque-declaration-principale` et `banque-autres-banques`.
-> - **Invariant** (`tests/invariants.test.ts`) : un courrier qui demande « le blocage des comptes » n'est proposé que par ces deux étapes.
+> - **Invariant** (`tests/invariants.test.ts`) : un courrier dont le corps contient « blocage des comptes » n'est proposé que par ces deux étapes.
 >   - La liste est fermée : toute autre étape devra y être ajoutée sciemment.
->   - La détection se fait sur la phrase exacte, comme pour l'invariant « était locataire ». Si le courrier est reformulé, le test échoue au lieu de ne plus rien vérifier (contre-épreuve faite).
-> - **Roadmaps existantes** : `stepLetterTemplateId` masque le courrier sur l'étape compte joint, dans les deux langues et sans écriture en base (`tests/step-letter.test.ts`).
+>   - La détection porte sur l'expression exacte « blocage des comptes », comme pour l'invariant « était locataire ». Si le courrier est reformulé, le test échoue au lieu de ne plus rien vérifier (contre-épreuve faite).
+> - **Roadmaps existantes** : `stepLetterTemplateId` masque le courrier sur l'étape compte joint, sans écriture en base (`tests/step-letter.test.ts`, sur le catalogue FR ; l'EN suit par l'invariant de parité des catalogues, qui inclut `letter_template_id`).
 >   - La revue a montré que les tests « reste affiché » passaient à vide si l'étape disparaissait du catalogue.
 >   - Une garde est ajoutée, y compris sur le test bailleur existant.
 > - **Effets** :
@@ -1951,21 +1951,29 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 >     - « Mes courriers » est inchangé.
 >   - **Sur `main`**, le défaut existe aussi. Le courrier y est en canal `lre` : il ne part pas depuis l'app, mais il se copie et se télécharge en PDF depuis l'étape.
 >     - Ce correctif seul ne corrige que les nouvelles roadmaps.
->     - Pour corriger aussi les roadmaps existantes, emporter `7bf468d` (`stepLetterTemplateId`) avec lui.
+>     - Pour corriger aussi les roadmaps existantes, il faut emporter `7bf468d` (`src/lib/step-letter.ts` et une ligne de `DashboardPage.tsx`).
+>     - Si `main` doit être corrigé avant l'arrivée de la v2, le portage n'est pas mécanique : ces commits et leurs tests supposent l'état v2, absent de `main` (étape syndic corrigée par `d7aaf71` ; courrier télécom et bloc de tests « invariant : étapes ↔ courriers » de `31610b4`). Les tests sont à adapter.
 > - **À verser à la relecture juridique** (constats, sans affirmation de droit) :
->   - Le courrier de blocage est proposé à tous par les deux étapes bancaires. Il demande le blocage « des comptes détenus dans votre établissement », sans distinguer un compte joint dont l'expéditeur serait cotitulaire.
->   - Deux textes disent que le compte joint n'est pas bloqué d'office :
->     - l'aide de la question compte joint : « n'est pas bloqué automatiquement » ;
+>   - L'étape `banque-declaration-principale`, proposée à tous (« Dans les 48h »), annonce que « les comptes seront bloqués pour protéger la succession » et que « Le blocage des comptes protège les fonds de la succession », sans distinguer un compte joint.
+>     - Un cotitulaire la lit avant l'étape compte joint, qui se place après cette notification.
+>     - L'étape n'a pas de `source_url` et n'apparaît pas dans `docs/plan-questionnaire-v3.md` (lot éditorial) : elle n'est vraisemblablement pas dans le périmètre de relecture prévu.
+>   - Son courrier, proposé à tous par les deux étapes bancaires, demande le blocage « des comptes détenus dans votre établissement », sans distinguer un compte joint dont l'expéditeur serait cotitulaire.
+>   - Deux textes disent que le compte joint n'est pas bloqué automatiquement :
+>     - l'aide de la question compte joint, dans le questionnaire : « n'est pas bloqué automatiquement » ;
 >     - l'étape elle-même : « n'est pas automatiquement bloqué ».
->   - Or l'étape s'intitule « Débloquer le compte joint » et se place « Après notification à la banque ». Sans courrier, ces textes sont désormais sa seule guidance : à harmoniser.
->   - Hors périmètre, même famille : `assurance-prevoyance-employeur` propose `assurance-declaration-deces`. Ce courrier vise les « contrats d'assurance souscrits auprès de votre compagnie » et demande les démarches pour « leur résiliation ou leur transfert ». Reste à vérifier que cela convient à une prévoyance souscrite par l'employeur.
+>   - Or l'étape s'intitule « Débloquer le compte joint » et se place « Après notification à la banque ». Sans courrier, les textes de l'étape (titre, moment, description, « pourquoi », actions) sont désormais sa seule guidance ; leur cohérence avec l'aide de la question est à vérifier.
+>   - Hors périmètre, relevés au passage :
+>     - `assurance-prevoyance-employeur` propose `assurance-declaration-deces`. Ce courrier vise les « contrats d'assurance souscrits auprès de votre compagnie » et demande les démarches pour « leur résiliation ou leur transfert ». Il demande aussi si « un capital décès ou une garantie est prévu(e) dans les contrats en cours ». Reste à vérifier qu'il convient à la prévoyance de l'employeur visée par l'étape.
+>     - Le plafond des frais d'obsèques diffère selon les étapes : « plafond de 5 000 € » dans `banque-declaration-principale`, « 5 965 € » dans `banque-deblocage-frais-obseques` (idem sur `main`).
 > - **Suggestions de la revue, non retenues ici** :
->   - **Détection élargie** (`/blocage|bloquer/i`) : elle attraperait aussi « déblocage » et « débloquer », au sens inverse. Ces mots figurent dans le catalogue (`banque-deblocage-frais-obseques`, « débloquer les avoirs »).
+>   - **Détection élargie** (`/blocage|bloquer/i`) : aujourd'hui, elle ne retiendrait que le même courrier, car aucun corps de courrier ne contient « déblocage » ni « débloquer ».
+>     - Mais elle prendrait pour un courrier de blocage un futur courrier de sens inverse, dont le vocabulaire existe déjà dans les étapes (`banque-deblocage-frais-obseques`, sans courrier à ce jour ; « débloquer les avoirs »).
+>     - La détection exacte échoue déjà si le courrier est reformulé.
 >   - **Invariant générique** : tout courrier proposé par plusieurs étapes figurerait dans une table fermée courrier → étapes.
 >     - Il couvrirait toute la famille : syndic, compte joint, prévoyance.
 >     - Mais il obligerait à valider ou à exclure la prévoyance employeur : **décision d'Arnaud à prendre**.
 > - **Possible plus tard** : un courrier dédié au compte joint, après la relecture juridique (contenu à sourcer).
-> - **Hors périmètre, relevé pendant la vérification** : `tests/require-access-consent.test.ts` (rc3) est instable en suite complète. Il a échoué 1 fois sur 3 passes ici, et 1 fois sur 5 à la revue. En cause : une attente fixe de 20 ms. Une tâche séparée est proposée.
+> - **Hors périmètre, relevé pendant la vérification** : `tests/require-access-consent.test.ts` (rc3) est instable, en suite complète comme lancé seul. En cause : une attente fixe de 20 ms. Une tâche séparée est proposée.
 
 ---
 
