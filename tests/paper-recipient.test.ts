@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 import { validateAddress } from '../server/lib/paper-sender.js'
 // @ts-expect-error — module JS serveur
 import { envelopeNameOf } from '../server/lib/organisations.js'
-import { recipientFromOrganisation, recipientValid, type Organisation } from '@/lib/paper-recipient'
+import { lineTooLong, recipientFromOrganisation, recipientValid, type Organisation } from '@/lib/paper-recipient'
 import type { RecipientAddress } from '@/lib/paper-send-resume'
 import { loadOrganisationsSeed } from './helpers/organisations-seed'
 
@@ -61,5 +61,26 @@ describe('annuaire → adresse de l’enveloppe (pré-remplissage du destinatair
     expect(recipient.name).toBe('Carsat Bourgogne-Franche-Comté')
     expect(refusedByServer(recipient)).toBeNull()
     expect(recipientValid(recipient)).toBe(true)
+  })
+})
+
+describe('filet de sécurité : nom trop long signalé sous le champ (jamais un bouton grisé muet)', () => {
+  const VALID: RecipientAddress = {
+    name: 'Carsat Midi-Pyrénées',
+    address_line1: '2 rue Georges-Vivent',
+    postal_code: '31065',
+    city: 'Toulouse Cedex 9',
+  }
+
+  it('45 caractères : ni message, ni blocage', () => {
+    const recipient = { ...VALID, name: 'N'.repeat(45) }
+    expect(lineTooLong(recipient.name)).toBe(false)
+    expect(recipientValid(recipient)).toBe(true)
+  })
+
+  it('46 caractères : le bouton est bloqué ET le message s’affiche', () => {
+    const recipient = { ...VALID, name: 'N'.repeat(46) }
+    expect(recipientValid(recipient)).toBe(false)
+    expect(lineTooLong(recipient.name)).toBe(true)
   })
 })

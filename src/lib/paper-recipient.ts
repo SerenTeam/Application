@@ -31,15 +31,21 @@ export function recipientFromOrganisation(org: Organisation): RecipientAddress {
   }
 }
 
+/** Ligne trop longue pour l'enveloppe : jamais tronquée, la famille la raccourcit. Même mesure
+ * que `recipientValid`, pour qu'un blocage de l'envoi ne soit jamais muet. */
+export function lineTooLong(value: string | undefined): boolean {
+  return (value ?? '').length > LINE_MAX
+}
+
 export function recipientValid(r: RecipientAddress): boolean {
   return (
     r.name.trim().length > 0 &&
-    r.name.length <= LINE_MAX &&
+    !lineTooLong(r.name) &&
     r.address_line1.trim().length > 0 &&
-    r.address_line1.length <= LINE_MAX &&
-    (r.address_line2 ?? '').length <= LINE_MAX &&
+    !lineTooLong(r.address_line1) &&
+    !lineTooLong(r.address_line2) &&
     POSTAL_CODE_RE.test(r.postal_code.trim()) &&
     r.city.trim().length > 0 &&
-    r.city.length <= LINE_MAX
+    !lineTooLong(r.city)
   )
 }

@@ -6,7 +6,7 @@ import { apiFetch } from '@/lib/api'
 import { useT } from '@/i18n/useT'
 import { fmt } from '@/i18n'
 import type { RecipientAddress } from '@/lib/paper-send-resume'
-import { LINE_MAX, recipientFromOrganisation, type Organisation } from '@/lib/paper-recipient'
+import { LINE_MAX, lineTooLong, recipientFromOrganisation, type Organisation } from '@/lib/paper-recipient'
 
 interface RecipientAddressFormProps {
   // null = destinataire propre à l'utilisateur (banque, assurance, employeur…) : jamais
@@ -174,6 +174,10 @@ export function RecipientAddressForm({
             {t.paperSend.recipientNameLabel}
           </Label>
           <Input id={`${uid}-name`} value={value.name} maxLength={LINE_MAX} onChange={set('name')} disabled={frozen} />
+          <p className="text-xs text-text-muted">{fmt(t.paperSend.lineCounter, { count: value.name.length })}</p>
+          {/* Filet de sécurité (défaut du 2026-09-28) : `maxLength` ne borne que la frappe, pas une
+              valeur posée par le code — un nom trop long bloquerait sinon l'envoi sans explication. */}
+          {lineTooLong(value.name) && <p className="text-xs text-warning">{t.paperSend.recipientNameTooLong}</p>}
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor={`${uid}-address1`} className="text-sm">
