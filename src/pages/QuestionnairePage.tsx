@@ -230,8 +230,8 @@ export function QuestionnairePage() {
       await saveRoadmapToDb(user.id, qId, steps, lang)
 
       sessionStorage.removeItem('seren_questionnaire_session')
-      // Personnalisation v2 : la roadmap est enregistrée — on demande maintenant, une seule fois,
-      // les coordonnées qui pré-rempliront les courriers (spec §4.4).
+      // Personnalisation v2 : la roadmap est enregistrée — on demande maintenant les coordonnées qui
+      // pré-rempliront les courriers (spec §4.4).
       setPhase('coordinates')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t.questionnaire.unexpectedError)
@@ -333,7 +333,11 @@ export function QuestionnairePage() {
             userId={user.id}
             questionnaireId={questionnaireId}
             answers={finalAnswers}
-            onDone={() => setPhase('done')}
+            onDone={() => {
+              // Formulaire long quitté depuis le bas (mobile) : l'écran de fin repart du haut.
+              window.scrollTo(0, 0)
+              setPhase('done')
+            }}
           />
         )}
 

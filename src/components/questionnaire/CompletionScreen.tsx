@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Check, ArrowRight } from 'lucide-react'
 import { useT } from '@/i18n/useT'
@@ -6,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { IconBadge } from '@/components/ui/icon-badge'
 import { PillBadge } from '@/components/ui/pill-badge'
 import { useAccount } from '@/hooks/useAccount'
+import { focusIfIdle } from '@/lib/focus'
 
 interface CompletionScreenProps {
   stepsCount: number
@@ -20,6 +22,12 @@ export function CompletionScreen({ stepsCount, doneCount, lettersCount }: Comple
   // de prix, jamais de mention LRAR : la famille ne paie rien.
   const { me } = useAccount()
   const dossier = me?.account?.dossier ?? null
+  // Le bouton de l'écran de coordonnées (« Enregistrer » ou « Plus tard ») vient d'être démonté : le
+  // focus retomberait sur body. On le place sur le titre, sauf si la personne est déjà ailleurs.
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    focusIfIdle(titleRef.current)
+  }, [])
   return (
     <section className="animate-[fadeIn_0.8s_ease-out] px-4 py-8 sm:py-16">
       <div className="mx-auto max-w-[560px] rounded-card bg-white p-10 text-center shadow-card max-sm:p-7">
@@ -27,7 +35,11 @@ export function CompletionScreen({ stepsCount, doneCount, lettersCount }: Comple
           <Check strokeWidth={2} />
         </IconBadge>
 
-        <h2 className="font-display text-[28px] font-normal leading-[1.3] text-text sm:text-[32px] lg:text-[36.5px]">
+        <h2
+          ref={titleRef}
+          tabIndex={-1}
+          className="font-display text-[28px] font-normal leading-[1.3] text-text focus:outline-none sm:text-[32px] lg:text-[36.5px]"
+        >
           {t.completion.title}
         </h2>
 

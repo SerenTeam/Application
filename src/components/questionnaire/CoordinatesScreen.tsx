@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type HTMLAttributes } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useT } from '@/i18n/useT'
 import { SectionHeading } from '@/components/ui/section-heading'
@@ -11,7 +11,17 @@ import {
   type LetterProfileRow,
 } from '@/lib/letter-profile'
 import { nullOnError } from '@/lib/sentry'
+import { focusIfIdle } from '@/lib/focus'
+import { cn } from '@/lib/utils'
 import type { QuestionnaireAnswersV2 } from '@/types/questionnaire'
+
+// Titre de l'écran, focalisable par script (tabIndex -1) : passé en `as` à SectionHeading, primitive
+// partagée qu'on ne modifie pas. Le focus arrive ainsi sur le vrai <h1>, annoncé « titre de niveau
+// 1 », et non sur le div qui l'enveloppe. Défini hors du rendu : un composant recréé à chaque rendu
+// remonterait le <h1> et lui ferait perdre le focus.
+function FocusableH1({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
+  return <h1 tabIndex={-1} className={cn(className, 'focus:outline-none')} {...props} />
+}
 
 interface CoordinatesScreenProps {
   userId: string
@@ -29,10 +39,13 @@ export function CoordinatesScreen({ userId, questionnaireId, answers, onDone }: 
   const [profile, setProfile] = useState<LetterProfileRow | null>(null)
   const [dossier, setDossier] = useState<DossierIdentity | null>(null)
   // Accessibilité (note post-revue Task 8) : le spinner « completing » vient d'être démonté, le focus
-  // serait perdu (body) — on le place sur le titre de l'écran dès qu'il s'affiche.
+  // serait perdu (body) — on le place sur le titre de l'écran dès qu'il s'affiche. Sans jamais le
+  // voler : pendant la génération ou les lectures, la personne a pu aller dans l'en-tête (Tab,
+  // bascule de langue).
   const headingRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    if (!loading) headingRef.current?.focus()
+    if (loading) return
+    focusIfIdle(headingRef.current?.querySelector<HTMLElement>('h1'))
   }, [loading])
 
   useEffect(() => {
@@ -67,9 +80,8 @@ export function CoordinatesScreen({ userId, questionnaireId, answers, onDone }: 
     <section className="animate-fade-in">
       <SectionHeading
         ref={headingRef}
-        tabIndex={-1}
-        as="h1"
-        className="mb-8 max-w-none focus:outline-none"
+        as={FocusableH1}
+        className="mb-8 max-w-none"
         title={t.letterProfile.screenTitle}
         lead={t.letterProfile.screenLead}
       />

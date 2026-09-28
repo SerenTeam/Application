@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { focusIfIdle } from '@/lib/focus'
 import { supabase } from '@/lib/supabase'
 import { useT } from '@/i18n/useT'
 import { useLang } from '@/i18n/LanguageContext'
@@ -139,10 +140,8 @@ export function LetterProfileForm({
     toggleFocusRef.current = null
     // Enregistrement lent : la personne a pu passer à un autre champ entre-temps. Le focus n'est
     // replacé que s'il est retombé sur <body> (bouton démonté par la bascule) : on ne le vole jamais.
-    const active = document.activeElement
-    if (active && active !== document.body) return
-    if (request === 'edit-button') editButtonRef.current?.focus()
-    else document.getElementById(fieldId(uid, 'first_name'))?.focus()
+    if (request === 'edit-button') focusIfIdle(editButtonRef.current)
+    else focusIfIdle(document.getElementById(fieldId(uid, 'first_name')))
   }, [editing, uid])
 
   // Validation en échec : focus sur le premier champ en erreur, après le rendu qui pose aria-invalid.
