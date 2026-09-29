@@ -4671,3 +4671,9 @@ Envoyer les 3 fichiers à Arnaud (`SendUserFile`), puis `supabase stop --workdir
 >   - Playwright 1.57.0 installé **hors ligne** depuis le cache npm, sans aucun téléchargement.
 > - **Relancer le tournage** : `cd <scratchpad>/video && ./run.sh --build`. `DEMO_PACE=0.3` donne une répétition rapide.
 > - **Pile Supabase locale et Docker Desktop** : laissés en marche, d'autres sessions pouvant s'en servir. `supabase stop --workdir <wt-perso>` quand plus rien ne doit tourner.
+
+> **Correctif après rc4 (2026-09-29).** Signalé par la session « focus entre les questions ».
+> - **Défaut** : `focus:outline-none` n'annulait pas l'anneau du projet sur les titres focalisés par script (écran de coordonnées, écran de fin), car cet anneau est un box-shadow posé par `:focus-visible` en layer base. Il apparaissait après une navigation au clavier.
+> - **Correctif** : `focus:ring-0 focus:ring-offset-0`, comme sur `fix/questionnaire-focus`.
+> - **Mesure dans Chromium** avec le CSS compilé : titre à 2 px + 4 px avant, 0 après ; boutons inchangés.
+> - **Vidéo et tag** : la vidéo n'est pas affectée, car à la souris le focus n'est pas « visible ». Le tag `preprod-v2-rc4` reste sur le code filmé ; ce correctif est en tête de `integration/v2-demo`.
