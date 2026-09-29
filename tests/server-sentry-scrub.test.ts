@@ -124,6 +124,33 @@ describe('scrubSentryEvent', () => {
     expect(event.request.url).toBe('https://app.seren-app.fr/api/letters/provider-webhook/[scrubbed]')
     expect(event.breadcrumbs[0].message).toBe('POST /api/letters/provider-webhook/[scrubbed]?retry=1')
   })
+  // Produit transmission (gelé, lecture seule) : GET /api/transmission/:code porte le code d'accès dans
+  // le chemin et capture ses erreurs, que le SDK recopie donc dans request.url ET le nom de transaction.
+  // Express route sans tenir compte de la casse : /API/Transmission/<code> atteint la même route et
+  // capture de même (constat sur l'enveloppe remise au transport, SDK 10.68.0).
+  it.each(['/api/transmission/', '/API/Transmission/'])(
+    'code d’accès transmission masqué dans l’URL, la transaction et toute chaîne (%s)',
+    (prefix) => {
+      const CODE = 'Zq7Kx9Wm'
+      const event = scrubSentryEvent({
+        transaction: `GET ${prefix}${CODE}`,
+        request: { method: 'GET', url: `https://app.seren-app.fr${prefix}${CODE}` },
+        breadcrumbs: [{ category: 'http', data: { url: `https://app.seren-app.fr${prefix}${CODE}?lang=fr` } }],
+      })
+      expect(JSON.stringify(event)).not.toContain(CODE)
+      expect(event.transaction).toBe(`GET ${prefix}[code]`)
+      expect(event.request.url).toBe(`https://app.seren-app.fr${prefix}[code]`)
+      expect(event.breadcrumbs[0].data.url).toBe(`https://app.seren-app.fr${prefix}[code]?lang=fr`)
+    },
+  )
+  it('/api/user/transmission (route sœur, sans code) : inchangée', () => {
+    const event = scrubSentryEvent({
+      transaction: 'GET /api/user/transmission',
+      request: { method: 'GET', url: 'https://app.seren-app.fr/api/user/transmission' },
+    })
+    expect(event.transaction).toBe('GET /api/user/transmission')
+    expect(event.request.url).toBe('https://app.seren-app.fr/api/user/transmission')
+  })
   it('renvoie toujours l’événement (on masque, on ne jette pas)', () => {
     const event = { message: 'ok' }
     expect(scrubSentryEvent(event)).toBe(event)
