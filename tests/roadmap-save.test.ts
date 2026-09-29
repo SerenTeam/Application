@@ -126,10 +126,11 @@ function makeFakeSupabase() {
 
 const base: QuestionnaireAnswersV2 = {
   relation: 'parent', deceased_firstname: 'Pierre', deceased_lastname: 'Dupont',
-  deceased_dod: '2026-04-10', statut_professionnel: 'sans_activite', logement: 'heberge_ou_autre',
+  deceased_dod: '2026-04-10', statut_professionnel: 'sans_activite', logement: ['heberge_ou_autre'],
   enfants: 'aucun', has_notary: true, has_life_insurance: 'non',
   has_vehicle: false, has_credits: false, employait_aide_domicile: false,
   contrat_obseques: 'non', organismes_contactes: [],
+  aides_percues: [], abonnements: [],
 }
 const STEPS = generateRoadmap(base)
 
