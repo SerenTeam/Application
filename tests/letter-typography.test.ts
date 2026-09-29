@@ -49,6 +49,13 @@ describe('courriers — élision de « de » devant le prénom du défunt', () =
 
 describe('courriers — « 1er » pour le premier jour du mois', () => {
   const originalTz = process.env.TZ
+  // Fuseau imposé au processus, avec sentinelle : un changement de fuseau resté sans effet laisserait
+  // passer à vide les cas Martinique (leurs dates seules sont formatées en UTC).
+  function switchTimeZone(tz: string | undefined) {
+    if (!tz) return
+    process.env.TZ = tz
+    expect(new Date('1941-03-01').getDate(), `le processus doit être passé à ${tz} (UTC−4)`).toBe(28)
+  }
   afterEach(() => {
     vi.useRealTimers()
     if (originalTz === undefined) delete process.env.TZ
@@ -63,14 +70,14 @@ describe('courriers — « 1er » pour le premier jour du mois', () => {
       ['1941-03-01', '1er mars 1941'],
       ['1941-03-14', '14 mars 1941'],
     ])('naissance le %s → « né(e) le %s »', (iso, expected) => {
-      if (tz) process.env.TZ = tz
+      switchTimeZone(tz)
       const { values, body } = sentLetter({ deceased_dob: iso })
       expect(values.deceased_dob).toBe(expected)
       expect(body).toContain(`né(e) le ${expected}, vous informe`)
     })
 
     it('décès le 2026-09-01 → « survenu le 1er septembre 2026 »', () => {
-      if (tz) process.env.TZ = tz
+      switchTimeZone(tz)
       const { values, body } = sentLetter({ deceased_dod: '2026-09-01' })
       expect(values.deceased_dod).toBe('1er septembre 2026')
       expect(body).toContain('survenu le 1er septembre 2026.')

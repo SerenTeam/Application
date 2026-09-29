@@ -18,8 +18,6 @@ interface DossierCardProps {
   activationsEnabled: boolean
 }
 
-// Dates en toutes lettres par formatLongDate : « 1er octobre 2026 » en français, jamais « 1 octobre ».
-
 /** Horodatage complet (création, activation, annulation). */
 function formatTimestamp(value: string, lang: Lang): string {
   return formatLongDate(new Date(value), lang)

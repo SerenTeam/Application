@@ -244,6 +244,7 @@ describe('formatDobForDisplay — date de naissance affichée dans l’interface
     expect(formatDobForDisplay('1941-03-01', 'fr')).toBe('1er mars 1941')
     expect(formatDobForDisplay('1941-03-01', 'en')).toBe('1 March 1941')
     process.env.TZ = 'America/Martinique'
+    expect(new Date('1941-03-01').getDate()).toBe(28) // sentinelle : le processus est bien à UTC−4
     expect(formatDobForDisplay('1941-03-01', 'fr')).toBe('1er mars 1941')
     expect(formatDobForDisplay('1941-03-01', 'en')).toBe('1 March 1941')
   })

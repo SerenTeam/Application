@@ -7,7 +7,8 @@ const DEFAULT_OPTIONS = { day: 'numeric', month: 'long', year: 'numeric' }
 /**
  * @param {Date} date — valide (Intl lève une RangeError sinon)
  * @param {'fr' | 'en'} lang
- * @param {Intl.DateTimeFormatOptions} [options] — complète le format par défaut (fuseau, heure…)
+ * @param {Omit<Intl.DateTimeFormatOptions, 'dateStyle' | 'timeStyle' | 'day'>} [options] — complète le
+ *   format par défaut (fuseau, heure, mois abrégé…) ; sans dateStyle/timeStyle (TypeError d'Intl) ni jour
  * @returns {string}
  */
 export function formatLongDate(date, lang, options = {}) {
