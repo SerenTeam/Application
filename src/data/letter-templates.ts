@@ -11,6 +11,11 @@ export interface LetterTemplate {
   step_id: string
   organisme: string
   subject: string
+  // Le nom d'organisme est saisi librement par la famille : aucun article ni aucune préposition du
+  // libellé ne s'y accorde — forme unique « À l'attention … — {{organisme_name}} ». Modèles réseau :
+  // « du service compétent », sans préfixe nommant l'organisme : leur nom officiel le désigne déjà,
+  // et pas toujours comme on l'attend (CGSS et CSSM outre-mer, Cnav en Île-de-France, SIP). Testé
+  // dans tests/letter-templates-server.test.ts, y compris avec chaque nom de l'annuaire.
   recipient_label: string
   body: string
   variables: LetterVariable[]
@@ -59,7 +64,7 @@ export const LETTER_TEMPLATES: LetterTemplate[] = [
     step_id: 'banque-declaration-principale',
     organisme: 'Banque',
     subject: 'Déclaration de décès — Comptes de {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'Au Service Succession de {{organisme_name}}',
+    recipient_label: 'À l\'attention du service succession — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -97,7 +102,7 @@ ${SIGNATURE}`,
     step_id: 'assurance-declaration-deces',
     organisme: 'Assurance',
     subject: 'Déclaration de décès — Contrats de {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'Au Service Sinistres de {{organisme_name}}',
+    recipient_label: 'À l\'attention du service sinistres — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -137,7 +142,7 @@ ${SIGNATURE}`,
     step_id: 'assurance-vie-contact',
     organisme: 'Assurance Vie',
     subject: 'Demande de versement du capital — Contrat de {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'Au Service Assurance Vie de {{organisme_name}}',
+    recipient_label: 'À l\'attention du service assurance vie — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -179,7 +184,7 @@ ${SIGNATURE}`,
     step_id: 'administratif-prevenir-employeur',
     organisme: 'Employeur',
     subject: 'Notification de décès — {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'Au Service des Ressources Humaines de {{organisme_name}}',
+    recipient_label: 'À l\'attention du service des ressources humaines — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -221,7 +226,7 @@ ${SIGNATURE}`,
     step_id: 'administratif-caf',
     organisme: 'CAF',
     subject: 'Déclaration de décès — Dossier allocataire de {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'À la Caisse d\'Allocations Familiales de {{organisme_name}}',
+    recipient_label: 'À l\'attention du service compétent — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -259,7 +264,7 @@ ${SIGNATURE}`,
     step_id: 'administratif-carsat-retraite',
     organisme: 'CARSAT',
     subject: 'Déclaration de décès — {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'À la CARSAT de {{organisme_name}}',
+    recipient_label: 'À l\'attention du service compétent — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -297,7 +302,7 @@ ${SIGNATURE}`,
     step_id: 'administratif-mutuelle',
     organisme: 'Mutuelle',
     subject: 'Résiliation pour décès — Contrat de {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'Au Service Adhésion de {{organisme_name}}',
+    recipient_label: 'À l\'attention du service des adhésions — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -334,7 +339,7 @@ ${SIGNATURE}`,
     step_id: 'logement-resilier-bail',
     organisme: 'Bailleur',
     subject: 'Résiliation de bail pour décès — {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'À {{organisme_name}}',
+    recipient_label: 'À l\'attention du bailleur — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -371,7 +376,7 @@ ${SIGNATURE}`,
     step_id: 'administratif-cpam',
     organisme: 'CPAM',
     subject: 'Déclaration de décès — {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'À la Caisse Primaire d\'Assurance Maladie de {{organisme_name}}',
+    recipient_label: 'À l\'attention du service compétent — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}
@@ -410,7 +415,7 @@ ${SIGNATURE}`,
     step_id: 'administratif-impots',
     organisme: 'Direction Générale des Finances Publiques',
     subject: 'Déclaration de décès — {{deceased_firstname}} {{deceased_lastname}}',
-    recipient_label: 'Au Centre des Finances Publiques de {{organisme_name}}',
+    recipient_label: 'À l\'attention du service compétent — {{organisme_name}}',
     body: `{{recipient_label}}
 
 Objet : {{subject}}

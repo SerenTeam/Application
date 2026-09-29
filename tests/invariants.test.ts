@@ -217,6 +217,30 @@ describe('invariant : étapes ↔ courriers', () => {
       expect(step!.letter_template_id, `${t.id} : l’étape ${t.step_id} ne le propose pas`).toBe(t.id)
     }
   })
+  // Défaut préexistant relevé à la revue de la personnalisation v2 (2026-09-28) : le courrier
+  // bailleur affirme que le défunt « était locataire » et invoque la résiliation du bail (art. 14
+  // de la loi du 6 juillet 1989) ; l'étape syndic, ouverte aussi aux propriétaires, le proposait.
+  it('un courrier qui affirme « était locataire » n’est proposé que par des étapes réservées aux locataires', () => {
+    const tenantLetters = LETTER_TEMPLATES.filter((t) => t.body.includes('était locataire')).map((t) => t.id)
+    expect(tenantLetters).toContain('bailleur-notification')
+    for (const s of STEPS_CATALOG) {
+      if (!s.letter_template_id || !tenantLetters.includes(s.letter_template_id)) continue
+      expect(s.applicable_when.logement, `${s.id} propose ${s.letter_template_id}`).toEqual(['locataire'])
+    }
+  })
+  // Défaut préexistant de même famille, relevé le 2026-09-28 : le courrier banque-declaration-deces
+  // demande de « procéder au blocage des comptes » ; l'étape du compte joint, qui vise à continuer
+  // d'utiliser ce compte ou à le transférer, le proposait. Liste fermée : toute nouvelle étape qui
+  // voudrait proposer un courrier de blocage doit y être ajoutée sciemment.
+  it('un courrier qui demande le « blocage des comptes » n’est proposé que par les étapes qui déclarent le décès à une banque', () => {
+    const BANK_DEATH_NOTICE_STEPS = ['banque-declaration-principale', 'banque-autres-banques']
+    const blockingLetters = LETTER_TEMPLATES.filter((t) => t.body.includes('blocage des comptes')).map((t) => t.id)
+    expect(blockingLetters).toContain('banque-declaration-deces')
+    for (const s of STEPS_CATALOG) {
+      if (!s.letter_template_id || !blockingLetters.includes(s.letter_template_id)) continue
+      expect(BANK_DEATH_NOTICE_STEPS, `${s.id} propose ${s.letter_template_id}`).toContain(s.id)
+    }
+  })
   it('personnalisation v2 : les 5 nouvelles démarches proposent leur courrier', () => {
     const expected: Record<string, string> = {
       'abonnements-presse': 'resiliation-presse',

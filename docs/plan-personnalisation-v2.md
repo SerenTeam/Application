@@ -1915,6 +1915,70 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 > - **Sortis en tâches séparées (défauts préexistants)** : la grammaire des 10 anciens courriers, et le courrier bailleur proposé aux propriétaires par l'étape syndic.
 > - **Backlog produit (M5)** : un seul envoi papier par étape, alors que presse, sport et télécom peuvent concerner plusieurs prestataires.
 
+> **Note (2026-09-28) — les deux défauts préexistants sortis de la Task 5 sont corrigés** sur la branche `fix/v2-courriers-libelles` (partie de `611ad24`, commits `fix(courriers): …`). Une revue indépendante, puis des correctifs, puis une re-revue ont conclu : « prêt à merger ». Suite à **907** tests. Fusion vérifiée avec la pointe `dbe7db0` de cette branche : 945 tests, sans conflit.
+> - **Libellés de destinataire** : les 15 courriers ont la forme « À l'attention … — {{organisme_name}} », à l'identique client et serveur. Plus aucun « … de AXA », « … de Le Crédit Lyonnais » ni « À Les … ». La mutuelle passe à « service des adhésions » (formulation du courrier sport).
+>   - Pour les 4 modèles réseau (CAF, CPAM, CARSAT, impôts), le libellé est « À l'attention du service compétent — … » (**décision d'Arnaud**). Tout préfixe nommant l'organisme doublait les 321 noms de l'annuaire ou les contredisait (CGSS et CSSM outre-mer, Cnav en Île-de-France, SIP). C'est testé nom par nom.
+>   - `organisme_name` reste une saisie libre. L'annuaire ne pré-remplit que l'enveloppe, et seulement pour la CARSAT parmi les réseaux.
+> - **Étape syndic** : elle ne propose plus `bailleur-notification`, que seule `logement-resilier-bail` (locataires) propose désormais. Un invariant l'impose : un courrier qui affirme « était locataire » n'est proposé que par des étapes réservées aux locataires.
+>   - **Roadmaps existantes (décision d'Arnaud)** : le tableau de bord masque un courrier que le catalogue ne propose plus sur l'étape, sans jamais en ajouter et sans écriture en base (`src/lib/step-letter.ts`).
+>   - Cela compte en prod : sur `main`, l'étape syndic s'affiche à tous, avec ce courrier.
+>   - Effet de bord :
+>     - Sur `main`, rien n'est perdu : ce courrier était en canal `lre` et n'a jamais pu être envoyé depuis l'app ; « Mes courriers » ne dépend pas du courrier affiché.
+>     - Sur les bases où le papier est activé (préprod, intégration : comptes de démo), un courrier bailleur déjà envoyé depuis l'étape syndic n'y a plus de suivi (statut, renvoi). Le panneau retrouve l'envoi par le couple (modèle, étape).
+>   - **Garde-fou permanent à ajouter après la Task 10**, qui modifie `DashboardPage.tsx` :
+>     - déplacer `buildPhases` et `DbStep` dans un module `.ts` (par exemple `src/lib/roadmap-phases.ts`) ;
+>     - le tester avec des lignes telles qu'en base sur `main`, en FR et en EN.
+>     - Le branchement n'est aujourd'hui prouvé que ponctuellement, avec contre-épreuve, par l'implémenteur et par la revue. Aucun `.tsx` du dépôt n'exporte d'utilitaire.
+> - **À verser à la relecture juridique** :
+>   - la ligne destinataire de 10 courriers a changé. Pour les 102 SIP, on lit « … service compétent — Service des impôts des particuliers (SIP) - … » : c'est correct, la répétition est cosmétique ;
+>   - le courrier bailleur affirme « Conformément à l'article 14 de la loi du 6 juillet 1989, le décès du locataire entraîne la résiliation du bail avec un préavis d'un mois ». Or l'article 14 (Légifrance, LEGIARTI000006475111) prévoit le transfert du bail à certains proches, et à défaut une résiliation de plein droit par le décès, sans mentionner de préavis ;
+>   - l'étape `logement-resilier-bail` parle de « courrier recommandé » et de « préavis d'1 mois » ;
+>   - l'étape syndic garde, pour les propriétaires, la puce « conditions de résiliation ou transfert du bail ».
+> - **Hors périmètre, relevé par la revue** :
+>   - 20 noms CARSAT sur 20 dépassent 45 caractères. Recopiés dans l'enveloppe, ils rendent l'adresse invalide, et le bouton d'envoi reste grisé sans message.
+>   - L'élision manque dans les corps et les objets des courriers (« fille de Anne Martin », « Dossier allocataire de Anne Martin »).
+>   - L'étape `banque-debloquer-compte-joint` (continuer à utiliser le compte joint ou le transférer) propose `banque-declaration-deces`, qui demande de « procéder au blocage des comptes ». C'est l'inverse du but de l'étape (même famille de défaut que le syndic ; idem sur `main`). Décision produit à prendre : retirer le courrier de l'étape, ou prévoir un courrier dédié. Si le catalogue est corrigé, `stepLetterTemplateId` masquera l'ancien courrier sur les roadmaps existantes. **Tranché le 2026-09-28 : courrier retiré de l'étape (note suivante).**
+
+> **Note (2026-09-28) — l'étape compte joint ne propose plus le courrier de blocage des comptes.** C'est le défaut relevé ci-dessus (« Hors périmètre »). Il est corrigé sur la branche `fix/v2-courrier-compte-joint`, partie de `fix/v2-courriers-libelles` (`1bba0c5`) : commits `fa15ba9` (correctif), `42575d9` (revue) et `de7a602` (re-revue). Une revue indépendante (« avec correctifs mineurs »), des correctifs, puis une re-revue ont conclu : prêt à merger une fois le texte de cette note corrigé, ce qui est fait. Suite à **910** tests. Fusion vérifiée avec la pointe `b1c7a76` de cette branche : 956 tests, sans conflit (hors le test instable signalé en fin de note).
+> - **Défaut** : `banque-debloquer-compte-joint` (continuer à utiliser le compte joint ou le transférer) proposait `banque-declaration-deces`, qui demande « de procéder au blocage des comptes détenus dans votre établissement, dans l'attente du règlement de la succession ». Un cotitulaire qui l'envoyait depuis cette étape demandait l'inverse de ce qu'il cherchait.
+> - **Décision d'Arnaud** : retirer le courrier de l'étape (FR et EN), sans courrier dédié au compte joint. Un tel courrier exigerait un contenu juridique nouveau, à sourcer et à faire relire. Aucun corps de courrier n'est modifié. Le courrier reste proposé par `banque-declaration-principale` et `banque-autres-banques`.
+> - **Invariant** (`tests/invariants.test.ts`) : un courrier dont le corps contient « blocage des comptes » n'est proposé que par ces deux étapes.
+>   - La liste est fermée : toute autre étape devra y être ajoutée sciemment.
+>   - La détection porte sur l'expression exacte « blocage des comptes », comme pour l'invariant « était locataire ». Si le courrier est reformulé, le test échoue au lieu de ne plus rien vérifier (contre-épreuve faite).
+> - **Roadmaps existantes** : `stepLetterTemplateId` masque le courrier sur l'étape compte joint, sans écriture en base (`tests/step-letter.test.ts`, sur le catalogue FR ; l'EN suit par l'invariant de parité des catalogues, qui inclut `letter_template_id`).
+>   - La revue a montré que les tests « reste affiché » passaient à vide si l'étape disparaissait du catalogue.
+>   - Une garde est ajoutée, y compris sur le test bailleur existant.
+> - **Effets** :
+>   - **Nouvelles roadmaps** : l'étape est créée sans courrier. Le compteur « N courriers prêts » de fin de questionnaire baisse de 1 pour les profils avec compte joint.
+>   - **Bases où le papier est activé** (préprod, intégration : comptes de démo) : comme pour le syndic, un courrier de blocage déjà envoyé depuis l'étape compte joint n'y a plus de suivi (statut, renvoi).
+>     - Une reprise d'envoi en attente après un achat à l'acte n'y serait pas relancée automatiquement ; l'achat reste enregistré.
+>     - « Mes courriers » est inchangé.
+>   - **Sur `main`**, le défaut existe aussi. Le courrier y est en canal `lre` : il ne part pas depuis l'app, mais il se copie et se télécharge en PDF depuis l'étape.
+>     - Ce correctif seul ne corrige que les nouvelles roadmaps.
+>     - Pour corriger aussi les roadmaps existantes, il faut emporter `7bf468d` (`src/lib/step-letter.ts` et une ligne de `DashboardPage.tsx`).
+>     - Si `main` doit être corrigé avant l'arrivée de la v2, le portage n'est pas mécanique : ces commits et leurs tests supposent l'état v2, absent de `main` (étape syndic corrigée par `d7aaf71` ; courrier télécom et bloc de tests « invariant : étapes ↔ courriers » de `31610b4`). Les tests sont à adapter.
+> - **À verser à la relecture juridique** (constats, sans affirmation de droit) :
+>   - L'étape `banque-declaration-principale`, proposée à tous (« Dans les 48h »), annonce que « les comptes seront bloqués pour protéger la succession » et que « Le blocage des comptes protège les fonds de la succession », sans distinguer un compte joint.
+>     - Un cotitulaire la lit avant l'étape compte joint, qui se place après cette notification.
+>     - L'étape n'a pas de `source_url` et n'apparaît pas dans `docs/plan-questionnaire-v3.md` (lot éditorial) : elle n'est vraisemblablement pas dans le périmètre de relecture prévu.
+>   - Son courrier, proposé à tous par les deux étapes bancaires, demande le blocage « des comptes détenus dans votre établissement », sans distinguer un compte joint dont l'expéditeur serait cotitulaire.
+>   - Deux textes disent que le compte joint n'est pas bloqué automatiquement :
+>     - l'aide de la question compte joint, dans le questionnaire : « n'est pas bloqué automatiquement » ;
+>     - l'étape elle-même : « n'est pas automatiquement bloqué ».
+>   - Or l'étape s'intitule « Débloquer le compte joint » et se place « Après notification à la banque ». Sans courrier, les textes de l'étape (titre, moment, description, « pourquoi », actions) sont désormais sa seule guidance ; leur cohérence avec l'aide de la question est à vérifier.
+>   - Hors périmètre, relevés au passage :
+>     - `assurance-prevoyance-employeur` propose `assurance-declaration-deces`. Ce courrier vise les « contrats d'assurance souscrits auprès de votre compagnie » et demande les démarches pour « leur résiliation ou leur transfert ». Il demande aussi si « un capital décès ou une garantie est prévu(e) dans les contrats en cours ». Reste à vérifier qu'il convient à la prévoyance de l'employeur visée par l'étape.
+>     - Le plafond des frais d'obsèques diffère selon les étapes : « plafond de 5 000 € » dans `banque-declaration-principale`, « 5 965 € » dans `banque-deblocage-frais-obseques` (idem sur `main`).
+> - **Suggestions de la revue, non retenues ici** :
+>   - **Détection élargie** (`/blocage|bloquer/i`) : aujourd'hui, elle ne retiendrait que le même courrier, car aucun corps de courrier ne contient « déblocage » ni « débloquer ».
+>     - Mais elle prendrait pour un courrier de blocage un futur courrier de sens inverse, dont le vocabulaire existe déjà dans les étapes (`banque-deblocage-frais-obseques`, sans courrier à ce jour ; « débloquer les avoirs »).
+>     - La détection exacte échoue déjà si le courrier est reformulé.
+>   - **Invariant générique** : tout courrier proposé par plusieurs étapes figurerait dans une table fermée courrier → étapes.
+>     - Il couvrirait toute la famille : syndic, compte joint, prévoyance.
+>     - Mais il obligerait à valider ou à exclure la prévoyance employeur : **décision d'Arnaud à prendre**.
+> - **Possible plus tard** : un courrier dédié au compte joint, après la relecture juridique (contenu à sourcer).
+> - **Hors périmètre, relevé pendant la vérification** : `tests/require-access-consent.test.ts` (rc3) est instable, en suite complète comme lancé seul. En cause : une attente fixe de 20 ms. Une tâche séparée est proposée.
+
 ---
 
 ### Task 6 : Pré-remplissage du questionnaire depuis le dossier PF (serveur) + dates lisibles au récapitulatif

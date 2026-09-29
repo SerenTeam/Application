@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { LETTER_TEMPLATES as FRONT_TEMPLATES, getTemplateNetwork } from '../src/data/letter-templates'
 // @ts-expect-error — module JS serveur
 import { LETTER_TEMPLATES as SERVER_TEMPLATES } from '../server/lib/letter-templates.js'
@@ -243,5 +245,93 @@ describe('personnalisation v2 — 5 courriers papier, destinataire saisi par la 
       delete partial.subscriber_number
       expect(renderLetter(id, partial).missingVariables, id).toContain('subscriber_number')
     }
+  })
+})
+
+// ── Libellé destinataire : aucun accord fait à la main avec le nom de l'organisme ──────────────
+//
+// Défaut préexistant relevé à la revue de la personnalisation v2 (2026-09-28) : `organisme_name`
+// est saisi librement par la famille, et « Au Service Succession de {{organisme_name}} » donnait
+// « … de AXA », « … de Le Crédit Lyonnais ». Les 15 courriers ont désormais la forme des 5
+// courriers v2, « À l'attention … — {{organisme_name}} » : aucune préposition ni aucun article
+// ne touche plus le nom. Modèles réseau : « du service compétent » (décision d'Arnaud,
+// 2026-09-28), aucun préfixe ne nommant l'organisme.
+
+// Noms officiels de l'annuaire (seed DILA), par réseau : ce que la famille est susceptible de saisir
+// dans « Nom de l'organisme ». Ce champ reste une saisie libre : l'annuaire ne pré-remplit que
+// l'enveloppe, et parmi les modèles réseau seulement pour la CARSAT (seul envoyé par papier).
+const ORGANISATIONS_SEED = readFileSync(
+  fileURLToPath(new URL('../supabase/migrations/20260914110000_organisations_seed.sql', import.meta.url)),
+  'utf8'
+)
+const DIRECTORY_NAMES: Record<string, string[]> = {}
+for (const [, name, network] of ORGANISATIONS_SEED.matchAll(/^\s*\('[^']+', '((?:[^']|'')+)', '[^']*', '(caf|cpam|carsat|impots)'/gm)) {
+  DIRECTORY_NAMES[network] ??= []
+  DIRECTORY_NAMES[network].push(name.replaceAll("''", "'"))
+}
+// Le libellé d'un modèle réseau ne désigne aucun organisme hors du nom : le nom de l'annuaire le
+// fait déjà, et pas toujours comme on l'attend (CGSS et CSSM outre-mer, Cnav en Île-de-France, SIP).
+const ORGANISATION_TYPE_RE =
+  /caisse|carsat|cpam|\bcaf\b|cgss|cssm|cnav|\bsip\b|dgfip|allocations|assurance maladie|sécurité sociale|finances publiques|impôts/i
+
+describe('recipient_label — le nom de l’organisme n’est jamais accordé à la main', () => {
+  it('tous les libellés ont la forme « À l’attention … — {{organisme_name}} »', () => {
+    for (const t of FRONT_TEMPLATES) {
+      expect(t.recipient_label, t.id).toMatch(/^À l'attention [^{}]+ — \{\{organisme_name\}\}$/)
+    }
+  })
+
+  it.each([
+    ['banque-declaration-deces', 'Le Crédit Lyonnais', "À l'attention du service succession — Le Crédit Lyonnais"],
+    ['assurance-declaration-deces', 'AXA', "À l'attention du service sinistres — AXA"],
+    ['assurance-vie-demande', 'Allianz', "À l'attention du service assurance vie — Allianz"],
+    ['employeur-notification', 'Orange', "À l'attention du service des ressources humaines — Orange"],
+    ['mutuelle-resiliation', 'Harmonie Mutuelle', "À l'attention du service des adhésions — Harmonie Mutuelle"],
+    ['bailleur-notification', 'Les Résidences du Parc', "À l'attention du bailleur — Les Résidences du Parc"],
+    // Modèles réseau, avec des noms réels de l'annuaire.
+    [
+      'caf-notification',
+      "Caisse d'allocations familiales (Caf) du Rhône",
+      "À l'attention du service compétent — Caisse d'allocations familiales (Caf) du Rhône",
+    ],
+    [
+      'cpam-notification',
+      'Caisse générale de sécurité sociale (CGSS) de Guadeloupe',
+      'À l\'attention du service compétent — Caisse générale de sécurité sociale (CGSS) de Guadeloupe',
+    ],
+    [
+      'carsat-notification',
+      'Caisse nationale d’assurance vieillesse (Cnav) Assurance retraite Île-de-France',
+      'À l\'attention du service compétent — Caisse nationale d’assurance vieillesse (Cnav) Assurance retraite Île-de-France',
+    ],
+    [
+      'impots-notification',
+      'Service des impôts des particuliers (SIP) - Trévoux',
+      'À l\'attention du service compétent — Service des impôts des particuliers (SIP) - Trévoux',
+    ],
+  ])('%s + « %s » → « %s »', (id, name, expected) => {
+    expect(renderLetter(id, { organisme_name: name }).body.split('\n')[0]).toBe(expected)
+  })
+
+  it('modèles réseau × 321 noms réels de l’annuaire : le nom figure tel quel, sans désignation doublée ni contredite', () => {
+    const networkTemplates = SERVER_TEMPLATES.filter((t: { recipient_kind: string }) => t.recipient_kind.startsWith('network:'))
+    expect(networkTemplates.map((t: { id: string }) => t.id).sort()).toEqual([
+      'caf-notification',
+      'carsat-notification',
+      'cpam-notification',
+      'impots-notification',
+    ])
+    let rendered = 0
+    for (const t of networkTemplates) {
+      const names = DIRECTORY_NAMES[t.recipient_kind.slice('network:'.length)] ?? []
+      expect(names.length, t.recipient_kind).toBeGreaterThan(0)
+      for (const name of names) {
+        const firstLine = renderLetter(t.id, { organisme_name: name }).body.split('\n')[0]
+        expect(firstLine, t.id).toContain(name)
+        expect(firstLine.replace(name, ''), `${t.id} : « ${firstLine} »`).not.toMatch(ORGANISATION_TYPE_RE)
+        rendered++
+      }
+    }
+    expect(rendered).toBe(321)
   })
 })
