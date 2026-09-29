@@ -64,16 +64,33 @@ const RELATION_LABELS = {
   },
 }
 
+// Blancs (saut de ligne, tabulation, espaces multiples) ramenés à une espace : un texte injecté dans
+// le prompt reste sur sa ligne et ne peut pas y ouvrir de « nouvelle consigne ».
+function singleLine(text) {
+  return String(text).replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * Prénom du défunt tel qu'il peut entrer dans le prompt du rédacteur. Normalisation UNIQUE, partagée
+ * par le contexte (buildWriterMessages) et par la dernière question interpolée (route POST /answer).
+ * Défense en profondeur (personnalisation v2) : le prénom peut désormais venir du dossier saisi par
+ * un tiers (la PF), pas seulement retapé par la famille dans le questionnaire. Un résultat vide
+ * (prénom fait uniquement de blancs) est traité comme inconnu, à l'identique d'une chaîne vide ;
+ * une valeur absente est rendue telle quelle.
+ */
+export function normalizeFirstName(value) {
+  return value ? singleLine(value) : value
+}
+
 /** Construit les messages du rédacteur : contexte court et constant (~400 tokens), jamais d'historique. */
 export function buildWriterMessages(spec, context, lang = 'fr') {
   const relationLabels = RELATION_LABELS[lang] ?? RELATION_LABELS.fr
   const defaultProche = lang === 'en' ? 'your loved one' : 'votre proche'
-  // Défense en profondeur (personnalisation v2) : le prénom peut désormais venir du dossier saisi
-  // par un tiers (la PF), pas seulement retapé par la famille dans le questionnaire — normaliser
-  // ses blancs (saut de ligne, espaces multiples) avant de l'injecter dans le prompt. Un résultat
-  // vide après normalisation (prénom composé uniquement d'espaces) est traité comme inconnu, à
-  // l'identique d'une chaîne vide.
-  const prenom = context.prenom ? String(context.prenom).replace(/\s+/g, ' ').trim() : context.prenom
+  // Aucun texte venu de l'appelant n'entre dans le prompt sur plusieurs lignes : le prénom passe par
+  // normalizeFirstName ; la dernière question aussi, par singleLine, bien que la route l'ait déjà
+  // interpolée avec le prénom normalisé (défense en profondeur).
+  const prenom = normalizeFirstName(context.prenom)
+  const derniereQuestion = context.derniereQuestion === undefined ? undefined : singleLine(context.derniereQuestion)
   const parts = lang === 'en'
     ? [
         `Field to ask about: ${spec.id} (type ${spec.type}).`,
@@ -86,8 +103,8 @@ export function buildWriterMessages(spec, context, lang = 'fr') {
         context.relation
           ? `The deceased was ${relationLabels[context.relation] ?? 'a loved one'} of the user. Never get this relationship backwards.`
           : '',
-        context.derniereQuestion !== undefined && context.derniereReponse !== undefined
-          ? `Previous question: "${context.derniereQuestion}" — answer given: ${JSON.stringify(context.derniereReponse)}. You may open with a short transition that acknowledges it.`
+        derniereQuestion !== undefined && context.derniereReponse !== undefined
+          ? `Previous question: "${derniereQuestion}" — answer given: ${JSON.stringify(context.derniereReponse)}. You may open with a short transition that acknowledges it.`
           : '',
         spec.writer_hints ? `Business context to weave in if relevant: ${textIn(spec.writer_hints, lang)}` : '',
         spec.options
@@ -107,8 +124,8 @@ export function buildWriterMessages(spec, context, lang = 'fr') {
         context.relation
           ? `La personne décédée était ${relationLabels[context.relation] ?? 'un proche'} de l'utilisateur. Ne te trompe jamais de sens sur cette relation.`
           : '',
-        context.derniereQuestion !== undefined && context.derniereReponse !== undefined
-          ? `Question précédente : « ${context.derniereQuestion} » — réponse donnée : ${JSON.stringify(context.derniereReponse)}. Tu peux ouvrir par une courte transition qui en tient compte.`
+        derniereQuestion !== undefined && context.derniereReponse !== undefined
+          ? `Question précédente : « ${derniereQuestion} » — réponse donnée : ${JSON.stringify(context.derniereReponse)}. Tu peux ouvrir par une courte transition qui en tient compte.`
           : '',
         spec.writer_hints ? `Contexte métier à glisser si pertinent : ${textIn(spec.writer_hints, lang)}` : '',
         spec.options

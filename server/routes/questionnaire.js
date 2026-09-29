@@ -7,6 +7,7 @@ import { QUESTIONS_CATALOG, textIn } from '../lib/questions-catalog.js'
 import { nextQuestion, validateAnswer, setAnswer, matchesWhen, progress } from '../lib/questionnaire-engine.js'
 import * as supabaseStore from '../lib/sessions-store.js'
 import { writeQuestionText, interpolateFallback } from '../lib/question-writer.js'
+import { normalizeFirstName } from '../lib/writer-prompt.js'
 import { createUserRateLimiter } from '../lib/rate-limit.js'
 import { msg } from '../lib/messages.js'
 import { FAIL_CLOSED_GATE } from '../lib/require-active-dossier.js'
@@ -200,9 +201,11 @@ export function createQuestionnaireRouter({
       // de direction, là où « parent » a fait écrire au rédacteur qu'un enfant était décédé.
       // Question interpolée comme le repli (prénom déjà transmis dans le contexte, sinon libellé
       // neutre) : un {prenom} brut inviterait le modèle à recopier le marqueur (cf. writer-prompt.js).
+      // Prénom normalisé comme celui du contexte (normalizeFirstName) : saisi par un tiers, la PF, un
+      // prénom multiligne ouvrirait sinon de nouvelles lignes dans le prompt.
       const last = CLOSED_TYPES.includes(spec.type) && !WRITER_EXCLUDED_IDS.includes(spec.id)
         ? {
-            question: interpolateFallback(spec, session.answers.deceased_firstname, session.lang).question,
+            question: interpolateFallback(spec, normalizeFirstName(session.answers.deceased_firstname), session.lang).question,
             value: displayValue(spec, value, session.lang),
           }
         : undefined
