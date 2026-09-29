@@ -4239,6 +4239,27 @@ manquent ; la page Profil affiche et modifie le profil courrier et la date de na
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
+> **Note post-revue (Task 10, 2026-09-29)** — Commits : `3951195` (la tâche), `adb3872` (conformité), `ab7f0e8` (revue qualité). Suite à **948** tests.
+> - **Revue de spec.** Un seul écart, corrigé par `adb3872` : un repli du prénom sur `user_metadata.first_name`, du code mort (clé jamais écrite, modifiable par l'utilisateur) contraire au §4.5. Deux écarts acceptés : les états placés après le miroir, et le commentaire du miroir réécrit.
+> - **Revue qualité.** « Approuvée sous réserve », puis correctifs prototypés par le relecteur dans un harnais Chrome, avec le vrai auth-js 2.90.1 testé en Node.
+>   - **Plus de relecture au retour sur l'onglet (Profil et tableau de bord).** auth-js émet `SIGNED_IN` avec un nouvel objet `user` à chaque passage caché → visible (`_onVisibilityChanged`). Les effets dépendent donc de `userId`, plus de `user`.
+>     - Avant, sur le Profil : 4 requêtes relancées et une course reproduite, où une relecture en vol écrasait un enregistrement.
+>     - Avant, sur le tableau de bord (défaut préexistant) : rechargement complet, courriers ouverts démontés, saisie perdue, et redirection vers le questionnaire si une erreur réseau survenait au même moment.
+>     - Vérifié aussi dans le navigateur de recette : saisie conservée, aucune relecture.
+>   - **Miroir `questionnaireAnswersRef` supprimé.** Le département passe par un updater pur.
+>   - **Défunt : une seule source**, `buildLetterAutofill` (réponses puis dossier), pour le contexte, le Profil et le `max` de la date de naissance.
+>   - **Profil :** plus de « Non renseigné » affiché pendant les lectures.
+>   - **Règle du rappel** verrouillée par `needsLetterProfileReminder` (3 tests).
+>   - Commentaires rendus exacts.
+> - **Acceptés, soumis à Arnaud.**
+>   - Si la lecture du profil échoue, la carte de rappel s'affiche. C'est cohérent avec `nullOnError`, et l'échec est signalé à Sentry.
+>   - Un profil 2a (`full_name` seul) garde la carte de rappel tant qu'il n'est pas réenregistré par « Modifier » puis « Enregistrer ». Rien ne l'indique sur la carte en lecture. Impact faible : ces profils n'existent qu'en préprod.
+>   - `handleDeceasedDepartmentResolved` est inatteignable avec le catalogue v2. Il est couvert par les tests de `patchQuestionnaireAnswers`.
+> - **Jugements visuels laissés à Arnaud.**
+>   - Le bouton « Compléter mes coordonnées » est plein, alors que la spec parle d'une carte « discrète » (`variant="outline"` possible).
+>   - La mise en page du Profil saute légèrement à l'arrivée des lectures.
+> - **Hors périmètre, confiés à une tâche séparée.** Stabiliser l'identité de `user` dans `useAuth`, à la racine : `DocumentsPage` a le même `[user]`. Distinguer, au tableau de bord, une erreur de lecture d'une absence de roadmap.
+
 ---
 
 ### Task 11 : Environnement local et recette navigateur (exécutée par le contrôleur)
@@ -4467,6 +4488,40 @@ git -C /Users/arnaudgay/Documents/git/Seren/Application checkout -- .claude/laun
 git -C /Users/arnaudgay/Documents/git/Seren/Application status --short   # attendu : seul « ?? .env.prod-NE-PAS-UTILISER »
 ```
 Laisser tourner la pile Supabase locale si la Task 13 suit ; sinon `supabase stop --workdir "$WT"`.
+
+> **Note d'exécution (Task 11, 2026-09-28/29)** — Recette complète, **lignes 1 à 23 validées**, sur le code des Tasks 1 à 10 (HEAD `adb3872`), base Supabase LOCALE. Personnes et PF fictives : Delmas, Camille Roussel (défunt Bernard) et Julien Marchand (défunte Odette). Les étapes 1 à 6 ont été faites en avance, dans les notes des Tasks 1 et 7 : harnais, scénarios SQL 271 OK, hook 9/9, seed Delmas, comptes et `.env` local.
+> - **Parcours principal (lignes 1 à 14).**
+>   - Dossier créé par la PF, lien d'activation, 3 consentements.
+>   - L'identité du défunt n'est pas redemandée : la 2ᵉ question est le département. 15 questions vues au total.
+>   - « Continuer » est grisé pour le logement tant que rien n'est coché ; il reste actif pour les aides, les abonnements et les organismes.
+>   - Récapitulatif en JJ/MM/AAAA.
+>   - Écran de coordonnées : noms pré-remplis depuis le dossier, pastilles fils/fille, focus sur le `h1`.
+>   - Écran de fin : 32 démarches et 12 courriers ; focus sur le titre, page en haut.
+>   - Tableau de bord sans carte de rappel. Roadmap avec les étapes EHPAD, département, récupération sur la succession, presse, téléphone, streaming, photos et réseaux sociaux ; pas d'étape énergie.
+>   - Courrier presse : seuls le titre et le numéro d'abonné sont à saisir. Aperçu : « À l'attention du service abonnements — … », « Camille Roussel, fille de Bernard Roussel », adresse, « Bordeaux, le … ».
+>   - Panneau d'envoi : expéditeur en lecture. L'avertissement de pièce jointe disparaît une fois un acte fictif joint : le choix du fichier a été simulé par script, faute de sélecteur natif pilotable.
+>   - Courrier EHPAD complet d'emblée.
+>   - Profil : carte + `dobSummary`, puis « Modifier », enregistrement et « Coordonnées enregistrées. ». De retour au tableau de bord, le courrier affiche la nouvelle adresse.
+>   - Bascule EN/FR : interface traduite, courriers toujours en français.
+> - **Lignes 15 à 23.**
+>   - **Famille Marchand**, relation « autre » puis « Plus tard » :
+>     - carte de rappel présente ;
+>     - lien libre avec `autocapitalize="none"` et aperçu « neveu de Odette » ;
+>     - enregistrer le profil dans un panneau fait passer l'autre en lecture, sans rechargement (ligne 19) ;
+>     - resynchronisation : (a) la ville du profil remplace une ville tapée quand sa source change ; (b) une ville corrigée à la main survit à un changement du seul complément d'adresse.
+>   - **Écran de coordonnées** :
+>     - à 360 px, bouton sur plusieurs lignes, dans la carte ; le `main` ne déborde pas ;
+>     - Entrée sur un formulaire incomplet donne le focus au 1ᵉʳ champ en erreur (`aria-invalid` + message relié) ;
+>     - un focus placé dans l'en-tête pendant la génération y reste (ligne 21) ;
+>     - à 375×560, « Plus tard » depuis le bas mène à l'écran de fin en haut, focus sur son titre (ligne 22). C'est le même `onDone` qu'« Enregistrer ».
+>   - **Profil 2a simulé** (`first_name`/`last_name` null, `relationship` « Fille ») : carte de rappel ; courrier « fille de Bernard Roussel » (normalisé) ; bouton d'envoi actif une fois le destinataire saisi, sans clic, faute de clé MySendingBox en local.
+>   - **Rechargement pendant l'écran de coordonnées** : accueil du questionnaire, tableau de bord intact, carte de rappel visible.
+> - **Constats hors périmètre, préexistants, remontés à Arnaud.**
+>   - Deux courriers ouverts ensemble partagent les mêmes ids `var-*`, ce qui casse l'association label/champ du second.
+>   - Les `notes` des modèles de courrier restent en français dans l'interface anglaise.
+>   - Élision manquante aussi hors des courriers : « de Odette », « Est-ce que Odette », « Date de naissance de Odette ». La tâche « typographie des courriers » est en cours.
+>   - L'en-tête de page déborde sous 406 px en FR (tâche séparée en cours).
+>   - L'anneau de focus apparaît sur les titres focalisés par script ou au clavier (`:focus-visible` global). C'est attendu ; à surveiller au tournage, qui se fait à la souris.
 
 ---
 
