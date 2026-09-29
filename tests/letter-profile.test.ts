@@ -11,6 +11,7 @@ import {
   saveDeceasedDob,
   patchQuestionnaireAnswers,
   initialLetterProfileInput,
+  needsLetterProfileReminder,
   formatDobForDisplay,
   dobNeedsSave,
   type LetterProfileInput,
@@ -203,6 +204,29 @@ describe('initialLetterProfileInput — valeurs de départ du formulaire (montag
   })
   it('relation « pacse » : la forme par défaut n’écrase jamais un lien déjà enregistré', () => {
     expect(initialLetterProfileInput({ ...V2_PROFILE, relationship: 'compagne' }, undefined, 'pacse').relationship).toBe('compagne')
+  })
+})
+
+describe('needsLetterProfileReminder — carte de rappel du tableau de bord', () => {
+  const V2_PROFILE: LetterProfileRow = {
+    first_name: 'Camille',
+    last_name: 'Roussel',
+    full_name: 'Camille Roussel',
+    address_line1: '12 rue des Lilas',
+    address_line2: null,
+    postal_code: '33000',
+    city: 'Bordeaux',
+    relationship: 'fille',
+  }
+
+  it('aucun profil (ou lecture en échec) : carte affichée', () => {
+    expect(needsLetterProfileReminder(null)).toBe(true)
+  })
+  it('profil hérité du 2a (full_name seul, sans prénom ni nom séparés) : carte affichée', () => {
+    expect(needsLetterProfileReminder({ ...V2_PROFILE, first_name: null, last_name: null, relationship: 'Fille' })).toBe(true)
+  })
+  it('profil v2 complet : pas de carte', () => {
+    expect(needsLetterProfileReminder(V2_PROFILE)).toBe(false)
   })
 })
 

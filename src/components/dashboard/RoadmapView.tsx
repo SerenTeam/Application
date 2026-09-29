@@ -274,8 +274,11 @@ function StepLetterSection({
   const [showLetter, setShowLetter] = useState(() => shouldAutoResumePaperSend(templateId, stepDbId))
   const [sentRefresh, setSentRefresh] = useState(0)
 
-  // Personnalisation v2 (spec §4.7) : identité, adresse, ville, lien et défunt viennent du profil
-  // courrier partagé par le tableau de bord ; hors contexte, repli sur les réponses (comportement 2a).
+  // Personnalisation v2 (spec §4.1, §4.7) : valeurs calculées par le tableau de bord
+  // (buildLetterAutofill) et partagées par contexte. Prénom et nom du signataire : profil courrier,
+  // sinon dossier PF ; adresse, ville et lien : profil courrier (lien par défaut pour un PACS).
+  // Défunt : réponses du questionnaire, sinon dossier PF. Hors contexte, repli sur les seules
+  // réponses (comportement 2a).
   const letterProfileCtx = useLetterProfileContext()
   const {
     template,

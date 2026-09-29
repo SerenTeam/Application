@@ -15,6 +15,7 @@ import {
   type DossierIdentity,
   type LetterProfileRow,
 } from '@/lib/letter-profile'
+import { buildLetterAutofill } from '@/lib/letter-autofill'
 import { nullOnError } from '@/lib/sentry'
 import type { RelationV2 } from '@/types/questionnaire'
 import { useT } from '@/i18n/useT'
@@ -29,15 +30,19 @@ export function ProfilePage() {
   const [questionnaire, setQuestionnaire] = useState<{ id: string; answers: Record<string, unknown> } | null>(null)
 
   // Personnalisation v2 (spec §4.5) : le profil courrier se consulte et se modifie aussi ici.
+  // Dépend de l'id, pas de l'objet `user` : auth-js émet SIGNED_IN avec un NOUVEL objet user (même
+  // id) à chaque retour sur l'onglet. Une relecture à chaque retour pouvait se terminer après un
+  // enregistrement et remettre l'ancienne adresse à l'écran, puis en base au « Modifier » suivant.
+  const userId = user?.id
   useEffect(() => {
-    if (!user) return
+    if (!userId) return
     let cancelled = false
     void (async () => {
       // Non bloquantes : un échec masque la donnée concernée et est signalé à Sentry.
       const [p, d, q] = await Promise.all([
-        nullOnError(fetchLetterProfile(supabase, user.id)),
+        nullOnError(fetchLetterProfile(supabase, userId)),
         nullOnError(fetchDossierIdentity(supabase)),
-        nullOnError(fetchLatestQuestionnaire(supabase, user.id)),
+        nullOnError(fetchLatestQuestionnaire(supabase, userId)),
       ])
       if (cancelled) return
       setProfile(p)
@@ -48,10 +53,12 @@ export function ProfilePage() {
     return () => {
       cancelled = true
     }
-  }, [user])
+  }, [userId])
 
   const answers = questionnaire?.answers ?? {}
-  const deceasedFirstName = (answers.deceased_firstname as string | undefined) ?? dossier?.deceased_first_name ?? undefined
+  // Défunt : même source que les courriers (réponses, sinon dossier PF ; chaîne vide écartée).
+  const deceased = buildLetterAutofill({ profile, dossier, answers }).questionnaireData
+  const deceasedFirstName = deceased.deceased_firstname
   const firstName = profile?.first_name ?? dossier?.family_first_name ?? null
 
   return (
@@ -82,7 +89,8 @@ export function ProfilePage() {
             </div>
             <div>
               <p className="text-sm font-medium text-text-secondary">{t.profile.firstNameLabel}</p>
-              <p className="text-[1.05rem] text-text">{firstName || t.profile.notProvided}</p>
+              {/* Pendant les lectures : espace insécable (la ligne garde sa hauteur), jamais « Non renseigné ». */}
+              <p className="text-[1.05rem] text-text">{loaded ? firstName || t.profile.notProvided : '\u00a0'}</p>
             </div>
           </div>
         </div>
@@ -104,7 +112,7 @@ export function ProfilePage() {
                 questionnaire
                   ? {
                       value: (answers.deceased_dob as string | undefined) ?? null,
-                      max: (answers.deceased_dod as string | undefined) ?? null,
+                      max: deceased.deceased_dod ?? null,
                       save: async (dob) => {
                         const next = await saveDeceasedDob(supabase, questionnaire.id, dob)
                         setQuestionnaire({ id: questionnaire.id, answers: next })

@@ -95,6 +95,16 @@ export function initialLetterProfileInput(
   }
 }
 
+/**
+ * Carte de rappel du tableau de bord (« Pré-remplissez vos courriers ») : affichée tant qu'aucun
+ * profil v2 n'est enregistré. Un profil hérité du 2a n'a que `full_name`, sans prénom ni nom
+ * séparés : ses courriers signeraient avec les noms du dossier PF, qui peuvent différer de
+ * l'enveloppe. La carte invite donc aussi ces personnes à compléter leurs coordonnées.
+ */
+export function needsLetterProfileReminder(profile: LetterProfileRow | null): boolean {
+  return !profile?.first_name
+}
+
 function isRealIsoDate(value: string): boolean {
   if (!ISO_DATE_RE.test(value)) return false
   const t = Date.parse(value)

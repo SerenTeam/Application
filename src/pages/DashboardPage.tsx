@@ -7,6 +7,7 @@ import { hasPendingPaperSendForCheckoutReturn } from '@/lib/paper-send-resume'
 import {
   fetchDossierIdentity,
   fetchLetterProfile,
+  needsLetterProfileReminder,
   patchQuestionnaireAnswers,
   type DossierIdentity,
   type LetterProfileRow,
@@ -128,7 +129,7 @@ export function DashboardPage() {
   const navigate = useNavigate()
   const t = useT()
   const { lang } = useLang()
-  // Ref pour l'effet de chargement ci-dessous (deps [user, navigate] uniquement) :
+  // Ref pour l'effet de chargement ci-dessous (deps [userId, navigate] uniquement) :
   // évite de refetch Supabase à chaque bascule de langue, tout en gardant le message
   // d'erreur à jour si l'utilisateur bascule la langue avant qu'une erreur survienne.
   const tRef = useRef(t)
@@ -146,13 +147,10 @@ export function DashboardPage() {
   const [roadmapId, setRoadmapId] = useState<string | null>(null)
   const [questionnaireId, setQuestionnaireId] = useState<string | null>(null)
   const [questionnaireAnswers, setQuestionnaireAnswers] = useState<Record<string, unknown>>({})
-  // Miroir de `questionnaireAnswers`, tenu à jour à CHAQUE rendu (même patron que `tRef` ci-
-  // dessus) : lu par `handleDeceasedDepartmentResolved` pour calculer les réponses à jour sans
-  // updater `setState` (l'écriture Supabase, elle, relit la base : patchQuestionnaireAnswers).
-  const questionnaireAnswersRef = useRef(questionnaireAnswers)
-  questionnaireAnswersRef.current = questionnaireAnswers
   // Personnalisation v2 : profil courrier et identité du dossier PF, chargés AVANT le premier rendu
-  // de la roadmap (useLetterGenerator fige ses valeurs initiales au montage — spec §4.7).
+  // de la roadmap (spec §4.7). useLetterGenerator resynchronise ses champs auto, mais
+  // LetterVariablesForm fige au montage la liste des champs à saisir : un courrier ouvert avant
+  // l'arrivée du profil garderait à l'écran des champs que le profil remplit.
   const [letterProfile, setLetterProfile] = useState<LetterProfileRow | null>(null)
   const [dossierIdentity, setDossierIdentity] = useState<DossierIdentity | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -167,8 +165,12 @@ export function DashboardPage() {
 
   // ─── Fetch roadmap from Supabase ─────────────────────────────
 
+  // Dépend de l'id, pas de l'objet `user` : auth-js émet SIGNED_IN avec un NOUVEL objet user (même
+  // id) à chaque retour sur l'onglet. Dépendre de l'objet rechargeait toute la page à chaque retour :
+  // courriers ouverts démontés, saisie perdue, voire renvoi au questionnaire sur une erreur réseau.
+  const userId = user?.id
   useEffect(() => {
-    if (!user) return
+    if (!userId) return
 
     async function load() {
       setIsLoading(true)
@@ -178,7 +180,7 @@ export function DashboardPage() {
       const { data: roadmap, error: rErr } = await supabase
         .from('roadmaps')
         .select('id, questionnaire_id')
-        .eq('user_id', user!.id)
+        .eq('user_id', userId!)
         .order('created_at', { ascending: false })
         .limit(1)
         .single()
@@ -208,7 +210,7 @@ export function DashboardPage() {
       // Lectures indépendantes et non bloquantes : sans elles, les courriers demandent simplement
       // les champs manquants, comme avant. Un échec est signalé à Sentry.
       const [profileRow, identity] = await Promise.all([
-        nullOnError(fetchLetterProfile(supabase, user!.id)),
+        nullOnError(fetchLetterProfile(supabase, userId!)),
         nullOnError(fetchDossierIdentity(supabase)),
       ])
       setLetterProfile(profileRow)
@@ -232,24 +234,24 @@ export function DashboardPage() {
     }
 
     load()
-  }, [user, navigate])
+  }, [userId, navigate])
 
   // ─── Derived data ─────────────────────────────────────────────
 
   const phases = useMemo(() => buildPhases(dbSteps, t, lang), [dbSteps, t, lang])
   const progress = useMemo(() => buildProgress(dbSteps), [dbSteps])
 
-  const letterProfileCtx = useMemo<LetterProfileContextValue>(
-    () => ({
+  const letterProfileCtx = useMemo<LetterProfileContextValue>(() => {
+    const autofill = buildLetterAutofill({ profile: letterProfile, dossier: dossierIdentity, answers: questionnaireAnswers })
+    return {
       profile: letterProfile,
       relation: questionnaireAnswers.relation as RelationV2 | undefined,
-      deceasedFirstName:
-        (questionnaireAnswers.deceased_firstname as string | undefined) ?? dossierIdentity?.deceased_first_name ?? undefined,
-      autofill: buildLetterAutofill({ profile: letterProfile, dossier: dossierIdentity, answers: questionnaireAnswers }),
+      // Même source que les courriers (réponses, sinon dossier PF ; chaîne vide écartée).
+      deceasedFirstName: autofill.questionnaireData.deceased_firstname,
+      autofill,
       onProfileSaved: setLetterProfile,
-    }),
-    [letterProfile, dossierIdentity, questionnaireAnswers]
-  )
+    }
+  }, [letterProfile, dossierIdentity, questionnaireAnswers])
 
   const totalSteps = dbSteps.length
   const completedCount = progress.completedSteps.length
@@ -316,8 +318,7 @@ export function DashboardPage() {
   // dans l'arbre (RoadmapView ne reçoit qu'un sous-ensemble typé) écraserait le reste du JSON.
   const handleDeceasedDepartmentResolved = useCallback(
     (department: string) => {
-      const next = { ...questionnaireAnswersRef.current, deceased_department: department }
-      setQuestionnaireAnswers(next)
+      setQuestionnaireAnswers((prev) => ({ ...prev, deceased_department: department }))
       // Écriture Supabase HORS de l'updater setState ci-dessus (correctif revue finale) : un
       // simple appel, jamais dupliqué par React. Personnalisation v2 : patch relu en base plutôt que
       // l'instantané en mémoire, qui effacerait une date de naissance enregistrée depuis un autre
@@ -378,7 +379,7 @@ export function DashboardPage() {
               prioritySteps={prioritySteps}
               onNavigate={handleNavigate}
               onScrollToStep={handleScrollToStep}
-              showProfileReminder={!letterProfile?.first_name}
+              showProfileReminder={needsLetterProfileReminder(letterProfile)}
             />
           )}
 
