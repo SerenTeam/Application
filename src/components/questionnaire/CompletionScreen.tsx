@@ -35,10 +35,11 @@ export function CompletionScreen({ stepsCount, doneCount, lettersCount }: Comple
           <Check strokeWidth={2} />
         </IconBadge>
 
+        {/* Titre focalisé par script : l'anneau du projet est un box-shadow (:focus-visible), d'où ring-0 en plus de outline-none. */}
         <h2
           ref={titleRef}
           tabIndex={-1}
-          className="font-display text-[28px] font-normal leading-[1.3] text-text focus:outline-none sm:text-[32px] lg:text-[36.5px]"
+          className="font-display text-[28px] font-normal leading-[1.3] text-text focus:outline-none focus:ring-0 focus:ring-offset-0 sm:text-[32px] lg:text-[36.5px]"
         >
           {t.completion.title}
         </h2>

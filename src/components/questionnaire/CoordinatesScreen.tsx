@@ -18,9 +18,11 @@ import type { QuestionnaireAnswersV2 } from '@/types/questionnaire'
 // Titre de l'écran, focalisable par script (tabIndex -1) : passé en `as` à SectionHeading, primitive
 // partagée qu'on ne modifie pas. Le focus arrive ainsi sur le vrai <h1>, annoncé « titre de niveau
 // 1 », et non sur le div qui l'enveloppe. Défini hors du rendu : un composant recréé à chaque rendu
-// remonterait le <h1> et lui ferait perdre le focus.
+// remonterait le <h1> et lui ferait perdre le focus. L'anneau de focus du projet est un box-shadow
+// (`:focus-visible` en layer base, src/index.css) : outline-none ne suffit pas, d'où ring-0 / ring-offset-0
+// sur ce titre non interactif.
 function FocusableH1({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
-  return <h1 tabIndex={-1} className={cn(className, 'focus:outline-none')} {...props} />
+  return <h1 tabIndex={-1} className={cn(className, 'focus:outline-none focus:ring-0 focus:ring-offset-0')} {...props} />
 }
 
 interface CoordinatesScreenProps {
