@@ -134,7 +134,7 @@ export function RecipientAddressForm({
             </Button>
           </div>
           {departmentDraft.length > 0 && !departmentValid && (
-            <p className="text-xs text-warning">{t.paperSend.recipientDepartmentInvalid}</p>
+            <p className="text-sm text-error">{t.paperSend.recipientDepartmentInvalid}</p>
           )}
         </div>
       )}
@@ -145,7 +145,7 @@ export function RecipientAddressForm({
             {t.paperSend.recipientPickerLabel}
           </Label>
           {loadingOrgs && <p className="text-xs text-text-muted">{t.paperSend.recipientPickerLoading}</p>}
-          {orgsError && <p className="text-xs text-warning">{t.paperSend.recipientPickerError}</p>}
+          {orgsError && <p className="text-sm text-error">{t.paperSend.recipientPickerError}</p>}
           {!loadingOrgs && !orgsError && (
             <>
               <select
@@ -241,7 +241,7 @@ export function RecipientAddressForm({
         </div>
       </div>
       {value.postal_code.length > 0 && !POSTAL_CODE_RE.test(value.postal_code.trim()) && (
-        <p className="text-xs text-warning">{t.paperSend.invalidPostalCode}</p>
+        <p className="text-sm text-error">{t.paperSend.invalidPostalCode}</p>
       )}
     </div>
   )

@@ -486,7 +486,11 @@ export function PaperSendPanel({
 
       {needsAddressFix && (
         <div className="space-y-2 rounded-xl border border-warning/40 bg-warning-light p-3">
-          <p className="text-sm font-medium text-warning">{t.paperSend.statusFailedAddressTitle}</p>
+          {/* Même patron (contraste AA) : texte sombre, la couleur d'avertissement ne porte que l'icône. */}
+          <p className="flex items-start gap-2 text-sm font-medium text-text">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+            <span>{t.paperSend.statusFailedAddressTitle}</span>
+          </p>
           <p className="text-xs text-text-secondary">{t.paperSend.statusFailedAddressHint}</p>
           <Button size="sm" variant="outline" onClick={handleStartResend}>
             {t.paperSend.resendCta}
@@ -549,13 +553,19 @@ export function PaperSendPanel({
           {!isComplete && <p className="text-xs text-text-muted">{t.paperSend.missingFieldsHint}</p>}
           {buyError && <p className="text-xs text-text-muted">{t.paperSend.quotaBuyError}</p>}
           {banner?.kind === 'quota_exhausted' && !banner.extraSendAvailable && (
-            <p className="text-xs text-warning">{fmt(t.paperSend.quotaExhaustedSupport, { email: banner.supportEmail })}</p>
+            <p
+              role="note"
+              className="flex items-start gap-2 rounded-xl border border-warning/40 bg-warning-light px-3 py-2 text-sm text-text-secondary"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+              <span>{fmt(t.paperSend.quotaExhaustedSupport, { email: banner.supportEmail })}</span>
+            </p>
           )}
           {(banner?.kind === 'in_progress' || banner?.kind === 'confirming_payment') && (
             <p className="text-xs text-text-muted">{t.paperSend.finalizingPayment}</p>
           )}
           {banner?.kind === 'retryable' && <p className="text-xs text-text-muted">{t.paperSend.retryableHint}</p>}
-          {banner?.kind === 'error' && <p className="text-xs text-warning">{banner.message}</p>}
+          {banner?.kind === 'error' && <p className="text-sm text-error">{banner.message}</p>}
         </>
       ) : null}
     </div>
