@@ -109,6 +109,21 @@ describe('scrubSentryEvent', () => {
     expect(JSON.stringify(event)).not.toContain(TOKEN)
     expect(JSON.stringify(event)).not.toContain(HASH)
   })
+  // Le webhook MySendingBox est gardé par un secret d'URL (POST /api/letters/provider-webhook/:secret,
+  // lot 2a) : le SDK le recopie dans request.url ET dans le nom de transaction de tout événement
+  // capturé pendant la requête (constat sur l'enveloppe remise au transport, SDK 10.68.0).
+  it('secret d’URL du webhook MySendingBox masqué dans l’URL, la transaction et toute chaîne', () => {
+    const SECRET = 'msb-url-secret-42'
+    const event = scrubSentryEvent({
+      transaction: `POST /api/letters/provider-webhook/${SECRET}`,
+      request: { method: 'POST', url: `https://app.seren-app.fr/api/letters/provider-webhook/${SECRET}` },
+      breadcrumbs: [{ message: `POST /api/letters/provider-webhook/${SECRET}?retry=1` }],
+    })
+    expect(JSON.stringify(event)).not.toContain(SECRET)
+    expect(event.transaction).toBe('POST /api/letters/provider-webhook/[scrubbed]')
+    expect(event.request.url).toBe('https://app.seren-app.fr/api/letters/provider-webhook/[scrubbed]')
+    expect(event.breadcrumbs[0].message).toBe('POST /api/letters/provider-webhook/[scrubbed]?retry=1')
+  })
   it('renvoie toujours l’événement (on masque, on ne jette pas)', () => {
     const event = { message: 'ok' }
     expect(scrubSentryEvent(event)).toBe(event)

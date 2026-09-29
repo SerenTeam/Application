@@ -1,8 +1,11 @@
-// Scrub Sentry serveur (contrat §4.8, §6) : aucun jeton d'activation, hash, URL d'activation, corps
-// des routes d'activation/partenaire/questionnaire/courriers, ni en-tête Authorization ou Cookie
-// (sur aucune route) ne doit quitter le serveur. Module dédié (note N1) : server.js démarre le
-// serveur à l'import et ne peut pas être testé directement.
+// Scrub Sentry serveur (contrat §4.8, §6) : aucun jeton d'activation, hash, URL d'activation, secret
+// d'URL du webhook MySendingBox, corps des routes d'activation/partenaire/questionnaire/courriers, ni
+// en-tête Authorization ou Cookie (sur aucune route) ne doit quitter le serveur. Module dédié
+// (note N1) : server.js démarre le serveur à l'import et ne peut pas être testé directement.
 const TOKEN_FRAGMENT_RE = /#t=[A-Za-z0-9_-]+/g
+// Secret d'URL du webhook MySendingBox (POST /api/letters/provider-webhook/:secret, lot 2a) : le SDK
+// le recopie dans request.url et dans le nom de transaction de tout événement capturé pendant la requête.
+const PROVIDER_WEBHOOK_SECRET_RE = /(\/provider-webhook\/)[^/?#\s"'<>]+/g
 const SENSITIVE_KEYS = new Set(['token_hash', 'invite_token_hash', 'activation_url'])
 // Le SDK (@sentry/node 10) joint le corps BRUT de la requête entrante à l'événement, même avec
 // sendDefaultPii: false. server.js le lui interdit désormais (maxIncomingRequestBodySize: 'none') ;
@@ -19,10 +22,13 @@ const ALWAYS_STRIPPED_HEADERS = new Set(['authorization', 'cookie'])
 const MAX_DEPTH = 12
 
 function scrubString(value) {
-  return typeof value === 'string' ? value.replace(TOKEN_FRAGMENT_RE, '#t=[scrubbed]') : value
+  return typeof value === 'string'
+    ? value.replace(TOKEN_FRAGMENT_RE, '#t=[scrubbed]').replace(PROVIDER_WEBHOOK_SECRET_RE, '$1[scrubbed]')
+    : value
 }
 
-// Parcours EN PLACE : masque les clés sensibles et le fragment dans toute chaîne.
+// Parcours EN PLACE : masque les clés sensibles, et le fragment comme le secret d'URL du webhook
+// dans toute chaîne.
 function scrubDeep(node, depth) {
   if (depth > MAX_DEPTH || node === null || typeof node !== 'object') return
   if (Array.isArray(node)) {
