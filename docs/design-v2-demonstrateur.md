@@ -809,7 +809,7 @@ export function createActivationRouter({ requireAuth, publicClient, supportEmail
 ### 4.8 Sentry serveur et journaux (L2a)
 
 `Sentry.init({ …, beforeSend(event) })` :
-- si `event.request?.url` contient `/api/activation/` ou `/api/partner/dossiers`, supprimer `event.request.data`, `event.request.query_string`, `event.request.cookies` et l'en-tête `authorization` ;
+- si `event.request?.url` contient `/api/activation/`, `/api/partner/dossiers` ou `/api/questionnaire/` (§12.2.3), supprimer `event.request.data`, `event.request.query_string`, `event.request.cookies` et l'en-tête `authorization` ;
 - sur tout événement, remplacer toute sous-chaîne `#t=[A-Za-z0-9_-]+` par `#t=[scrubbed]` dans `message`, `exception.values[].value` et `request.url` ;
 - remplacer les valeurs des clés `token_hash`, `invite_token_hash`, `activation_url` par `[scrubbed]`.
 
@@ -1440,3 +1440,6 @@ Notes de la **revue adversariale du lot L1/L1b** (16/09, après livraison des mi
 | E12 | Garde de `provision-v2.mjs` non testée en CI | **Validée** : `tests/provision-v2-guard.test.ts` autorisé et **ajouté à la propriété L6** (§8.2), calqué sur `tests/check-env-target.test.ts` (aucun réseau) | si le temps manque, la garde reste prouvée par commande (Task 9, Step 2) et le test glisse **sans bloquer GNG2** |
 | E13 | Comptes internes créés par Arnaud, jamais par un script (must-fix 2) | **Validée** : `link_enrollments(p_pairs)` par appariement e-mail ↔ UUID, `ensureInternal` ne crée plus rien | le runbook U2 est calé sur : partie 1 → « Add user » (mot de passe posé à la création) → copie des UUID → partie 2 → provision → `--verify` |
 
+#### 12.2.3 Notes post-livraison
+
+- [2026-09-28] [revue-sécurité] §4.8 — `/api/questionnaire/` rejoint les routes dont `beforeSend` supprime `request.data`, `query_string`, `cookies` et l'en-tête `authorization` (tout le préfixe : `start`, `answer`, `reask`, `resume`, `complete`) — `@sentry/node` 10 joint à tout événement capturé pendant une requête le corps brut de celle-ci (≤ 10 ko), même avec `sendDefaultPii: false` : un 500 géré sur `/answer` envoyait à Sentry l'identité du défunt et, depuis la personnalisation v2, des données de santé (`aides_percues` : APA, ASH, AAH/PCH ; `logement` : EHPAD), ainsi que le jeton Bearer — constat reproduit avant/après sur l'enveloppe remise au transport, test `tests/server-sentry-scrub.test.ts` — demandé par Arnaud (revue de code du 2026-09-28).

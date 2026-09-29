@@ -20,7 +20,11 @@ describe('scrubSentryEvent', () => {
     expect(event.exception.values[0].value).toContain('#t=[scrubbed]')
     expect(event.request.url).toBe('https://app.seren-app.fr/activation#t=[scrubbed]')
   })
-  it.each(['/api/activation/check', '/api/activation/claim', '/api/partner/dossiers', '/api/partner/dossiers/xyz/resend'])(
+  it.each([
+    '/api/activation/check', '/api/activation/claim', '/api/partner/dossiers', '/api/partner/dossiers/xyz/resend',
+    '/api/questionnaire/start', '/api/questionnaire/answer', '/api/questionnaire/reask',
+    '/api/questionnaire/resume', '/api/questionnaire/complete',
+  ])(
     '%s : request.data, query_string, cookies et authorization supprimés',
     (route) => {
       const event = scrubSentryEvent({
@@ -34,6 +38,19 @@ describe('scrubSentryEvent', () => {
       expect(event.request.headers['user-agent']).toBe('x')
     },
   )
+  // @sentry/node 10 joint le corps BRUT de la requête entrante (chaîne JSON, ≤ 10 ko) à tout
+  // événement capturé pendant la requête, même avec sendDefaultPii: false. Or /answer transporte
+  // l'identité du défunt et des données de santé (aides_percues : APA, ASH, AAH/PCH ; logement : EHPAD).
+  it('/api/questionnaire/answer : le corps brut ne part plus (aucune réponse dans l’événement)', () => {
+    const body = JSON.stringify({ session_id: 'sess-1', question_id: 'aides_percues', value: ['apa', 'handicap'], lang: 'fr' })
+    const event = scrubSentryEvent({
+      request: { method: 'POST', url: 'https://app.seren-app.fr/api/questionnaire/answer', data: body },
+    })
+    expect(event.request.data).toBeUndefined()
+    const json = JSON.stringify(event)
+    expect(json).not.toContain('aides_percues')
+    expect(json).not.toContain('handicap')
+  })
   it('autres routes : corps conservé, mais clés sensibles masquées à toute profondeur', () => {
     const event = scrubSentryEvent({
       request: { url: 'https://app.seren-app.fr/api/letters/send', data: { template_id: 'x', nested: { invite_token_hash: HASH } } },
