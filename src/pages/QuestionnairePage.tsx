@@ -227,7 +227,7 @@ export function QuestionnairePage() {
       setStepsCount(steps.length)
       setDoneCount(steps.filter((s) => s.initial_status === 'done').length)
       setLettersCount(steps.filter((s) => Boolean(s.letter_template_id)).length)
-      await saveRoadmapToDb(user.id, qId, steps, lang)
+      await saveRoadmapToDb(supabase, user.id, qId, steps, lang)
 
       sessionStorage.removeItem('seren_questionnaire_session')
       // Personnalisation v2 : la roadmap est enregistrée — on demande maintenant les coordonnées qui
