@@ -3059,6 +3059,33 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 >   - le même défaut dans 8 questions du questionnaire (« de {prenom} », « Est-ce que {prenom} ») et dans l'e-mail d'invitation (« les prestations de ${partner} ») ;
 >   - **sécurité** : `LetterPreview` injecte le courrier en HTML sans échappement (`dangerouslySetInnerHTML`), alors que le prénom du défunt peut venir du dossier saisi par la PF.
 
+> **Note (2026-09-29) — le « 1er » des dates est corrigé** sur la branche `fix/letters-typography`, partie de `b257f05` (pointe de `fix/v2-courriers-elision`, choix d'Arnaud), commits `fix(courriers): « 1er » …` puis `fix(courriers): revue du « 1er » …`. C'était un défaut préexistant : « né(e) le 1 mars 1941 », « Bordeaux, le 1 octobre 2026 ».
+> - **Règles retenues** :
+>   - **élision** : la règle de la note précédente, inchangée. Apostrophe droite dans les courriers, comme tout le texte des 20 modèles (40 apostrophes droites, aucune typographique). C'est le choix d'Arnaud du 2026-09-29, alors que jsPDF rend bien « ’ » ;
+>   - **ordinal** : en français, le premier jour du mois s'écrit « 1er » ; les autres jours restent en chiffres (« 14 mars », « 21 mars »). En anglais, jamais d'ordinal (« 1 March 1941 ») ;
+>   - « 1er » reste **sur la ligne, sans exposant**, partout. Dans les PDF de courrier (jsPDF, Helvetica), un « ʳ » ou une espace fine insécable brouille toute la ligne (vérifié au rendu). L'interface suit, comme la chaîne existante « 1er janvier 1900 » (`dobTooEarly`).
+> - **Code** : `formatLongDate` (`src/lib/long-date.ts`, miroir `server/lib/long-date.js`, parité testée) lit le jour dans la partie `day` de `formatToParts`. Ses options excluent `dateStyle`, `timeStyle` et le jour. Appelants :
+>   - les dates pré-remplies des courriers (`formatDate` de `useLetterGenerator`) : une date seule y reste formatée en UTC ;
+>   - `formatDobForDisplay`, « Généré le … » (`DocumentCard`), les dates de la liste PF (`DossierCard`) ;
+>   - l'e-mail d'invitation (jour de Paris).
+>
+>   Le serveur ne formate aucune date de courrier : il reçoit les valeurs déjà écrites par le client.
+> - **Garde** (`tests/long-date.test.ts`) : toute date au mois écrit en lettres, dans `src/` et `server/`, passe par `formatLongDate`. Seule exception : `AccessPage`, produit transmission gelé au chantier 0 mais toujours routé sur `/access`. Une transmission créée un 1er y affiche donc « 1 mars ». Le correctif tient en une ligne, si Arnaud le décide.
+> - **Tests** : le contrat demandé est dans `tests/letter-typography.test.ts` :
+>   - Anne → d'Anne, Émile → d'Émile, Bernard → de Bernard, prénom vide inchangé ;
+>   - 1941-03-01 → « 1er mars 1941 », 1941-03-14 → « 14 mars 1941 », aussi sous `TZ=America/Martinique`, avec une sentinelle de fuseau.
+>
+>   Vus rouges avant le correctif, puis éprouvés par mutation : élision désactivée, option UTC retirée, ancien type des options, formateurs ajoutés hors du helper. Suite à **1139** tests, verte sous le fuseau de la machine, sous `TZ=UTC` et sous `TZ=America/Martinique`. Deux échecs isolés de routes supertest, qui ne chargent pas le code touché, n'ont pas été reproduits en 10 relances.
+> - **Revue** : une revue indépendante a conclu « prête à merger », sous réserve de la présente note. Aucun point critique. Quatre points mineurs sont appliqués (options typées, garde élargie au mois abrégé, sentinelle de fuseau, commentaire orphelin). Un n'est pas retenu : l'attente FR avec l'heure reste écrite en dur, identique sous ICU 76 et 78. Le cas d'`AccessPage` est laissé à Arnaud.
+> - **Effets de bord** :
+>   - les courriers déjà enregistrés ou envoyés gardent leur texte ;
+>   - la clé de dédup de l'envoi e-mail porte sur le corps résolu, qui contient déjà la date du jour. Seul un renvoi le même jour, à cheval sur le déploiement, échapperait à la dédup (canal fermé en prod). La clé de l'envoi papier n'inclut pas le corps ;
+>   - `DocumentCard` : une date invalide affiche la valeur brute au lieu de « Invalid Date ».
+> - **À verser à la relecture juridique** : l'e-mail d'invitation (texte art. 14) écrit désormais « jusqu'au 1er octobre 2026 ». L'exemple de `docs/textes-beta-v2.md` (23 septembre) reste juste.
+> - **Fusions vérifiées sans conflit** (`git merge-tree`) avec `feature/v2-personnalisation` (`adb3872`), `fix/v2-courriers-libelles`, `fix/v2-courrier-compte-joint`, `fix/v2-papier-nom-organisme`, `fix/flaky-supertest-404`, `fix/v2-prenom-derniere-question` et `fix/v2-sentry-questionnaire`.
+>   - Conflit préexistant, indépendant de cette branche : `fix/flaky-react-flush-tests` × `feature/v2-personnalisation`, sur `tests/letter-date-format.test.ts` et `tests/require-access-consent.test.ts`. Ce sont deux correctifs parallèles des mêmes tests instables.
+> - **Suite possible** : trois stratégies coexistent pour les dates seules (regex + UTC, `isRealIsoDate` + UTC, constructeur local). Une fonction unique dans `long-date.ts` centraliserait la règle Martinique.
+
 ---
 
 ### Task 8 : Formulaire unique `LetterProfileForm`, contexte profil courrier, panneau d'envoi
