@@ -425,6 +425,7 @@ export const STRINGS_FR = {
     // Adresse du destinataire
     recipientTitle: 'Adresse du destinataire',
     recipientNameLabel: 'Nom du destinataire',
+    recipientNameTooLong: 'Nom trop long pour l’enveloppe : raccourcissez-le à 45 caractères au maximum.',
     recipientAddressLine1Label: 'Adresse',
     recipientAddressLine2Label: 'Complément d’adresse (optionnel)',
     recipientPostalCodeLabel: 'Code postal',

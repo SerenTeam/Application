@@ -18,6 +18,7 @@ import { useLetterProfileContext } from '@/hooks/useLetterProfileContext'
 import { RecipientAddressForm } from './RecipientAddressForm'
 import { AttachmentPicker } from './AttachmentPicker'
 import { QuotaBadge } from './QuotaBadge'
+import { recipientValid } from '@/lib/paper-recipient'
 import {
   savePendingPaperSend,
   takePendingPaperSend,
@@ -63,8 +64,6 @@ type Banner =
   | { kind: 'error'; message: string }
 
 const EMPTY_RECIPIENT: RecipientAddress = { name: '', address_line1: '', address_line2: '', postal_code: '', city: '' }
-const POSTAL_CODE_RE = /^[0-9]{5}$/
-const LINE_MAX = 45
 // Fenêtre par défaut de reprise (miroir de PAPER_STALE_SECONDS côté serveur, server/routes/letters.js)
 // — utilisée tant qu'un 402 QUOTA_EXHAUSTED n'a pas fourni sa propre valeur (legs R1).
 const DEFAULT_RETRY_AFTER_SECONDS = 120
@@ -73,19 +72,6 @@ const DEFAULT_RETRY_AFTER_SECONDS = 120
 // refusée en 402. ~20 s au total, comme pour la confirmation du forfait.
 const CONFIRM_POLL_MS = 2000
 const CONFIRM_POLL_MAX_ATTEMPTS = 10
-
-function recipientValid(r: RecipientAddress): boolean {
-  return (
-    r.name.trim().length > 0 &&
-    r.name.length <= LINE_MAX &&
-    r.address_line1.trim().length > 0 &&
-    r.address_line1.length <= LINE_MAX &&
-    (r.address_line2 ?? '').length <= LINE_MAX &&
-    POSTAL_CODE_RE.test(r.postal_code.trim()) &&
-    r.city.trim().length > 0 &&
-    r.city.length <= LINE_MAX
-  )
-}
 
 // Panneau d'envoi papier (chantier 2a, Task 11) — branche `channel: 'papier'` de LetterSendPanel.
 // Le paywall (forfait) est déjà passé par l'appelant : ce composant part du principe que

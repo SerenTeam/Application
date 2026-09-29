@@ -423,6 +423,7 @@ export const STRINGS_EN: Strings = {
     // Recipient address
     recipientTitle: 'Recipient address',
     recipientNameLabel: 'Recipient name',
+    recipientNameTooLong: 'Name too long for the envelope: shorten it to 45 characters maximum.',
     recipientAddressLine1Label: 'Address',
     recipientAddressLine2Label: 'Address line 2 (optional)',
     recipientPostalCodeLabel: 'Postal code',

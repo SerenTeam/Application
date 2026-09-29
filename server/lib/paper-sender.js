@@ -42,7 +42,7 @@ import { jsPDF } from 'jspdf'
 
 const MSB_BASE_URL = 'https://api.mysendingbox.fr'
 const LETTERS_PATH = '/letters'
-const LINE_MAX = 45
+export const LINE_MAX = 45
 const POSTAL_CODE_RE = /^[0-9]{5}$/
 const MAX_ATTACHMENTS = 4 // + 1 PDF principal = 5 fichiers au total (§M)
 const IMAGE_MARGIN_MM = 10

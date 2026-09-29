@@ -1913,6 +1913,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 >   - « le cas échéant » pour le dépôt de garantie et pour le notaire ;
 >   - note sur le département du domicile précédent (L. 122-2 CASF, « en principe »).
 > - **Sortis en tâches séparées (défauts préexistants)** : la grammaire des 10 anciens courriers, et le courrier bailleur proposé aux propriétaires par l'étape syndic.
+> - **Défaut préexistant du chantier 2a, relevé ensuite par la revue de `fix/v2-courriers-libelles`** (nom officiel des organismes, jusqu'à 88 caractères, recopié dans l'enveloppe papier limitée à 45) : corrigé sur `fix/v2-papier-nom-organisme`. Voir la note du 2026-09-28 dans `docs/plan-chantier-2a-envoi-papier.md`.
 > - **Backlog produit (M5)** : un seul envoi papier par étape, alors que presse, sport et télécom peuvent concerner plusieurs prestataires.
 
 > **Note (2026-09-28) — les deux défauts préexistants sortis de la Task 5 sont corrigés** sur la branche `fix/v2-courriers-libelles` (partie de `611ad24`, commits `fix(courriers): …`). Une revue indépendante, puis des correctifs, puis une re-revue ont conclu : « prêt à merger ». Suite à **907** tests. Fusion vérifiée avec la pointe `dbe7db0` de cette branche : 945 tests, sans conflit.
