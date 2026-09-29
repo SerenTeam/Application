@@ -5,6 +5,7 @@ import { useT } from '@/i18n/useT'
 import { useLang } from '@/i18n/LanguageContext'
 import { fmt, type Lang } from '@/i18n'
 import { canCancel, cancelDeadline, type PartnerDossier } from '@/lib/partner-dossier'
+import { formatLongDate } from '@/lib/long-date'
 import type { PartnerActionResult } from '@/hooks/usePartnerDashboard'
 
 // Une ligne de la liste PF (contrat §3.3.12). Règle rouge : identité de la famille et du défunt,
@@ -17,22 +18,16 @@ interface DossierCardProps {
   activationsEnabled: boolean
 }
 
-const locale = (lang: Lang) => (lang === 'en' ? 'en-GB' : 'fr-FR')
+// Dates en toutes lettres par formatLongDate : « 1er octobre 2026 » en français, jamais « 1 octobre ».
 
 /** Horodatage complet (création, activation, annulation). */
 function formatTimestamp(value: string, lang: Lang): string {
-  return new Intl.DateTimeFormat(locale(lang), { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(value))
+  return formatLongDate(new Date(value), lang)
 }
 
 /** Horodatage avec l'heure : la fenêtre d'annulation se compte en heures, pas en jours. */
 function formatTimestampWithTime(value: Date, lang: Lang): string {
-  return new Intl.DateTimeFormat(locale(lang), {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(value)
+  return formatLongDate(value, lang, { hour: '2-digit', minute: '2-digit' })
 }
 
 /**
@@ -42,9 +37,7 @@ function formatTimestampWithTime(value: Date, lang: Lang): string {
 function formatDay(value: string, lang: Lang): string {
   const [year, month, day] = value.split('-').map(Number)
   if (!year || !month || !day) return value
-  return new Intl.DateTimeFormat(locale(lang), { day: 'numeric', month: 'long', year: 'numeric' }).format(
-    new Date(year, month - 1, day),
-  )
+  return formatLongDate(new Date(year, month - 1, day), lang)
 }
 
 export function DossierCard({ dossier, onResend, onCancel, activationsEnabled }: DossierCardProps) {

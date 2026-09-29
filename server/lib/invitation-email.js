@@ -3,14 +3,15 @@
 // pièce jointe, sans aucune valeur relative au défunt. Ne dépend PAS d'EMAIL_SENDS_ENABLED (qui ne
 // gouverne que les courriers aux organismes). Toute modification de ces textes est reportée à
 // l'identique dans docs/textes-beta-v2.md (§ art. 14), relu par Arnaud.
+import { formatLongDate } from './long-date.js'
+
 const FALLBACK_PARTNER = { fr: 'Votre pompe funèbre', en: 'Your funeral home' }
 
+// Jour de Paris, en toutes lettres : « 1er octobre 2026 » / « 1 October 2026 » (formatLongDate).
 function formatDate(iso, lang) {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return null
-  return new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : 'fr-FR', {
-    day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris',
-  }).format(date)
+  return formatLongDate(date, lang, { timeZone: 'Europe/Paris' })
 }
 
 function securityUrlFrom(activationUrl) {

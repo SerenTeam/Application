@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { fillLetterPlaceholder, formatLetterValue, getLetterTemplate, type LetterTemplate } from '@/data/letter-templates'
+import { formatLongDate } from '@/lib/long-date'
 
 export interface LetterGeneratorOptions {
   templateId: string
@@ -23,8 +24,9 @@ function formatDate(iso?: string): string {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '' // jamais « Invalid Date » dans un courrier : le champ redevient à saisir
+  // Courrier toujours en français : « 1er mars 1941 », « 14 mars 1941 » (formatLongDate).
   // Date seule = minuit UTC : formatée en UTC, sinon la veille dans les fuseaux négatifs
-  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', ...(ISO_DAY_RE.test(iso) ? { timeZone: 'UTC' } : {}) })
+  return formatLongDate(d, 'fr', ISO_DAY_RE.test(iso) ? { timeZone: 'UTC' } : {})
 }
 
 export function buildInitialValues(
