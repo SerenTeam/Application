@@ -313,3 +313,61 @@ Pour presse et télécom, le numéro d'abonné ou de client est une nouvelle var
 | Divergence de parité (FR/EN, client/serveur, matchers) | Tests de parité existants, étendus plutôt que contournés |
 | La v2 reste une branche non déployée qui grossit | Aucun fichier de `main` ou `pre-prod` touché hors refonte sidebar déjà présente en préprod ; le merge futur de la v2 embarque tout |
 | Environnement local de tournage (Docker, harnais SQL) | Harnais documenté dans `docs/plan-v2-sql.md` Task 0 ; garde anti-prod vérifiée avant chaque lancement |
+
+## 11. Notes post-implémentation (2026-09-29)
+
+Ces notes **font foi** là où le code livré s'écarte du texte ci-dessus. Le détail, avec commits et justifications, est dans les notes post-revue de chaque tâche de `docs/plan-personnalisation-v2.md`.
+
+### Données
+- **Deux migrations au lieu d'une (§4.2, §9)**, pour respecter le lint des migrations v2 :
+  - `20260928120000_sender_profiles_names.sql` : prénom et nom, CHECK `char_length(btrim(…)) between 1 and 45`, donc non vides ;
+  - `20260928121000_v2_dossier_identity.sql` : la RPC.
+- **Pas d'`order by` dans la RPC** : l'index unique et la contrainte d'état garantissent au plus un dossier `active`/`closed` par compte.
+- **USER STEP** : `db push` des deux migrations **avant** le déploiement du front.
+
+### Questionnaire (§5)
+- **`logement` devient à choix multiples** (`min_selected: 1`). L'option `ehpad` couvre « EHPAD ou résidence pour personnes âgées » ; le plafond de 6 jours est propre à l'EHPAD, les résidences relevant du contrat ou du bail.
+- **`aides_percues`** : AAH et PCH sont deux options distinctes, au lieu d'une option « handicap ».
+- **Minimisation (données de santé et de handicap)** : `aides_percues` et `logement` sont exclus du contexte du rédacteur Mistral (`WRITER_EXCLUDED_IDS`).
+- **Libellés** : téléphonie « Téléphone (fixe ou mobile) ou box internet » ; l'étape photos est à faire « dans le mois ».
+- **Plafond** : les 15 questions vues sont atteintes exactement (18 au catalogue, 3 pré-remplies). Une nouvelle question universelle ferait échouer l'invariant.
+- **Récapitulatif** : dates en JJ/MM/AAAA en français, « 5 March 2026 » en anglais.
+
+### Courriers et pré-remplissage (§4, §6)
+- **Destinataires et saisie** : numéro d'abonné obligatoire ; libellé « numéro client ou de ligne » pour la téléphonie ; destinataires « À l'attention du … — {organisme} ».
+- **Pièce jointe** : si le courrier annonce l'acte de décès sans pièce jointe, un avertissement s'affiche, sans bloquer l'envoi.
+- **Dates des courriers** : les dates seules sont formatées en UTC, sinon elles glissent à la veille en outre-mer. Une date invalide donne `''`, jamais « Invalid Date ».
+- **Resynchronisation ciblée des champs auto** (`createAutoSync`) : seule une valeur dont la source change est réappliquée. Une correction manuelle survit à un changement sans rapport.
+- **Lien de parenté** :
+  - normalisé, casse et accents ignorés (« Fille » → « fille »), à l'enregistrement comme à la lecture ;
+  - un lien hors des formes proposées passe en saisie libre, `autocapitalize="none"`.
+- **Écriture des réponses** : `patchQuestionnaireAnswers`, qui relit avant d'écrire, n'écrit rien si rien ne change et exige une ligne touchée. Elle sert à la date de naissance et au département.
+- **Défunt** : une seule source, `buildLetterAutofill` (réponses puis dossier), pour les courriers, le contexte et le Profil.
+
+### Formulaire, écrans, tableau de bord (§4.4, §4.5, §4.7)
+- **Accessibilité** :
+  - erreurs reliées aux champs (`aria-invalid`, `aria-describedby`) ;
+  - rôles alert et status ;
+  - vrai `<form>`, la touche Entrée soumet ;
+  - focus donné au titre des écrans et aux bascules, mais **jamais volé** (`focusIfIdle`) ;
+  - contraste AA.
+- **Mobile** : les boutons longs passent à la ligne ; l'écran de fin repart du haut.
+- **Contrat `onSaved`** : en `panel`, dès que le profil est en base ; en `screen`, après le succès complet.
+- **Carte de rappel** : affichée si `!profile?.first_name` (`needsLetterProfileReminder`), profils 2a compris. Le Profil a sa propre aide (`profileHint`, `showHeader={false}`).
+- **Lectures non bloquantes** : `nullOnError` signale l'échec à Sentry au lieu de l'avaler.
+- **Retour sur l'onglet** : il ne provoque plus de relecture (effets dépendants de `userId`). auth-js émet un nouvel objet `user` à chaque retour.
+
+### Tests et recette
+- **955 tests** à rc4. Les attentes à délai fixe ont été remplacées par des attentes déterministes (tests de garde d'accès, format de date, relance papier).
+- **Recette navigateur 23/23** sur base locale, note d'exécution de la Task 11.
+
+### Hors périmètre, confiés à des tâches séparées
+- **Typographie des courriers et de l'interface** : élision « d’ » (« de Odette » → « d’Odette »), « 1er » ;
+- **Débordements mobiles** : en-tête de page, bouton du récapitulatif ; contraste des avertissements du 2a ;
+- **Focus entre les questions** ;
+- **Idempotence de `saveRoadmapToDb`** ;
+- **Identité de `user`** dans `useAuth` ; erreur de lecture confondue avec « pas de roadmap ».
+
+Constats remontés à Arnaud :
+- les champs `var-*` ont des ids dupliqués quand plusieurs courriers sont ouverts ;
+- les `notes` des modèles de courrier restent en français dans l'interface anglaise.
