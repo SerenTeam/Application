@@ -768,7 +768,8 @@ export const STRINGS_EN: Strings = {
     relationshipLabel: 'You sign as',
     relationshipFreeLabel: 'Your relationship with the deceased (in French)',
     relationshipFreePlaceholder: 'For example: neveu, petite-fille, ami',
-    relationshipPreview: 'Your letters will read: “{relationship} de {name}”.',
+    // Cite le courrier, toujours en français : {ofName} = prénom précédé de « de » ou « d' » (withDe).
+    relationshipPreview: 'Your letters will read: “{relationship} {ofName}”.',
     addressLine1Label: 'Address',
     addressLine2Label: 'Address line 2 (optional)',
     postalCodeLabel: 'Postal code',

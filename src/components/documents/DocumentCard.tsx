@@ -24,6 +24,7 @@ import { toast } from '@/hooks/use-toast'
 import { useT } from '@/i18n/useT'
 import { useLang } from '@/i18n/LanguageContext'
 import { fmt } from '@/i18n'
+import { formatLongDate } from '@/lib/long-date'
 
 const THEME_ICONS: Record<string, LucideIcon> = {
   banque: Landmark,
@@ -54,11 +55,7 @@ interface DocumentCardProps {
 
 function formatDate(iso: string, lang: 'fr' | 'en'): string {
   try {
-    return new Date(iso).toLocaleDateString(lang === 'en' ? 'en-GB' : 'fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    })
+    return formatLongDate(new Date(iso), lang)
   } catch {
     return iso
   }

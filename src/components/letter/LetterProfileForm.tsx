@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase'
 import { useT } from '@/i18n/useT'
 import { useLang } from '@/i18n/LanguageContext'
 import { fmt } from '@/i18n'
+import { withDe } from '@/lib/elision'
 import { isFreeRelationLabel, normalizeRelationLabel, relationLabelOptions } from '@/lib/relation-labels'
 import {
   DOB_MIN,
@@ -280,13 +281,13 @@ export function LetterProfileForm({
             </p>
             {savedRelationship && deceasedFirstName && (
               <p className="text-text-muted">
-                {fmt(t.letterProfile.relationshipPreview, { relationship: savedRelationship, name: deceasedFirstName })}
+                {fmt(t.letterProfile.relationshipPreview, { relationship: savedRelationship, ofName: withDe(deceasedFirstName) })}
               </p>
             )}
             {dobText && (
               <p className="text-text-muted">
                 {deceasedFirstName
-                  ? fmt(t.letterProfile.dobSummary, { name: deceasedFirstName, date: dobText })
+                  ? fmt(t.letterProfile.dobSummary, { name: deceasedFirstName, ofName: withDe(deceasedFirstName, '’'), date: dobText })
                   : fmt(t.letterProfile.dobSummaryNoName, { date: dobText })}
               </p>
             )}
@@ -315,11 +316,12 @@ export function LetterProfileForm({
     )
   }
 
-  // Aperçu « {lien} de {prénom} », avec le lien tel qu'il sera enregistré puis écrit dans les courriers.
+  // Aperçu « {lien} de {prénom} », élidé comme dans les courriers (« fille d'Anne »), avec le lien tel qu'il
+  // sera enregistré puis écrit dans les courriers.
   const previewRelationship = normalizeRelationLabel(relation, form.relationship)
   const relationshipPreview =
     previewRelationship && deceasedFirstName
-      ? fmt(t.letterProfile.relationshipPreview, { relationship: previewRelationship, name: deceasedFirstName })
+      ? fmt(t.letterProfile.relationshipPreview, { relationship: previewRelationship, ofName: withDe(deceasedFirstName) })
       : null
   const relationshipHint = relationshipPreview ? (
     <p id={hintIdOf('relationship')} className="text-xs text-text-muted">
@@ -499,7 +501,7 @@ export function LetterProfileForm({
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor={idOf('deceased_dob')} className="text-sm">
               {deceasedFirstName
-                ? fmt(t.letterProfile.dobLabel, { name: deceasedFirstName })
+                ? fmt(t.letterProfile.dobLabel, { name: deceasedFirstName, ofName: withDe(deceasedFirstName, '’') })
                 : t.letterProfile.dobLabelNoName}
             </Label>
             <Input

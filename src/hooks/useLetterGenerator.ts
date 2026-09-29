@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { formatLetterValue, getLetterTemplate, type LetterTemplate } from '@/data/letter-templates'
+import { fillLetterPlaceholder, formatLetterValue, getLetterTemplate, type LetterTemplate } from '@/data/letter-templates'
+import { formatLongDate } from '@/lib/long-date'
 
 export interface LetterGeneratorOptions {
   templateId: string
@@ -23,8 +24,9 @@ function formatDate(iso?: string): string {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '' // jamais « Invalid Date » dans un courrier : le champ redevient à saisir
+  // Courrier toujours en français : « 1er mars 1941 », « 14 mars 1941 » (formatLongDate).
   // Date seule = minuit UTC : formatée en UTC, sinon la veille dans les fuseaux négatifs
-  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', ...(ISO_DAY_RE.test(iso) ? { timeZone: 'UTC' } : {}) })
+  return formatLongDate(d, 'fr', ISO_DAY_RE.test(iso) ? { timeZone: 'UTC' } : {})
 }
 
 export function buildInitialValues(
@@ -150,7 +152,7 @@ export function useLetterGenerator(options: LetterGeneratorOptions) {
     let subject = template.subject
     for (const v of template.variables) {
       const val = formatLetterValue(values[v.key]) || `[${v.label.toUpperCase()}]`
-      subject = subject.replaceAll(`{{${v.key}}}`, val)
+      subject = fillLetterPlaceholder(subject, v.key, val)
     }
     return subject
   }, [template, values])
@@ -164,16 +166,16 @@ export function useLetterGenerator(options: LetterGeneratorOptions) {
     let resolvedRecipient = template.recipient_label
     for (const v of template.variables) {
       const val = formatLetterValue(values[v.key]) || `[${v.label.toUpperCase()}]`
-      resolvedRecipient = resolvedRecipient.replaceAll(`{{${v.key}}}`, val)
+      resolvedRecipient = fillLetterPlaceholder(resolvedRecipient, v.key, val)
     }
 
-    // Replace placeholders in body
-    result = result.replaceAll('{{recipient_label}}', resolvedRecipient)
-    result = result.replaceAll('{{subject}}', resolvedSubject)
+    // Replace placeholders in body — textes insérés tels quels : un « $& » saisi n'est pas interprété
+    result = result.replaceAll('{{recipient_label}}', () => resolvedRecipient)
+    result = result.replaceAll('{{subject}}', () => resolvedSubject)
 
     for (const v of template.variables) {
       const val = formatLetterValue(values[v.key]) || `[${v.label.toUpperCase()}]`
-      result = result.replaceAll(`{{${v.key}}}`, val)
+      result = fillLetterPlaceholder(result, v.key, val)
     }
 
     return result

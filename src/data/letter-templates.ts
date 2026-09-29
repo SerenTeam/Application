@@ -1,3 +1,5 @@
+import { elidesDe } from '@/lib/elision'
+
 export interface LetterVariable {
   key: string
   label: string
@@ -679,6 +681,24 @@ const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 export function formatLetterValue(value: string | undefined): string | undefined {
   const match = value ? ISO_DATE_RE.exec(value) : null
   return match ? `${match[3]}/${match[2]}/${match[1]}` : value
+}
+
+// Remplace {{key}} par la valeur, écrite telle quelle (un « $& » saisi reste « $& »), et élide le
+// « de » qui la précède quand la valeur l'exige : « fille de {{deceased_firstname}} » donne « fille
+// d'Anne » ou « fille de Jean » (règle : src/lib/elision.ts). Seul « de » en mot entier est
+// concerné, en tête de texte ou après un blanc. Les modèles restent écrits avec « de ». Limite
+// connue : l'élision lit le texte en cours de substitution, où une valeur déjà insérée qui finirait
+// par « de » compterait aussi, et l'ordre des substitutions diffère entre client et serveur (sauf
+// sur les deux paires accolées des modèles, prénom puis nom) ; aucune valeur réaliste ne le
+// déclenche dans les 15 modèles, dont la parité du rendu complet est testée. Miroir exact :
+// `fillLetterPlaceholder` de server/lib/letter-render.js (parité testée).
+const DE_BEFORE_PLACEHOLDER_RE = /(^|\s)de \{\{(\w+)\}\}/g
+
+export function fillLetterPlaceholder(text: string, key: string, value: string): string {
+  const elided = elidesDe(value)
+    ? text.replace(DE_BEFORE_PLACEHOLDER_RE, (match, before: string, found: string) => (found === key ? `${before}d'${value}` : match))
+    : text
+  return elided.replaceAll(`{{${key}}}`, () => value)
 }
 
 export function getLetterTemplate(templateId: string): LetterTemplate | undefined {

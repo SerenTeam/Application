@@ -37,6 +37,16 @@ describe('renderInvitationEmail', () => {
     for (const right of ['access', 'rectification', 'erasure', 'object']) expect(text).toContain(right)
     expect(text).toContain('https://preprod-app.seren-app.fr/security')
   })
+  it('fin de validité un premier du mois : « 1er octobre 2026 » en FR, « 1 October 2026 » en EN, jour de Paris', () => {
+    // 30/09 à 23 h 30 UTC = 1er octobre à 1 h 30 à Paris : le jour écrit est celui de Paris.
+    const opts = { ...OPTS, expiresAt: '2026-09-30T23:30:00Z' }
+    const fr = renderInvitationEmail(opts).text
+    expect(fr).toContain("valable 7 jours (jusqu'au 1er octobre 2026)")
+    expect(fr).toContain("l'invitation expire le 1er octobre 2026.")
+    const en = renderInvitationEmail({ ...opts, lang: 'en' }).text
+    expect(en).toContain('valid for 7 days (until 1 October 2026)')
+    expect(en).toContain('the invitation expires on 1 October 2026.')
+  })
   it('aucune valeur relative au défunt, même si un appelant en passait', () => {
     const { text } = renderInvitationEmail({ ...OPTS, deceased_last_name: 'Dupont', deceased_death_date: '2026-09-10', deceasedFirstName: 'Jean' })
     expect(text).not.toContain('Dupont')

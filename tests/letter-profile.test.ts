@@ -264,6 +264,14 @@ describe('formatDobForDisplay — date de naissance affichée dans l’interface
     expect(formatDobForDisplay('1941-03-14', 'fr')).toBe('14 mars 1941')
     expect(formatDobForDisplay('1941-03-14', 'en')).toBe('14 March 1941')
   })
+  it('premier du mois : « 1er mars 1941 » en français (ordinal), « 1 March 1941 » en anglais, Martinique comprise', () => {
+    expect(formatDobForDisplay('1941-03-01', 'fr')).toBe('1er mars 1941')
+    expect(formatDobForDisplay('1941-03-01', 'en')).toBe('1 March 1941')
+    process.env.TZ = 'America/Martinique'
+    expect(new Date('1941-03-01').getDate()).toBe(28) // sentinelle : le processus est bien à UTC−4
+    expect(formatDobForDisplay('1941-03-01', 'fr')).toBe('1er mars 1941')
+    expect(formatDobForDisplay('1941-03-01', 'en')).toBe('1 March 1941')
+  })
   it('valeur vide, impossible ou hors format AAAA-MM-JJ : chaîne vide, jamais « Invalid Date »', () => {
     expect(formatDobForDisplay('', 'fr')).toBe('')
     expect(formatDobForDisplay('1941-02-30', 'fr')).toBe('')

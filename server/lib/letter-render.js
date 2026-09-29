@@ -10,6 +10,7 @@
 // variable (juste des clés), donc le repli affiche `[CLÉ EN MAJUSCULES]` — même mécanique
 // (jamais de `{{...}}` laissé tel quel), texte de repli adapté à l'absence de métadonnée.
 import { getLetterTemplate } from './letter-templates.js'
+import { elidesDe } from './elision.js'
 
 const MUSTACHE_RE = /\{\{[a-zA-Z0-9_]+\}\}/
 
@@ -40,10 +41,22 @@ export function formatLetterValue(value) {
   return match ? `${match[3]}/${match[2]}/${match[1]}` : value
 }
 
+// Miroir exact de `fillLetterPlaceholder` (src/data/letter-templates.ts, parité testée) : valeur
+// écrite telle quelle, « de » élidé devant elle quand elle l'exige (« fille d'Anne », règle dans
+// elision.js), en mot entier seulement — même limite connue que côté client.
+const DE_BEFORE_PLACEHOLDER_RE = /(^|\s)de \{\{(\w+)\}\}/g
+
+export function fillLetterPlaceholder(text, key, value) {
+  const elided = elidesDe(value)
+    ? text.replace(DE_BEFORE_PLACEHOLDER_RE, (match, before, found) => (found === key ? `${before}d'${value}` : match))
+    : text
+  return elided.replaceAll(`{{${key}}}`, () => value)
+}
+
 function substitute(text, keys, values) {
   let result = text
   for (const key of keys) {
-    result = result.replaceAll(`{{${key}}}`, resolveValue(key, values))
+    result = fillLetterPlaceholder(result, key, resolveValue(key, values))
   }
   return result
 }
@@ -70,9 +83,10 @@ export function renderTemplate(template, variables) {
   // figurer aussi littéralement dans `body`).
   const recipientLabel = substitute(template.recipient_label, keys, values)
 
+  // Textes insérés tels quels (fonction de remplacement) : un « $& » saisi n'est pas interprété.
   let body = template.body
-  body = body.replaceAll('{{recipient_label}}', recipientLabel)
-  body = body.replaceAll('{{subject}}', subject)
+  body = body.replaceAll('{{recipient_label}}', () => recipientLabel)
+  body = body.replaceAll('{{subject}}', () => subject)
   body = substitute(body, keys, values)
 
   // Miroir exact de `missingVariables` (useLetterGenerator) : le catalogue serveur ne distingue

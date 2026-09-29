@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Lang } from '@/i18n'
 import type { RelationV2 } from '@/types/questionnaire'
 import { defaultRelationLabel, normalizeRelationLabel } from '@/lib/relation-labels'
+import { formatLongDate } from '@/lib/long-date'
 
 // Profil courrier (personnalisation v2, spec docs/design-personnalisation-v2.md §4) : identité et
 // adresse de la famille, saisies une fois, lues par le pré-remplissage des courriers ET par l'envoi
@@ -113,17 +114,13 @@ function isRealIsoDate(value: string): boolean {
 
 /**
  * Date de naissance (AAAA-MM-JJ) affichée dans l'interface, dans sa langue : « 14 mars 1941 » /
- * « 14 March 1941 ». Une date seule vaut minuit UTC : formatée en UTC, sinon la veille dans les
- * fuseaux négatifs (Antilles, Guyane). Valeur vide ou invalide : chaîne vide, jamais « Invalid Date ».
+ * « 14 March 1941 », « 1er mars 1941 » / « 1 March 1941 » (formatLongDate). Une date seule vaut
+ * minuit UTC : formatée en UTC, sinon la veille dans les fuseaux négatifs (Antilles, Guyane). Valeur
+ * vide ou invalide : chaîne vide, jamais « Invalid Date ».
  */
 export function formatDobForDisplay(iso: string, lang: Lang): string {
   if (!isRealIsoDate(iso)) return ''
-  return new Date(iso).toLocaleDateString(lang === 'en' ? 'en-GB' : 'fr-FR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
+  return formatLongDate(new Date(iso), lang, { timeZone: 'UTC' })
 }
 
 /**
