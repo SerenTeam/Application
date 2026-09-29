@@ -55,8 +55,14 @@ export function RecapScreen({ entries, onEdit, onConfirm, isSubmitting, error }:
           ))}
         </ul>
 
-        <div className="flex justify-end border-t border-border-soft pt-6">
-          <Button onClick={onConfirm} disabled={isSubmitting}>
+        {/* Sous `sm`, le libellé (nowrap) débordait de la carte, rogné à gauche de l'écran :
+            bouton pleine largeur, retour à la ligne (px-6 : 2 lignes max dès 320 px, FR comme EN). */}
+        <div className="flex justify-end border-t border-border-soft pt-6 max-sm:flex-col max-sm:items-stretch">
+          <Button
+            onClick={onConfirm}
+            disabled={isSubmitting}
+            className="max-sm:h-auto max-sm:min-h-[51px] max-sm:whitespace-normal max-sm:px-6 max-sm:py-3 max-sm:text-center"
+          >
             {isSubmitting ? t.recap.generating : t.recap.confirm}
           </Button>
         </div>

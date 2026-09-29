@@ -7,6 +7,8 @@ export const STRINGS_FR = {
     dashboard: 'Tableau de bord',
     letters: 'Courriers',
     signOut: 'Déconnexion',
+    // Bouton du menu mobile du header (< 640 px) : libellé fixe, l'état passe par aria-expanded
+    menu: 'Menu',
     // Navigation latérale du dashboard — wording volontairement identique en FR et EN
     nav: {
       dashboard: 'Dashboard',
