@@ -223,7 +223,7 @@ export function QuestionnairePage() {
       const steps = generateRoadmap(answers, lang)
       setStepsCount(steps.length)
       setDoneCount(steps.filter((s) => s.initial_status === 'done').length)
-      await saveRoadmapToDb(user.id, qId, steps, lang)
+      await saveRoadmapToDb(supabase, user.id, qId, steps, lang)
 
       sessionStorage.removeItem('seren_questionnaire_session')
       setPhase('done')
