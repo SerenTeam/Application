@@ -4573,6 +4573,22 @@ git log --oneline -1 integration/v2-demo
 ```
 Attendu : `integration/v2-demo` = tête de `feature/v2-personnalisation`. **Rien n'est poussé** : Arnaud pushe la branche `integration/v2-demo` et le tag `preprod-v2-rc4`, selon sa checklist habituelle. La branche `feature/v2-personnalisation` est supprimée ensuite (règle 2 branches).
 
+> **Note d'exécution (Task 12, 2026-09-29)** — **`integration/v2-demo` = `79fda61`, tag `preprod-v2-rc4`** : fusion locale en avance rapide depuis `aaa0603`. Rien n'est poussé.
+> - **Branches d'autres sessions intégrées** (merges `--no-ff`) :
+>   - `fix/v2-sentry-questionnaire` (`f8272fa`) ;
+>   - `fix/v2-prenom-derniere-question` (`7a095a5`) ;
+>   - `fix/flaky-supertest-404` (`56cd7e4`) : serveurs éphémères de supertest liés à `127.0.0.1`. Plus aucun 404 sur 10 suites complètes, contre environ 4 échecs sur 31 avant.
+> - **Non intégrée : `fix/flaky-react-flush-tests` (`a169f33`).** Elle réécrit autrement (`act()`) les deux tests déjà stabilisés ici (`vi.waitFor`, `f39060b` et `9babcce`). Elle est redondante et entrerait en conflit ; Arnaud tranche.
+> - **Revue finale** : « prête sous réserve », puis « prête à fusionner » après correctifs :
+>   - `8fe052e` : prénom normalisé à la source ;
+>   - `80bf72a` : Sentry, corps de `/api/letters/*`, Authorization et cookies, `maxIncomingRequestBodySize: 'none'` ;
+>   - `5621b99` : secret d'URL du webhook MySendingBox, défaut préexistant, commit isolé ;
+>   - `1a7ebe1` : priorités de l'autofill testées ;
+>   - `bcc89aa` : contraste de l'avertissement de pièce jointe ;
+>   - `b6fa9f3` : sources Légifrance de l'étape EHPAD.
+> - **Porte finale** : `tsc` OK, **974 tests** sur 3 passages, build OK, état propre. SQL inchangé depuis le rejeu de la Task 1 : les 20 migrations ont été rejouées 3 fois de plus par le pipeline vidéo.
+> - **Branche** : `feature/v2-personnalisation` et son worktree (scratchpad de la session) sont conservés pour d'éventuels retouches ou retournages. Ils se suppriment après le push d'Arnaud (`git worktree remove …/wt-perso` puis `git branch -d feature/v2-personnalisation`).
+
 ---
 
 ### Task 13 : Vidéo démo v3 (exécutée par le contrôleur, sur le code tagué rc4)
@@ -4636,3 +4652,22 @@ Extraire une image par séquence (`ffmpeg -ss <t> -i … -frames:v 1 "$S/video/c
 - [ ] **Step 7 : livraison**
 
 Envoyer les 3 fichiers à Arnaud (`SendUserFile`), puis `supabase stop --workdir "$WT"` si plus rien ne doit tourner.
+
+> **Note d'exécution (Task 13, 2026-09-29)** — Vidéo **`~/Documents/git/Seren/demo-video/seren-demo-v3.mp4`**, avec `chapitres-v3.md` et `voix-off-v3.md`. Les fichiers v2 sont intacts.
+> - **Caractéristiques** : 173,000 s (5 190 images), 1920×1080, H.264 High, yuv420p, plage tv, BT.709, 30 i/s. Filmée sur `preprod-v2-rc4` (`79fda61`), avec 0 requête externe.
+> - **Scénario a à i** conforme au Step 3, avec un ajout : un acte de décès **fictif** est joint (`setInputFiles`), ce qui fait disparaître l'avertissement de pièce jointe à l'écran.
+> - **Contrôles du scénario** :
+>   - 15 questions vues, aucune d'identité ;
+>   - bouton d'envoi actif, jamais cliqué ;
+>   - contrôle visuel sur 12 images et 2 planches (une image toutes les 2 s).
+> - **Pipeline**, dans `<scratchpad>/video/` : reconstitué depuis les transcripts du 17/09, puis adapté :
+>   - chemins de la session ;
+>   - 20 migrations ;
+>   - garde qui accepte un `.env` strictement local ;
+>   - lecture de `consent_version()` avec un jeton authentifié, puisqu'elle est révoquée pour `anon` depuis rc3 ;
+>   - plus de sous-titres ;
+>   - **Chromium complet avec `--lang=fr-FR`**, pour des champs date en jj/mm/aaaa ;
+>   - conversion de couleurs explicite de la plage pc/BT.601 vers la plage tv/BT.709, dans l'assemblage : sinon le fichier sortait en yuvj420p ;
+>   - Playwright 1.57.0 installé **hors ligne** depuis le cache npm, sans aucun téléchargement.
+> - **Relancer le tournage** : `cd <scratchpad>/video && ./run.sh --build`. `DEMO_PACE=0.3` donne une répétition rapide.
+> - **Pile Supabase locale et Docker Desktop** : laissés en marche, d'autres sessions pouvant s'en servir. `supabase stop --workdir <wt-perso>` quand plus rien ne doit tourner.
