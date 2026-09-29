@@ -8,6 +8,7 @@ export const STRINGS_EN: Strings = {
     dashboard: 'Dashboard',
     letters: 'Letters',
     signOut: 'Sign out',
+    menu: 'Menu',
     nav: {
       dashboard: 'Dashboard',
       roadmap: 'Roadmap',
