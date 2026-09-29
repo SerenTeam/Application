@@ -191,7 +191,7 @@ export function RecipientAddressForm({
             {fmt(t.paperSend.lineCounter, { count: value.name.length })}
           </p>
           {nameTooLong && (
-            <p id={`${uid}-name-too-long`} className="text-xs text-warning">
+            <p id={`${uid}-name-too-long`} className="text-sm text-error">
               {t.paperSend.recipientNameTooLong}
             </p>
           )}
