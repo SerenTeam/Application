@@ -6,7 +6,7 @@ import * as Sentry from '@sentry/node'
 import { QUESTIONS_CATALOG, textIn } from '../lib/questions-catalog.js'
 import { nextQuestion, validateAnswer, setAnswer, matchesWhen, progress } from '../lib/questionnaire-engine.js'
 import * as supabaseStore from '../lib/sessions-store.js'
-import { writeQuestionText } from '../lib/question-writer.js'
+import { writeQuestionText, interpolateFallback } from '../lib/question-writer.js'
 import { createUserRateLimiter } from '../lib/rate-limit.js'
 import { msg } from '../lib/messages.js'
 import { FAIL_CLOSED_GATE } from '../lib/require-active-dossier.js'
@@ -198,8 +198,13 @@ export function createQuestionnaireRouter({
       // (valeurs enum non identifiantes). Nom de famille et date de décès ne partent pas.
       // Libellé humain plutôt qu'enum brut : « Mon père ou ma mère » est sans ambiguïté
       // de direction, là où « parent » a fait écrire au rédacteur qu'un enfant était décédé.
+      // Question interpolée comme le repli (prénom déjà transmis dans le contexte, sinon libellé
+      // neutre) : un {prenom} brut inviterait le modèle à recopier le marqueur (cf. writer-prompt.js).
       const last = CLOSED_TYPES.includes(spec.type) && !WRITER_EXCLUDED_IDS.includes(spec.id)
-        ? { question: textIn(spec.fallback_text.question, session.lang), value: displayValue(spec, value, session.lang) }
+        ? {
+            question: interpolateFallback(spec, session.answers.deceased_firstname, session.lang).question,
+            value: displayValue(spec, value, session.lang),
+          }
         : undefined
       const data = await renderNext(session, last)
       res.json({ success: true, data })
