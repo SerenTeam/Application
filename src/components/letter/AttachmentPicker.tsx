@@ -109,7 +109,7 @@ export function AttachmentPicker({ selected, onChange, frozen }: AttachmentPicke
       {frozen && <p className="text-xs italic text-text-muted">{t.paperSend.attachmentsFrozenNote}</p>}
 
       {loading && <p className="text-xs text-text-muted">{t.paperSend.attachmentsLoading}</p>}
-      {loadError && <p className="text-xs text-warning">{t.paperSend.attachmentsLoadError}</p>}
+      {loadError && <p className="text-sm text-error">{t.paperSend.attachmentsLoadError}</p>}
 
       {!loading && !loadError && attachments.length === 0 && (
         <p className="text-xs text-text-muted">{t.paperSend.attachmentsEmpty}</p>
@@ -152,7 +152,7 @@ export function AttachmentPicker({ selected, onChange, frozen }: AttachmentPicke
       )}
 
       {!frozen && (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -175,7 +175,7 @@ export function AttachmentPicker({ selected, onChange, frozen }: AttachmentPicke
             {uploading && <Loader2 className="h-4 w-4 animate-spin" />}
             {uploading ? t.paperSend.attachmentsUploading : t.paperSend.attachmentsUploadCta}
           </Button>
-          {uploadError && <p className="text-xs text-warning">{t.paperSend.attachmentsUploadError}</p>}
+          {uploadError && <p className="text-sm text-error">{t.paperSend.attachmentsUploadError}</p>}
         </div>
       )}
     </div>
