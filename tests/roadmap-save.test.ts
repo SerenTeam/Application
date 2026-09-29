@@ -32,11 +32,12 @@ function makeFakeSupabase() {
   const failures: Array<{ table: Table; op: Op; mode: FailureMode }> = []
   let seq = 0
 
-  // id et created_at générés par la base ; created_at strictement croissant pour que
-  // « la plus récente » soit déterministe.
+  // id et created_at générés par la base. created_at strictement croissant pour que
+  // « la plus récente » soit déterministe ; id décroissant car, comme un UUID aléatoire, il
+  // ne suit pas l'ordre d'insertion (un tri par id au lieu de created_at serait détecté).
   function store(table: Table, row: Row): Row {
     seq += 1
-    const stored = { id: `${table}-${seq}`, created_at: new Date(Date.UTC(2026, 8, 29, 0, 0, seq)).toISOString(), ...row }
+    const stored = { id: `${table}-${1_000_000 - seq}`, created_at: new Date(Date.UTC(2026, 8, 29, 0, 0, seq)).toISOString(), ...row }
     tables[table].push(stored)
     return stored
   }
@@ -216,9 +217,21 @@ describe('saveRoadmapToDb — idempotence au retry (« Réessayer »)', () => {
     expect(db.rows('steps')).toHaveLength(0)
   })
 
-  it('doublons hérités de l’ancien bug : réutilise la roadmap la plus récente (celle du dashboard)', async () => {
+  it('étapes d’une roadmap précédente : le retry d’un nouveau questionnaire insère quand même les siennes', async () => {
     const db = makeFakeSupabase()
-    db.seed('roadmaps', { user_id: 'user-1', questionnaire_id: 'q-1', total_steps: STEPS.length }) // orpheline
+    await saveRoadmapToDb(db.client, 'user-1', 'q-0', STEPS) // questionnaire refait depuis l'accueil
+    db.failNext('steps', 'insert')
+    await expect(saveRoadmapToDb(db.client, 'user-1', 'q-1', STEPS)).rejects.toThrow(STRINGS_FR.errors.saveStepsFailed)
+
+    const id = await saveRoadmapToDb(db.client, 'user-1', 'q-1', STEPS)
+
+    expect(db.rows('steps').filter((s) => s.roadmap_id === id)).toHaveLength(STEPS.length)
+  })
+
+  it('deux roadmaps pour le même questionnaire (course au retry) : réutilise la plus récente, comme le dashboard', async () => {
+    const db = makeFakeSupabase()
+    // 1er essai validé après le lancement du retry : resté sans étapes
+    db.seed('roadmaps', { user_id: 'user-1', questionnaire_id: 'q-1', total_steps: STEPS.length })
     const latest = db.seed('roadmaps', { user_id: 'user-1', questionnaire_id: 'q-1', total_steps: STEPS.length })
     STEPS.forEach((s, i) => db.seed('steps', { roadmap_id: latest.id, user_id: 'user-1', template_id: s.id, display_order: i }))
 

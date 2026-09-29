@@ -55,7 +55,9 @@ export function generateRoadmap(answers: QuestionnaireAnswersV2, lang: Lang = 'f
 // de QuestionnairePage repasse le même questionnaireId, donc un retry retrouve la roadmap
 // déjà créée — même si la réponse de l'insert s'est perdue — au lieu d'en créer une seconde,
 // et ne réinsère pas des étapes déjà sauvegardées. Pas de nettoyage compensatoire possible :
-// la RLS n'accorde aucun DELETE sur roadmaps ni sur steps.
+// la RLS n'accorde aucun DELETE sur roadmaps ni sur steps. Reste une course théorique — un
+// retry lancé avant qu'une écriture initiale ne soit validée — que seule une contrainte
+// d'unicité en base fermerait.
 // Le client est injecté pour rester testable sans variables d'environnement.
 export async function saveRoadmapToDb(
   client: SupabaseClient,
@@ -66,8 +68,8 @@ export async function saveRoadmapToDb(
 ) {
   const t = STRINGS[lang]
 
-  // La plus récente, comme le dashboard : des doublons hérités de l'ancien comportement
-  // peuvent exister, et maybeSingle() échouerait au-delà d'une ligne.
+  // La plus récente, comme le dashboard : la course ci-dessus peut laisser deux roadmaps pour
+  // un même questionnaire, et sans limit(1) maybeSingle() ferait alors échouer chaque retry.
   const { data: existing, error: lookupError } = await client
     .from('roadmaps')
     .select('id')
