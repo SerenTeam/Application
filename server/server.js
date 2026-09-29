@@ -42,8 +42,12 @@ if (process.env.SENTRY_DSN) {
     dsn: process.env.SENTRY_DSN,
     tracesSampleRate: 0,
     sendDefaultPii: false,
-    // Contrat §4.8 : jamais de jeton d'activation, de hash ni de corps des routes
-    // d'activation/partenaire dans un événement sortant.
+    // Le SDK ne lit plus le corps des requêtes entrantes. Par défaut ('medium'), il en joint jusqu'à
+    // 10 ko à tout événement capturé pendant la requête, même avec sendDefaultPii: false.
+    integrations: [Sentry.httpIntegration({ maxIncomingRequestBodySize: 'none' })],
+    // Contrat §4.8 : jamais de jeton d'activation, de hash, de corps des routes
+    // d'activation/partenaire/questionnaire/courriers, ni d'en-tête Authorization ou Cookie dans un
+    // événement sortant (seconde barrière : server/lib/sentry-scrub.js).
     beforeSend: (event) => scrubSentryEvent(event),
   });
 }

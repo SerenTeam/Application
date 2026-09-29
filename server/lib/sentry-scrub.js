@@ -1,13 +1,21 @@
 // Scrub Sentry serveur (contrat §4.8, §6) : aucun jeton d'activation, hash, URL d'activation, corps
-// des routes d'activation/partenaire/questionnaire ni en-tête Authorization ne doit quitter le
-// serveur. Module dédié (note N1) : server.js démarre le serveur à l'import et ne peut pas être
-// testé directement.
+// des routes d'activation/partenaire/questionnaire/courriers, ni en-tête Authorization ou Cookie
+// (sur aucune route) ne doit quitter le serveur. Module dédié (note N1) : server.js démarre le
+// serveur à l'import et ne peut pas être testé directement.
 const TOKEN_FRAGMENT_RE = /#t=[A-Za-z0-9_-]+/g
 const SENSITIVE_KEYS = new Set(['token_hash', 'invite_token_hash', 'activation_url'])
 // Le SDK (@sentry/node 10) joint le corps BRUT de la requête entrante à l'événement, même avec
-// sendDefaultPii: false. Questionnaire : identité du défunt et données de santé (aides_percues :
-// APA, ASH, AAH/PCH ; logement : EHPAD) — tout le préfixe, pas seulement /answer.
-const SENSITIVE_ROUTES = ['/api/activation/', '/api/partner/dossiers', '/api/questionnaire/']
+// sendDefaultPii: false. server.js le lui interdit désormais (maxIncomingRequestBodySize: 'none') ;
+// ce filtre reste la seconde barrière. Tout le préfixe à chaque fois :
+// - questionnaire : identité du défunt et données de santé (aides_percues : APA, ASH, AAH/PCH ;
+//   logement : EHPAD) ;
+// - courriers : variables (identité du défunt, nom et adresse de l'expéditeur, numéro d'abonné),
+//   adresse du destinataire, et modèle, qui peut révéler une donnée de santé (aides-departement,
+//   ehpad-fin-contrat).
+const SENSITIVE_ROUTES = ['/api/activation/', '/api/partner/dossiers', '/api/questionnaire/', '/api/letters/']
+// Retirés sur TOUTES les routes : le SDK joint tous les en-têtes entrants, dont le jeton Bearer (ou
+// les identifiants Basic de la préprod) et les cookies, qu'il analyse aussi dans request.cookies.
+const ALWAYS_STRIPPED_HEADERS = new Set(['authorization', 'cookie'])
 const MAX_DEPTH = 12
 
 function scrubString(value) {
@@ -43,11 +51,12 @@ export function scrubSentryEvent(event) {
     if (SENSITIVE_ROUTES.some((route) => url.includes(route))) {
       delete request.data
       delete request.query_string
-      delete request.cookies
-      if (request.headers && typeof request.headers === 'object') {
-        for (const header of Object.keys(request.headers)) {
-          if (header.toLowerCase() === 'authorization') delete request.headers[header]
-        }
+    }
+    // Toutes les routes : ni jeton ni cookie, en en-tête brut comme en cookies déjà analysés.
+    delete request.cookies
+    if (request.headers && typeof request.headers === 'object') {
+      for (const header of Object.keys(request.headers)) {
+        if (ALWAYS_STRIPPED_HEADERS.has(header.toLowerCase())) delete request.headers[header]
       }
     }
   }

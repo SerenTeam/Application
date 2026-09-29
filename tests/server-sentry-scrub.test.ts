@@ -24,6 +24,8 @@ describe('scrubSentryEvent', () => {
     '/api/activation/check', '/api/activation/claim', '/api/partner/dossiers', '/api/partner/dossiers/xyz/resend',
     '/api/questionnaire/start', '/api/questionnaire/answer', '/api/questionnaire/reask',
     '/api/questionnaire/resume', '/api/questionnaire/complete',
+    // Préfixe : tout /api/letters/*, y compris une route qui n'existe pas encore.
+    '/api/letters/send', '/api/letters/xyz',
   ])(
     '%s : request.data, query_string, cookies et authorization supprimés',
     (route) => {
@@ -51,13 +53,56 @@ describe('scrubSentryEvent', () => {
     expect(json).not.toContain('aides_percues')
     expect(json).not.toContain('handicap')
   })
-  it('autres routes : corps conservé, mais clés sensibles masquées à toute profondeur', () => {
+  // Même mécanisme pour les courriers : POST /api/letters/send transporte les variables du courrier
+  // (identité du défunt, nom et adresse de l'expéditeur, numéro d'abonné), l'adresse du destinataire
+  // et le modèle, qui peut révéler une donnée de santé (aides-departement, ehpad-fin-contrat).
+  it('/api/letters/send : le corps brut ne part plus (variables, destinataire, modèle)', () => {
+    const body = JSON.stringify({
+      template_id: 'aides-departement',
+      variables: { deceased_lastname: 'Roussel', sender_address: '12 rue des Lilas, 33000 Bordeaux', subscriber_number: 'AB-123' },
+      recipient: { name: 'Conseil départemental', address_line1: '1 esplanade Charles-de-Gaulle', postal_code: '33000', city: 'Bordeaux' },
+    })
     const event = scrubSentryEvent({
-      request: { url: 'https://app.seren-app.fr/api/letters/send', data: { template_id: 'x', nested: { invite_token_hash: HASH } } },
+      request: { method: 'POST', url: 'https://app.seren-app.fr/api/letters/send', data: body },
+    })
+    expect(event.request.data).toBeUndefined()
+    const json = JSON.stringify(event)
+    for (const leak of ['aides-departement', 'Roussel', 'rue des Lilas', 'AB-123', 'Charles-de-Gaulle']) {
+      expect(json).not.toContain(leak)
+    }
+  })
+  // Le SDK joint TOUS les en-têtes de la requête entrante, cookies compris (aussi analysés dans
+  // request.cookies), sur toutes les routes : le jeton Bearer, ou les identifiants Basic de la préprod.
+  it.each([
+    ['route non sensible', 'https://app.seren-app.fr/api/me'],
+    ['page servie derrière la Basic Auth de la préprod', 'https://preprod-app.seren-app.fr/dashboard'],
+    ['événement sans URL', undefined],
+  ])('%s : en-têtes Authorization et Cookie, et cookies analysés, toujours retirés', (_label, url) => {
+    const event = scrubSentryEvent({
+      request: {
+        url,
+        headers: { authorization: 'Bearer eyJ', Cookie: 'sb-access-token=COOKIE', 'user-agent': 'x' },
+        cookies: { 'sb-access-token': 'COOKIE' },
+      },
+    })
+    expect(event.request.headers).toEqual({ 'user-agent': 'x' })
+    expect(event.request.cookies).toBeUndefined()
+    expect(JSON.stringify(event)).not.toMatch(/eyJ|COOKIE/)
+  })
+  it('route non sensible : corps et query string conservés, clés sensibles masquées à toute profondeur', () => {
+    const event = scrubSentryEvent({
+      request: {
+        url: 'https://app.seren-app.fr/api/payments/checkout-extra-send?lang=fr',
+        data: { template_id: 'x', nested: { invite_token_hash: HASH } },
+        query_string: 'lang=fr',
+        headers: { 'user-agent': 'x', 'content-type': 'application/json', Authorization: 'Bearer eyJ' },
+      },
       extra: { activation_url: `https://app.seren-app.fr/activation#t=${TOKEN}`, list: [{ token_hash: HASH }] },
       breadcrumbs: [{ data: { url: `/activation#t=${TOKEN}` } }],
     })
     expect(event.request.data.template_id).toBe('x')
+    expect(event.request.query_string).toBe('lang=fr')
+    expect(event.request.headers).toEqual({ 'user-agent': 'x', 'content-type': 'application/json' })
     expect(event.request.data.nested.invite_token_hash).toBe('[scrubbed]')
     expect(event.extra.activation_url).toBe('[scrubbed]')
     expect(event.extra.list[0].token_hash).toBe('[scrubbed]')
@@ -74,5 +119,11 @@ describe('server.js — Sentry.init branché sur scrubSentryEvent', () => {
   it('beforeSend appelle scrubSentryEvent', () => {
     const source = readFileSync(path.join(process.cwd(), 'server/server.js'), 'utf8')
     expect(source).toMatch(/beforeSend:\s*\(event\)\s*=>\s*scrubSentryEvent\(event\)/)
+  })
+  // Première barrière, en amont du scrub : le SDK ne lit plus du tout le corps des requêtes entrantes
+  // (option de @sentry/node 10, défaut 'medium' : jusqu'à 10 ko joints à tout événement).
+  it('intégration http : aucun corps de requête entrante capturé', () => {
+    const source = readFileSync(path.join(process.cwd(), 'server/server.js'), 'utf8')
+    expect(source).toMatch(/integrations:\s*\[\s*Sentry\.httpIntegration\(\{\s*maxIncomingRequestBodySize:\s*'none'\s*\}\)\s*\]/)
   })
 })
