@@ -126,21 +126,26 @@ describe('scrubSentryEvent', () => {
   })
   // Produit transmission (gelé, lecture seule) : GET /api/transmission/:code porte le code d'accès dans
   // le chemin et capture ses erreurs, que le SDK recopie donc dans request.url ET le nom de transaction.
-  // Express route sans tenir compte de la casse : /API/Transmission/<code> atteint la même route et
-  // capture de même (constat sur l'enveloppe remise au transport, SDK 10.68.0).
-  it.each(['/api/transmission/', '/API/Transmission/'])(
+  // Express route sans tenir compte de la casse, et app.use('/api') laisse passer une double barre :
+  // /API/Transmission/<code> et /api//transmission/<code> atteignent la même route et capturent de même
+  // (constat sur l'enveloppe remise au transport, SDK 10.68.0).
+  it.each(['/api/transmission/', '/API/Transmission/', '/api//transmission/'])(
     'code d’accès transmission masqué dans l’URL, la transaction et toute chaîne (%s)',
     (prefix) => {
       const CODE = 'Zq7Kx9Wm'
       const event = scrubSentryEvent({
         transaction: `GET ${prefix}${CODE}`,
         request: { method: 'GET', url: `https://app.seren-app.fr${prefix}${CODE}` },
-        breadcrumbs: [{ category: 'http', data: { url: `https://app.seren-app.fr${prefix}${CODE}?lang=fr` } }],
+        breadcrumbs: [
+          { category: 'http', data: { url: `https://app.seren-app.fr${prefix}${CODE}?lang=fr` } },
+          { message: `essai ${prefix}${CODE} puis ${prefix}${CODE}` },
+        ],
       })
       expect(JSON.stringify(event)).not.toContain(CODE)
       expect(event.transaction).toBe(`GET ${prefix}[code]`)
       expect(event.request.url).toBe(`https://app.seren-app.fr${prefix}[code]`)
       expect(event.breadcrumbs[0].data.url).toBe(`https://app.seren-app.fr${prefix}[code]?lang=fr`)
+      expect(event.breadcrumbs[1].message).toBe(`essai ${prefix}[code] puis ${prefix}[code]`)
     },
   )
   it('/api/user/transmission (route sœur, sans code) : inchangée', () => {
@@ -178,12 +183,14 @@ describe('scrubSentryEvent', () => {
     expect(event.request.url).toBe('https://app.seren-app.fr/dashboard?code=[code]')
     expect(event.request.query_string).toBe('code=[code]')
   })
-  it('paramètre code= masqué entre deux paramètres ; postal_code et les autres conservés', () => {
+  it('paramètre code= masqué à chaque occurrence ; postal_code, code_insee et les autres conservés', () => {
     const CODE = 'Wv6Tn1Gs'
     const event = scrubSentryEvent({
-      request: { url: `https://app.seren-app.fr/dashboard?postal_code=33000&code=${CODE}&lang=fr` },
+      request: { url: `https://app.seren-app.fr/dashboard?code=${CODE}&postal_code=33000&code_insee=33063&code=${CODE}&lang=fr` },
     })
-    expect(event.request.url).toBe('https://app.seren-app.fr/dashboard?postal_code=33000&code=[code]&lang=fr')
+    expect(event.request.url).toBe(
+      'https://app.seren-app.fr/dashboard?code=[code]&postal_code=33000&code_insee=33063&code=[code]&lang=fr',
+    )
   })
   it('renvoie toujours l’événement (on masque, on ne jette pas)', () => {
     const event = { message: 'ok' }
