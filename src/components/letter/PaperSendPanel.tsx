@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { PillBadge } from '@/components/ui/pill-badge'
-import { Send, Loader2 } from 'lucide-react'
+import { Send, Loader2, AlertTriangle } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 import { getLetterTemplate } from '@/data/letter-templates'
@@ -549,7 +549,17 @@ export function PaperSendPanel({
             )}
           </div>
 
-          {showEnclosureWarning && <p className="text-xs text-warning">{t.paperSend.enclosureWarning}</p>}
+          {/* Patron d'avertissement de l'app (contraste AA) : le texte en couleur d'avertissement sur
+              blanc restait sous 4,5:1 ; la couleur ne porte plus que l'icône, décorative. */}
+          {showEnclosureWarning && (
+            <p
+              role="note"
+              className="flex items-start gap-2 rounded-xl border border-warning/40 bg-warning-light px-3 py-2 text-sm text-text-secondary"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+              <span>{t.paperSend.enclosureWarning}</span>
+            </p>
+          )}
           {!isComplete && <p className="text-xs text-text-muted">{t.paperSend.missingFieldsHint}</p>}
           {buyError && <p className="text-xs text-text-muted">{t.paperSend.quotaBuyError}</p>}
           {banner?.kind === 'quota_exhausted' && !banner.extraSendAvailable && (
