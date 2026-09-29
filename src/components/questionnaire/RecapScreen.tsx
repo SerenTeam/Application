@@ -1,7 +1,19 @@
+import { useEffect, useRef, type HTMLAttributes } from 'react'
 import { Pencil } from 'lucide-react'
 import { useT } from '@/i18n/useT'
+import { focusIfIdle } from '@/lib/focus'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { SectionHeading } from '@/components/ui/section-heading'
+
+// Titre du récapitulatif, focalisable par script (tabIndex -1) : passé en `as` à SectionHeading, primitive
+// partagée qu'on ne modifie pas. Le focus arrive ainsi sur le vrai <h2>, annoncé comme titre, et non sur
+// le div qui l'enveloppe. Défini hors du rendu : un composant recréé à chaque rendu remonterait le <h2>
+// et lui ferait perdre le focus. Sans anneau : celui du projet est un box-shadow (:focus-visible,
+// index.css), que focus:outline-none seul n'efface pas.
+function FocusableH2({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
+  return <h2 tabIndex={-1} className={cn(className, 'focus:outline-none focus:ring-0 focus:ring-offset-0')} {...props} />
+}
 
 export interface RecapEntry {
   question_id: string
@@ -19,10 +31,20 @@ interface RecapScreenProps {
 
 export function RecapScreen({ entries, onEdit, onConfirm, isSubmitting, error }: RecapScreenProps) {
   const t = useT()
+  // Accessibilité : à l'entrée du récapitulatif, le bouton qui avait le focus (« Continuer », « Retour au
+  // récapitulatif ») vient de disparaître — le focus retomberait sur body. Même geste qu'à chaque
+  // question : page remise en haut, puis focus sur le titre, jamais volé.
+  const headingRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    focusIfIdle(headingRef.current?.querySelector<HTMLElement>('h2'))
+  }, [])
   return (
     <section className="animate-[slideUp_0.5s_ease-out]">
       <div className="rounded-card border border-border-card bg-white p-10 shadow-card-border max-sm:p-7">
         <SectionHeading
+          ref={headingRef}
+          as={FocusableH2}
           className="mb-8 max-w-none"
           title={t.recap.title}
           lead={t.recap.description}

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { focusIfIdle } from '@/lib/focus'
 import { useT } from '@/i18n/useT'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -54,6 +55,19 @@ export function QuestionCard({ question, onAnswer, onSkip, onCancel, isSubmittin
     }
   }, [question.question_id, question.type, question.current_value])
 
+  // Accessibilité : chaque question remonte la carte (key={question_id} dans QuestionnairePage) et le
+  // bouton « Continuer » qui avait le focus a disparu (désactivé pendant l'envoi, puis démonté) : le
+  // focus retomberait sur body, sans rien annoncer. On remet la page en haut — sur mobile, on arrive du
+  // bouton, en bas d'une longue liste — puis on place le focus sur l'énoncé, alors visible : focus() n'a
+  // rien à faire défiler. Jamais volé : focusIfIdle ne fait rien si la personne est ailleurs (en-tête).
+  // Sans anneau sur l'énoncé : l'anneau global du projet est un box-shadow (:focus-visible, index.css),
+  // d'où focus:ring-0 focus:ring-offset-0 en plus de focus:outline-none.
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    focusIfIdle(headingRef.current)
+  }, [question.question_id])
+
   const isMulti = question.type === 'multiselect'
   const hasValue = selectedValue !== null && selectedValue !== ''
   // Le multiselect est toujours soumissible : une sélection vide est une réponse valide (« aucun »).
@@ -73,7 +87,11 @@ export function QuestionCard({ question, onAnswer, onSkip, onCancel, isSubmittin
       <QuestionnaireProgress categoryName={question.categorie || t.questionnaire.categoryFallback} percent={percent} />
 
       <div className="rounded-card border border-border-card bg-white p-10 shadow-card-border max-sm:p-7">
-        <h2 className="mb-3 font-display text-[26px] font-normal leading-[1.35] text-text max-sm:text-[22px]">
+        <h2
+          ref={headingRef}
+          tabIndex={-1}
+          className="mb-3 font-display text-[26px] font-normal leading-[1.35] text-text focus:outline-none focus:ring-0 focus:ring-offset-0 max-sm:text-[22px]"
+        >
           {question.question}
         </h2>
 
