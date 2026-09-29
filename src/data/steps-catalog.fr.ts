@@ -1111,7 +1111,7 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
   //   https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000049392114
   //   R314-149 (version du 01/01/2023) : socle de prestations facturable 6 jours au plus après le décès,
   //   restauration déduite ; dépôt de garantie restitué dans les 30 jours qui suivent la sortie de
-  //   l'établissement, créance déduite (l'étape dit « suivant l'état des lieux de sortie » : à confirmer).
+  //   l'établissement, créance déduite ; pour les EHPAD (6° de L312-1), R314-149 fixe la sortie à la date de l'état des lieux contradictoire, d'où « suivant l'état des lieux de sortie » dans l'étape.
   //   https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000043588473
   {
     id: 'logement-ehpad',

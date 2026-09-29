@@ -358,8 +358,24 @@ Ces notes **font foi** là où le code livré s'écarte du texte ci-dessus. Le d
 - **Retour sur l'onglet** : il ne provoque plus de relecture (effets dépendants de `userId`). auth-js émet un nouvel objet `user` à chaque retour.
 
 ### Tests et recette
-- **955 tests** à rc4. Les attentes à délai fixe ont été remplacées par des attentes déterministes (tests de garde d'accès, format de date, relance papier).
+- **974 tests** à rc4.
+- Les attentes à délai fixe ont été remplacées par des attentes déterministes : tests de garde d'accès, format de date, relance papier.
+- Les 404 aléatoires de supertest sont corrigés par le merge de `fix/flaky-supertest-404` : serveurs éphémères liés à `127.0.0.1`.
 - **Recette navigateur 23/23** sur base locale, note d'exécution de la Task 11.
+
+### Revue finale de branche (2026-09-29)
+Verdict « prêt sous réserve », puis correctifs appliqués :
+- **Prénom normalisé à la source** : `normalizeFirstName`, utilisé aussi pour la dernière question transmise au rédacteur. Le correctif fusionné `fix/v2-prenom-derniere-question` réinjectait le prénom brut, qui peut contenir des sauts de ligne. La dernière question est en outre ramenée sur une ligne dans `buildWriterMessages`.
+- **Sentry serveur** :
+  - `/api/letters/*` est ajouté aux routes sensibles : le corps n'est plus envoyé ;
+  - `Authorization`, `Cookie` et `request.cookies` sont retirés sur toutes les routes ;
+  - `httpIntegration({ maxIncomingRequestBodySize: 'none' })` ;
+  - le secret d'URL du webhook MySendingBox est masqué dans l'URL et le nom de transaction. Ce défaut préexistait au lot 2a ; le commit est isolé et réversible.
+- **Avertissement de pièce jointe** au contraste AA : 9,08:1, contre 3,19:1 avant.
+- **Sources Légifrance de l'étape EHPAD** en commentaire, pour la relecture juridique :
+  - L314-10-1 couvre la restitution des avances sous 30 jours ;
+  - R314-149 couvre le plafond de 6 jours et la déduction de la restauration.
+- **Priorités de `buildLetterAutofill`** verrouillées par des tests : 5 mutations sur 5 tuées.
 
 ### Hors périmètre, confiés à des tâches séparées
 - **Typographie des courriers et de l'interface** : élision « d’ » (« de Odette » → « d’Odette »), « 1er » ;
@@ -367,6 +383,7 @@ Ces notes **font foi** là où le code livré s'écarte du texte ci-dessus. Le d
 - **Focus entre les questions** ;
 - **Idempotence de `saveRoadmapToDb`** ;
 - **Identité de `user`** dans `useAuth` ; erreur de lecture confondue avec « pas de roadmap ».
+- **Code d'accès de `/api/transmission/:code`** : il apparaît dans les événements Sentry (produit gelé).
 
 Constats remontés à Arnaud :
 - les champs `var-*` ont des ids dupliqués quand plusieurs courriers sont ouverts ;
