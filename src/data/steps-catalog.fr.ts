@@ -1103,6 +1103,16 @@ export const STEPS_CATALOG_FR: StepTemplate[] = [
   },
   // ── PERSONNALISATION V2 : EHPAD ET AIDES PERÇUES ──────────────────────
   // Textes vérifiés le 2026-09-28 (Légifrance, service-public) — relecture juridique à venir.
+  // EHPAD (logement-ehpad) : la fiche F763 citée en source_url ne mentionne pas ces règles. Sources pour
+  // la relecture juridique, code de l'action sociale et des familles :
+  //   L314-10-1 (version du 10/04/2024) : une fois les objets personnels retirés, seules les prestations
+  //   d'hébergement délivrées avant le décès et non payées sont facturables ; sommes payées d'avance
+  //   restituées dans les 30 jours suivant le décès ; modalités de facturation renvoyées à un décret.
+  //   https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000049392114
+  //   R314-149 (version du 01/01/2023) : socle de prestations facturable 6 jours au plus après le décès,
+  //   restauration déduite ; dépôt de garantie restitué dans les 30 jours qui suivent la sortie de
+  //   l'établissement, créance déduite (l'étape dit « suivant l'état des lieux de sortie » : à confirmer).
+  //   https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000043588473
   {
     id: 'logement-ehpad',
     title: 'Libérer la chambre de l\'EHPAD et vérifier la facture finale',
