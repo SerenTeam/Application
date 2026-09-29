@@ -12,12 +12,15 @@ const PROFILE: LetterProfileRow = {
   city: 'Bordeaux',
   relationship: 'fille',
 }
+// Dossier saisi par la PF, avec des coquilles que la famille a corrigées : son prénom dans le profil
+// courrier, l'identité du défunt au récapitulatif. Chaque champ diffère VOLONTAIREMENT de sa source
+// prioritaire (profil, réponses) : à valeurs égales, un ordre de priorité inversé passerait inaperçu.
 const DOSSIER: DossierIdentity = {
-  family_first_name: 'Camille',
+  family_first_name: 'Camile',
   family_last_name: 'Martin',
-  deceased_first_name: 'Bernard',
-  deceased_last_name: 'Roussel',
-  deceased_death_date: '2026-09-12',
+  deceased_first_name: 'Bernad',
+  deceased_last_name: 'Rousel',
+  deceased_death_date: '2026-09-11',
 }
 const ANSWERS = {
   relation: 'parent',
@@ -37,7 +40,7 @@ describe('formatSenderAddress', () => {
 })
 
 describe('buildLetterAutofill', () => {
-  it('profil complet : identité et adresse du profil, défunt des réponses', () => {
+  it('profil complet : identité et adresse du profil, défunt des réponses, les deux prioritaires sur le dossier PF', () => {
     const a = buildLetterAutofill({ profile: PROFILE, dossier: DOSSIER, answers: ANSWERS })
     expect(a.userProfile).toEqual({
       firstname: 'Camille',
@@ -55,12 +58,12 @@ describe('buildLetterAutofill', () => {
   })
   it('sans profil : prénom et nom viennent du dossier PF ; adresse, ville et lien restent vides', () => {
     const a = buildLetterAutofill({ profile: null, dossier: DOSSIER, answers: ANSWERS })
-    expect(a.userProfile).toEqual({ firstname: 'Camille', lastname: 'Martin', address: undefined, city: undefined, relation: undefined })
+    expect(a.userProfile).toEqual({ firstname: 'Camile', lastname: 'Martin', address: undefined, city: undefined, relation: undefined })
   })
   it('profil hérité du 2a (sans first_name/last_name) : repli sur le dossier pour les noms', () => {
     const legacy = { ...PROFILE, first_name: null, last_name: null }
     const a = buildLetterAutofill({ profile: legacy, dossier: DOSSIER, answers: ANSWERS })
-    expect(a.userProfile.firstname).toBe('Camille')
+    expect(a.userProfile.firstname).toBe('Camile')
     expect(a.userProfile.lastname).toBe('Martin')
     expect(a.userProfile.address).toBe('12 rue des Lilas, 33000 Bordeaux')
   })
@@ -71,10 +74,10 @@ describe('buildLetterAutofill', () => {
   it('réponses sans identité (dossier ancien) : repli sur le dossier PF', () => {
     const a = buildLetterAutofill({ profile: null, dossier: DOSSIER, answers: {} })
     expect(a.questionnaireData).toEqual({
-      deceased_firstname: 'Bernard',
-      deceased_lastname: 'Roussel',
+      deceased_firstname: 'Bernad',
+      deceased_lastname: 'Rousel',
       deceased_dob: undefined,
-      deceased_dod: '2026-09-12',
+      deceased_dod: '2026-09-11',
     })
   })
   it('relation « pacse » : la forme par défaut n’écrase jamais un lien déjà enregistré', () => {
